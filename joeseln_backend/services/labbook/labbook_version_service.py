@@ -9,7 +9,7 @@ from joeseln_backend.services.note import note_version_service
 from joeseln_backend.services.file import file_version_service
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
-
+from joeseln_backend.mylogging.root_logger import logger
 
 
 
@@ -102,7 +102,7 @@ def update_all_lb_childelements_from_version(db: Session,
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
+            logger.error(e)
 
 
 def add_labbook_version(db: Session, labbook_pk, summary,
@@ -119,7 +119,7 @@ def add_labbook_version(db: Session, labbook_pk, summary,
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
+            logger.error(e)
         db.refresh(db_labbook)
 
     query = db.query(models.Labbookchildelement).filter_by(

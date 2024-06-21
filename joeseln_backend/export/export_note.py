@@ -8,13 +8,13 @@ from joeseln_backend.services.note.note_service import get_note
 
 
 def get_export_data(db, note_pk, jwt):
-    print(jwt)
+    # print(jwt)
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, '', 'templates')
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template('note.jinja2')
 
-    db_note= get_note(db=db, note_pk=note_pk)
+    db_note = get_note(db=db, note_pk=note_pk)
     # print(vars(lb))
     # for elem in elems:
     #     print(vars(elem))

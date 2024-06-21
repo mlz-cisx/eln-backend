@@ -10,6 +10,8 @@ from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 from joeseln_backend.conf.base_conf import URL_BASE_PATH
 
+from joeseln_backend.mylogging.root_logger import logger
+
 
 def get_all_notes(db: Session, params):
     # print(params)
@@ -46,7 +48,7 @@ def update_note(db: Session, note_pk, note: NoteCreate):
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
     db.refresh(note_to_update)
     return note_to_update
 
@@ -59,7 +61,7 @@ def soft_delete_note(db: Session, note_pk, labbook_data):
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
         return note_to_update
     db.refresh(note_to_update)
     query = db.query(models.Labbookchildelement).filter_by(
@@ -70,7 +72,7 @@ def soft_delete_note(db: Session, note_pk, labbook_data):
             transmit(
                 {'model_name': 'labbook', 'model_pk': labbook_data.labbook_pk})
         except RuntimeError as e:
-            print(e)
+            logger.error(e)
     return note_to_update
 
 
@@ -82,7 +84,7 @@ def restore_note(db: Session, note_pk):
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
         return note_to_update
     db.refresh(note_to_update)
     return note_to_update

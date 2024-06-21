@@ -9,6 +9,7 @@ from joeseln_backend.services.file import file_service
 from joeseln_backend.auth import security
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
+from joeseln_backend.mylogging.root_logger import logger
 
 
 def map_to_child_object_model(child_object_content_type):
@@ -48,6 +49,41 @@ def get_lb_childelements(db: Session, labbook_pk, as_export):
                                                       file_pk=elem.child_object_id)
 
     return query
+
+
+def patch_lb_childelement(db: Session, labbook_pk, element_pk,
+                          labbook_childelem,
+                          ):
+    db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
+    db_labbook_elem.position_x = labbook_childelem.position_x
+    db_labbook_elem.position_y = labbook_childelem.position_y
+    db_labbook_elem.width = labbook_childelem.width
+    db_labbook_elem.height = labbook_childelem.height
+
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+
+    db.refresh(db_labbook_elem)
+
+    if db_labbook_elem.child_object_content_type == 30:
+        db_labbook_elem.child_object = db.query(models.Note).get(
+            db_labbook_elem.child_object_id)
+    if db_labbook_elem.child_object_content_type == 40:
+        db_labbook_elem.child_object = picture_service.get_picture(db=db,
+                                                                   picture_pk=db_labbook_elem.child_object_id)
+
+    if db_labbook_elem.child_object_content_type == 50:
+        db_labbook_elem.child_object = file_service.get_file(db=db,
+                                                             file_pk=db_labbook_elem.child_object_id)
+
+    try:
+        transmit({'model_name': 'labbook_patch', 'model_pk': str(labbook_pk)})
+    except RuntimeError as e:
+        logger.error(e)
+
+    return db_labbook_elem
 
 
 def create_lb_childelement(db: Session, labbook_pk,
@@ -90,6 +126,11 @@ def create_lb_childelement(db: Session, labbook_pk,
         db_labbook_elem.child_object = file_service.get_file(db=db,
                                                              file_pk=db_labbook_elem.child_object_id)
 
+    try:
+        transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
+    except RuntimeError as e:
+        logger.error(e)
+
     return db_labbook_elem
 
 
@@ -104,20 +145,19 @@ def update_all_lb_childelements(db: Session,
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
-        pass
+            logger.error(e)
     # event listener not working with bulk
     # db.bulk_update_mappings(models.Labbookchildelement(), labbook_childelems)
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
         return
 
     try:
-        transmit({'model_name': 'labbook', 'model_pk': labbook_pk})
+        transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
     except RuntimeError as e:
-        print(e)
+        logger.error(e)
 
 
 def update_child_element(db_labbook_elem, child_object_content_type,
@@ -128,7 +168,7 @@ def update_child_element(db_labbook_elem, child_object_content_type,
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
+            logger.error(e)
 
     if child_object_content_type == 40:
         picture = db.query(models.Picture).get(child_object_id)
@@ -136,7 +176,7 @@ def update_child_element(db_labbook_elem, child_object_content_type,
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
+            logger.error(e)
 
     if child_object_content_type == 50:
         file = db.query(models.File).get(child_object_id)
@@ -144,4 +184,4 @@ def update_child_element(db_labbook_elem, child_object_content_type,
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
+            logger.error(e)

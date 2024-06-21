@@ -16,6 +16,8 @@ from joeseln_backend.services.picture.picture_schemas import *
 from joeseln_backend.conf.base_conf import PICTURES_BASE_PATH, URL_BASE_PATH
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
+from joeseln_backend.mylogging.root_logger import logger
+
 
 def get_all_pictures(db: Session, params):
     # print(params.get('ordering'))
@@ -57,7 +59,7 @@ def get_picture_in_lb_init(db: Session, picture_pk, access_token, as_export):
     else:
         picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
-    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes/'
+    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
     return picture
 
@@ -68,14 +70,17 @@ def get_lb_pk_from_picture(db: Session, picture_pk):
     return elem.labbook_id
 
 
-def copy_and_update_picture(db: Session, picture_pk):
-    db_picture = db.query(models.Picture).get(picture_pk)
-
-    old_ri_img_path = db_picture.rendered_image
-    old_shapes_path = db_picture.shapes_image
-
+def copy_and_update_picture(db: Session, picture_pk, restored_ri=None,
+                            restored_shapes=None):
     new_ri_img_path = f'{create_path(db=db)}'
     new_shapes_path = f'{create_path(db=db)}.json'
+    db_picture = db.query(models.Picture).get(picture_pk)
+    if restored_ri is not None:
+        old_ri_img_path = restored_ri
+        old_shapes_path = restored_shapes
+    else:
+        old_ri_img_path = db_picture.rendered_image
+        old_shapes_path = db_picture.shapes_image
 
     shutil.copyfile(f'{PICTURES_BASE_PATH}{old_ri_img_path}',
                     f'{PICTURES_BASE_PATH}{new_ri_img_path}')
@@ -88,7 +93,7 @@ def copy_and_update_picture(db: Session, picture_pk):
         db.commit()
         db.refresh(db_picture)
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
 
     return [old_ri_img_path,
             old_shapes_path]
@@ -197,7 +202,7 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
 
     db.refresh(db_picture)
 
@@ -233,7 +238,7 @@ def build_download_url_with_token(picture, user):
 
     picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes/'
+    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
     return picture
 
@@ -296,7 +301,7 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data):
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
         return pic_to_update
     db.refresh(pic_to_update)
     query = db.query(models.Labbookchildelement).filter_by(
@@ -307,7 +312,7 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data):
             transmit(
                 {'model_name': 'labbook', 'model_pk': labbook_data.labbook_pk})
         except RuntimeError as e:
-            print(e)
+            logger.error(e)
     return pic_to_update
 
 
@@ -319,7 +324,7 @@ def restore_picture(db: Session, picture_pk):
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
         return pic_to_update
     db.refresh(pic_to_update)
     return pic_to_update

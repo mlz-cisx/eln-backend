@@ -7,7 +7,7 @@ from joeseln_backend.services.file import file_service
 from joeseln_backend.services.file.file_schemas import *
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
-
+from joeseln_backend.mylogging.root_logger import logger
 
 
 
@@ -55,7 +55,7 @@ def add_file_version(db: Session, file_pk, summary, restored_description=None,
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
+            logger.error(e)
         db.refresh(db_file)
         file_service.restore_file(db=db, file_pk=file_pk)
 

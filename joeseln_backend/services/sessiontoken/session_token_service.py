@@ -4,13 +4,16 @@ from sqlalchemy.exc import SQLAlchemyError
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.models import models
 
+from joeseln_backend.mylogging.root_logger import logger
+
 
 class TokenService:
     @staticmethod
     def set_token_exp(token, exp):
         # print('token set ', exp)
         db = SessionLocal()
-        sessiontoken = models.SessionToken(token=token, expiration_time=exp+10)
+        sessiontoken = models.SessionToken(token=token,
+                                           expiration_time=exp + 10)
         db.add(sessiontoken)
         db.commit()
         db.refresh(sessiontoken)
@@ -25,7 +28,6 @@ class TokenService:
         db.close()
         return sessiontoken.expiration_time
 
-
     @staticmethod
     def extend_token(token):
         db = SessionLocal()
@@ -37,7 +39,7 @@ class TokenService:
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
+            logger.error(e)
             return False
         db.refresh(sessiontoken)
         db.close()

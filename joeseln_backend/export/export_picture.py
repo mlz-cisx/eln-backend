@@ -8,6 +8,7 @@ from joeseln_backend.services.picture.picture_service import \
     get_picture_for_export
 
 
+
 def get_export_data(db, picture_pk, jwt):
     # print(jwt)
     root = os.path.dirname(os.path.abspath(__file__))

@@ -9,14 +9,16 @@ from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.base_conf import URL_BASE_PATH
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
-
+from joeseln_backend.mylogging.root_logger import logger
 
 
 def get_labbooks(db: Session, params):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     return db.query(models.Labbook).filter_by(
-        deleted=bool(params.get('deleted'))).order_by(text(order_params)).offset(params.get('offset')).limit(params.get('limit')).all()
+        deleted=bool(params.get('deleted'))).order_by(
+        text(order_params)).offset(params.get('offset')).limit(
+        params.get('limit')).all()
 
 
 def create_labbook(db: Session, labbook: LabbookCreate):
@@ -43,7 +45,7 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch):
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
     db.refresh(db_labbook)
     # try:
     #     transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})

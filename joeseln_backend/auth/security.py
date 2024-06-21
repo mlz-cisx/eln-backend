@@ -14,11 +14,12 @@ from starlette.status import (
     HTTP_500_INTERNAL_SERVER_ERROR
 )
 
-from joeseln_backend.services.sessiontoken.session_token_service import TokenService
-from joeseln_backend.conf.base_conf import KEYCLOAK_BASEURL
+from joeseln_backend.services.sessiontoken.session_token_service import \
+    TokenService
+from joeseln_backend.conf.base_conf import KEYCLOAK_BASEURL, STATIC_ADMIN_TOKEN
 
+from joeseln_backend.mylogging.root_logger import logger
 
-STATIC_ADMIN_TOKEN = '#super_secret#'
 SECRET_KEY = "b014bc552ecfc62a46b6c4bea9d35d6d7e5ff6f0244eff28a3f5ad4be1d3015d"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1
@@ -90,7 +91,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    TokenService.set_token_exp(token=encoded_jwt.decode(), exp=int(expire.strftime("%Y%m%d%H%M%S")))
+    TokenService.set_token_exp(token=encoded_jwt.decode(),
+                               exp=int(expire.strftime("%Y%m%d%H%M%S")))
     return encoded_jwt
 
 
@@ -103,8 +105,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     _jwt_error = None
     try:
         if token == STATIC_ADMIN_TOKEN:
-            print('you can do everything')
-            user = get_user(fake_users_db, username='superadmin')
+            # logger.info('you can do everything')
+            user = get_user(fake_users_db, username='johndoe')
             return user
         else:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -117,7 +119,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
                 raise credentials_exception
             return user
     except jwt.exceptions.ExpiredSignatureError as e:
-        print(e)
+        # logger.info(e)
         if Security.check_token_exp(token.encode().decode()):
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM],
                                  leeway=36000)
@@ -130,10 +132,10 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
                 raise credentials_exception
             return user
         else:
-            print('expired')
+            logger.info('expired')
 
     except jwt.exceptions.PyJWTError as e:
-        print('other exception ', e)
+        logger.error(f'oidc user is considered as non oidc user: {e}')
         _jwt_error = e
 
     headers = {'Authorization': 'bearer ' + token}
@@ -171,14 +173,14 @@ class Security:
         bytes = password.encode('utf-8')
         salt = bcrypt.gensalt()
         hash = bcrypt.hashpw(bytes, salt)
-        print(hash)
+        logger.info(hash)
 
     @staticmethod
     def check_password(username, password):
         hash = Security.get_hashed_password(username=username)
         userBytes = password.encode('utf-8')
         result = bcrypt.checkpw(userBytes, hash)
-        print(result)
+        logger.info(result)
 
     @staticmethod
     def get_hashed_password(username):

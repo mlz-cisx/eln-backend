@@ -12,6 +12,9 @@ FILES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/pictures/'
 # MLZ-ELN URL
 URL_BASE_PATH = 'http://172.25.74.236:8010/'
 
+# WS ELN URL
+WS_URL = 'ws://172.25.74.236:8010/ws/'
+
 # CORS  settings
 ORIGINS = [
     "http://localhost:4500",
@@ -22,3 +25,23 @@ ORIGINS = [
 REALM = 'joe'
 KEYCLOAK_BASEURL = f'http://172.25.74.236:8181/realms' \
                    f'/{REALM}/protocol/openid-connect'
+
+STATIC_ADMIN_TOKEN = '#super_secret#'
+
+# Jaeger Settings
+# docker
+# run - d - -name
+# jaeger - e
+# COLLECTOR_ZIPKIN_HTTP_PORT = 9411 - p
+# 5775: 5775 / udp - p
+# 6831: 6831 / udp - p
+# 6832: 6832 / udp - p
+# 5778: 5778 - p
+# 16686: 16686 - p
+# 14268: 14268 - p
+# 9411: 9411
+# jaegertracing / all - in -one: 1.6
+
+JAEGER_HOST = 'localhost'
+JAEGER_PORT = 6831
+JAEGER_SERVICE_NAME = 'MLZ-ELN'

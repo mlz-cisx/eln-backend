@@ -6,6 +6,8 @@ from uuid import uuid4
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.database.database import Base
 
+from joeseln_backend.mylogging.root_logger import logger
+
 
 class Labbook(Base):
     __tablename__ = 'labbook'
@@ -144,23 +146,19 @@ class User(Base):
     username = Column(Text, unique=True)
     email = Column(Text, unique=True)
     oidc_user = Column(Boolean, default=False)
-    password = Column(Text)
+    password = Column(Text, default='not set')
     first_name = Column(Text)
     last_name = Column(Text)
-    attribute_1 = Column(Text)
-    attribute_2 = Column(Text)
-    attribute_3 = Column(Text)
-    attribute_4 = Column(Text)
+    created_at = Column(DateTime)
+    last_modified_at = Column(DateTime)
 
 
 class Group(Base):
     __tablename__ = 'group'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     groupname = Column(String, ForeignKey(Labbook.title))
-    attribute_1 = Column(Text)
-    attribute_2 = Column(Text)
-    attribute_3 = Column(Text)
-    attribute_4 = Column(Text)
+    created_at = Column(DateTime)
+    last_modified_at = Column(DateTime)
 
 
 class Role(Base):
@@ -168,6 +166,8 @@ class Role(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     rolename = Column(Text, unique=True)
     description = Column(Text)
+    created_at = Column(DateTime)
+    last_modified_at = Column(DateTime)
 
 
 class UserToGroupRole(Base):
@@ -176,6 +176,8 @@ class UserToGroupRole(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey(User.id))
     group_id = Column(UUID(as_uuid=True), ForeignKey(Group.id))
     user_group_role = Column(UUID(as_uuid=True), ForeignKey(Role.id))
+    created_at = Column(DateTime)
+    last_modified_at = Column(DateTime)
 
 
 class ChangesetChangeset(Base):
@@ -260,7 +262,7 @@ class SessionToken(Base):
 
 @event.listens_for(Note, "after_insert")
 def note_insert_event(mapper, connection, target):
-    print(f'Note pk after insert: {target.id}')
+    logger.info(f'Note pk after insert: {target.id}')
     return
 
 
@@ -269,31 +271,31 @@ def note_update_event(mapper, connection, target):
     try:
         transmit({'model_name': 'note', 'model_pk': str(target.id)})
     except RuntimeError as e:
-        print(e)
-    print(f'Note pk after update: {target.id}')
+        logger.error(e)
+    logger.info(f'Note pk after update: {target.id}')
     return
 
 
 @event.listens_for(Note, "after_delete")
 def note_delete_event(mapper, connection, target):
-    print(f'Note pk after delete: {target.id}')
+    logger.info(f'Note pk after delete: {target.id}')
     return
 
 
 #
 @event.listens_for(Labbookchildelement, "after_insert")
 def elem_insert_event(mapper, connection, target):
-    print(f'Element pk after insert : {target.id}')
+    logger.info(f'Element pk after insert : {target.id}')
     return
 
 
 @event.listens_for(Labbookchildelement, "after_update")
 def elem_update_event(mapper, connection, target):
-    # print(f'Element pk after update: {target.id}')
+    # logger.info(f'Element pk after update: {target.id}')
     return
 
 
 @event.listens_for(Labbookchildelement, "after_delete")
 def elem_delete_event(mapper, connection, target):
-    print(f'Element pk after delete: {target.id}')
+    logger.info(f'Element pk after delete: {target.id}')
     return

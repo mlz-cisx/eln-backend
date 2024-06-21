@@ -1,6 +1,7 @@
 import requests
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
+from joeseln_backend.conf.base_conf import STATIC_ADMIN_TOKEN
 from joeseln_backend.conf.content_types import *
 
 ELN_URL = 'http://localhost:8010/'
@@ -12,7 +13,8 @@ class BackendConnector:
 
     def __init__(self):
         self.eln_url = ELN_URL
-        self.headers = {'accept': 'application/json'}
+        self.headers = {'accept': 'application/json',
+                        'Authorization': f'Bearer {STATIC_ADMIN_TOKEN}'}
 
     def upload_image(self):
         file = {'file': open(TEST_IMG_1, 'rb')}
@@ -30,8 +32,9 @@ class BackendConnector:
                 'height': '61'
             }
         )
+        pic_headers = self.headers | {'Content-Type': files.content_type}
         r = requests.post(url=f'{self.eln_url}pictures/',
-                          headers={'Content-Type': files.content_type}, data=files)
+                          headers=pic_headers, data=files)
         print(r.json())
 
         lb_data = {
@@ -50,7 +53,7 @@ class BackendConnector:
         return r.json()
 
 # backend_connector = BackendConnector()
-# for i in range(500):
+# for i in range(200):
 #     pos = 8 * i
 #     print(backend_connector.create_image_and_add_to_labbook(
-#         labbook_pk='629fa7e1-7ad5-47d7-8098-8949611736f4', position_y=pos))
+#         labbook_pk='8aead5d9-7b76-4832-98e2-d4da41320b4c', position_y=pos))

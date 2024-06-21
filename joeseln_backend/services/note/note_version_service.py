@@ -7,6 +7,7 @@ from joeseln_backend.services.note import note_service
 from joeseln_backend.services.note.note_schemas import *
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
+from joeseln_backend.mylogging.root_logger import logger
 
 
 def get_all_note_versions(db: Session, note_pk):
@@ -53,7 +54,7 @@ def add_note_version(db: Session, note_pk, summary, restored_content=None,
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
+            logger.error(e)
         db.refresh(db_note)
         note_service.restore_note(db=db, note_pk=note_pk)
 
@@ -83,4 +84,3 @@ def add_note_version(db: Session, note_pk, summary, restored_content=None,
     db.refresh(db_note_version)
     # first element for main and restore, second for labbook_version_service
     return [db_note, db_note_version]
-

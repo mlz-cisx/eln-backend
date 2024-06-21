@@ -5,7 +5,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
-from joeseln_backend.services.entry_path.entry_path_service import create_path,create_entry
+from joeseln_backend.services.entry_path.entry_path_service import create_path, \
+    create_entry
 from joeseln_backend.auth import security
 from joeseln_backend.models import models
 from joeseln_backend.services.file.file_schemas import *
@@ -14,14 +15,16 @@ from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.base_conf import FILES_BASE_PATH, URL_BASE_PATH
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
-
+from joeseln_backend.mylogging.root_logger import logger
 
 
 def get_all_files(db: Session, params):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     return db.query(models.File).filter_by(
-        deleted=bool(params.get('deleted'))).order_by(text(order_params)).offset(params.get('offset')).limit(params.get('limit')).all()
+        deleted=bool(params.get('deleted'))).order_by(
+        text(order_params)).offset(params.get('offset')).limit(
+        params.get('limit')).all()
 
 
 def get_file(db: Session, file_pk):
@@ -79,18 +82,18 @@ def update_file(file_pk, db: Session, elem: FilePatch):
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
     db.refresh(db_file)
     transmit({'model_name': 'file', 'model_pk': str(file_pk)})
     return db_file
 
 
 def process_file_upload_form(form, db, contents):
-    print(form)
-    print(len(contents))
-    print(form['path'].size)
-    print(form['path'].content_type)  # mime_type
-    print(form['path'].filename)  # is form[name]
+    # print(form)
+    # print(len(contents))
+    # print(form['path'].size)
+    # print(form['path'].content_type)  # mime_type
+    # print(form['path'].filename)  # is form[name]
 
     db_file = create_file(db=db, title=form['title'],
                           name=form['name'],
@@ -168,7 +171,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data):
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
         return file_to_update
     db.refresh(file_to_update)
     query = db.query(models.Labbookchildelement).filter_by(
@@ -178,8 +181,9 @@ def soft_delete_file(db: Session, file_pk, labbook_data):
             transmit(
                 {'model_name': 'labbook', 'model_pk': labbook_data.labbook_pk})
         except RuntimeError as e:
-            print(e)
+            logger.error(e)
     return file_to_update
+
 
 def restore_file(db: Session, file_pk):
     file_to_update = db.query(models.File).get(file_pk)
@@ -189,7 +193,7 @@ def restore_file(db: Session, file_pk):
     try:
         db.commit()
     except SQLAlchemyError as e:
-        print(e)
+        logger.error(e)
         return file_to_update
     db.refresh(file_to_update)
     return file_to_update

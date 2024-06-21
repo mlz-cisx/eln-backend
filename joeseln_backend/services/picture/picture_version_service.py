@@ -7,6 +7,8 @@ from joeseln_backend.models import models
 from joeseln_backend.services.note.note_schemas import *
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
+from joeseln_backend.mylogging.root_logger import logger
+
 
 def get_all_picture_versions(db: Session, picture_pk):
     db_picture_versions = db.query(models.Version).filter_by(
@@ -49,6 +51,14 @@ def add_picture_version(db: Session, picture_pk, summary,
         restored_ri_img = paths[0]
         restored_shapes = paths[1]
 
+    else:
+        paths = picture_service.copy_and_update_picture(db=db,
+                                                        picture_pk=picture_pk,
+                                                        restored_ri=restored_ri_img,
+                                                        restored_shapes=restored_shapes)
+        restored_ri_img = paths[0]
+        restored_shapes = paths[1]
+
     number = 1
     last_db_picture_version = db.query(models.Version).filter_by(
         object_id=picture_pk).order_by(models.Version.number.desc()).first()
@@ -60,12 +70,10 @@ def add_picture_version(db: Session, picture_pk, summary,
 
     if restored_title is not None:
         db_picture.title = restored_title
-        db_picture.rendered_image = restored_ri_img
-        db_picture.shapes_image = restored_shapes
         try:
             db.commit()
         except SQLAlchemyError as e:
-            print(e)
+            logger.error(e)
         db.refresh(db_picture)
         picture_service.restore_picture(db=db, picture_pk=picture_pk)
 
