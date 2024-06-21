@@ -1,0 +1,28 @@
+{% extends 'base_export.jinja2' %}
+
+{% block title %}
+    File  {{ instance.title }}
+{% endblock %}
+
+{% block content %}
+    <h2 class="object_title">
+        {{ instance.title }}
+    </h2>
+    <div class="info_created_by">
+        Created by {{ instance.created_by }}
+        at {{ instance.created_at }}
+    </div>
+
+    <div>
+        File Name: {{ instance.name }}<br/>
+        File Size: {{ instance.file_size }} bytes
+    </div>
+
+    <div>
+        {{ instance.description }}
+    </div>
+
+    <p>Metadata:
+    </p>
+
+{% endblock %}

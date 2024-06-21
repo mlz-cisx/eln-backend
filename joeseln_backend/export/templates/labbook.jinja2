@@ -1,0 +1,100 @@
+{% extends 'base_export.jinja2' %}
+
+
+{% block title %}
+    LabBook: {{ instance.title }}
+{% endblock %}
+
+{% block extra_css %}
+    p {
+    margin: 0 0 16px;
+    }
+
+    .labbook-header h3 {
+    margin: 5px 0;
+    }
+{% endblock %}
+
+{% block content %}
+    <h2 class="object_title">
+        {{ instance.title }}
+    </h2>
+    <div class="info_created_by">
+        Created by {{ instance.created_by }}
+        at{{ instance.created_at }}
+    </div>
+
+    <p>Description:
+        {{ instance.description | safe }}
+    </p>
+
+    <p> Metadata:
+        {{ instance }}
+    </p>
+
+
+    <h3>Elements</h3>
+    {% for child_element in labbook_child_elements %}
+        <div style="margin-bottom: 20px">
+            {% if child_element.child_object_content_type == 30 %}
+                <h2 class="object_title">
+                    {{ child_element.child_object.subject }}
+                </h2>
+                <div class="info_created_by">
+                    Created by {{ child_element.child_object.created_by }}
+                    at {{ child_element.child_object.created_at }}
+                </div>
+
+                <div>
+                    {{ child_element.child_object.content }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="margin-bottom: 20px">
+            {% if child_element.child_object_content_type == 40 %}
+                <h2 class="object_title">
+                    {{ child_element.child_object.title }}
+                </h2>
+                <div class="info_created_by">
+                    Created by {{ child_element.child_object.created_by }}
+                    at {{ child_element.child_object.created_at }}
+                </div>
+
+                {% if child_element.child_object.rendered_image %}
+                    <img src="file://{{ child_element.child_object.rendered_image }}"
+                         style="max-height: 900px; max-width: 600px; height: auto">
+                {% endif %}
+
+                <p>Metadata
+                </p>
+
+
+            {% endif %}
+        </div>
+
+        <div style="margin-bottom: 20px">
+            {% if child_element.child_object_content_type == 50 %}
+                <h2 class="object_title">
+                    {{ child_element.child_object.title }}
+                </h2>
+                <div class="info_created_by">
+                    Created by {{ child_element.child_object.created_by }}
+                    at {{ child_element.child_object.created_at }}
+                </div>
+
+                <div>
+                    File Name: {{ child_element.child_object.name }}<br/>
+                    File Size: {{ child_element.child_object.file_size }} bytes
+                </div>
+
+                <div>
+                    {{ child_element.child_object.description }}
+                </div>
+
+                <p>Metadata:
+                </p>
+            {% endif %}
+        </div>
+    {% endfor %}
+{% endblock %}

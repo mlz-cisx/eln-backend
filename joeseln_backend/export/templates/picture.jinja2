@@ -1,0 +1,21 @@
+{% extends 'base_export.jinja2' %}
+
+{% block title %}
+    Picture  {{ instance.title }}
+{% endblock %}
+
+{% block content %}
+    <h2 class="object_title">
+        {{ instance.title }}
+    </h2>
+    <div class="info_created_by">
+        Created by {{ instance.created_by }}
+        at {{ instance.created_at }}
+    </div>
+
+    {% if instance.rendered_image %}
+        <img src="file://{{ instance.rendered_image }}"
+             style="max-height: 900px; max-width: 600px; height: auto">
+    {% endif %}
+
+{% endblock %}
