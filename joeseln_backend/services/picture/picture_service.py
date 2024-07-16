@@ -124,7 +124,10 @@ def create_picture(db: Session, title: str, display: str,
                                 last_modified_by_id=FAKE_USER_ID)
 
     db.add(db_picture)
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
     db.refresh(db_picture)
     db.close()
 
@@ -201,6 +204,14 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
     db_picture.height = form['height']
     db_picture.last_modified_at = datetime.datetime.now()
     db_picture.last_modified_by_id = FAKE_USER_ID
+
+    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem.last_modified_by_id = FAKE_USER_ID
+
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -305,6 +316,10 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data):
     lb_elem.deleted = True
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = FAKE_USER_ID
+
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -333,6 +348,10 @@ def restore_picture(db: Session, picture_pk):
     lb_elem.deleted = False
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = FAKE_USER_ID
+
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:

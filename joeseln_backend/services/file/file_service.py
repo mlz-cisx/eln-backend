@@ -68,7 +68,10 @@ def create_file(db: Session, title: str,
                           last_modified_by_id=FAKE_USER_ID)
 
     db.add(db_file)
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
     db.refresh(db_file)
     db.close()
 
@@ -81,6 +84,14 @@ def update_file(file_pk, db: Session, elem: FilePatch):
     db_file.description = elem.description
     db_file.last_modified_at = datetime.datetime.now()
     db_file.last_modified_by_id = FAKE_USER_ID
+
+    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem.last_modified_by_id = FAKE_USER_ID
+
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -175,6 +186,10 @@ def soft_delete_file(db: Session, file_pk, labbook_data):
     lb_elem.deleted = True
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = FAKE_USER_ID
+
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -202,6 +217,10 @@ def restore_file(db: Session, file_pk):
     lb_elem.deleted = False
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = FAKE_USER_ID
+
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:

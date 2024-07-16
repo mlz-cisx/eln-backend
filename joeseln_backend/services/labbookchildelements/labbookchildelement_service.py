@@ -62,6 +62,10 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
     db_labbook_elem.last_modified_at = datetime.datetime.now()
     db_labbook_elem.last_modified_by_id = FAKE_USER_ID
 
+    lb_to_update = db.query(models.Labbook).get(db_labbook_elem.labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = FAKE_USER_ID
+
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -108,7 +112,14 @@ def create_lb_childelement(db: Session, labbook_pk,
     )
     db.add(db_labbook_elem)
 
-    db.commit()
+    lb_to_update = db.query(models.Labbook).get(labbook_pk)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = FAKE_USER_ID
+
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
 
     update_child_element(db_labbook_elem=db_labbook_elem,
                          child_object_content_type=db_labbook_elem.child_object_content_type,

@@ -30,7 +30,10 @@ def create_labbook(db: Session, labbook: LabbookCreate):
                                 last_modified_at=datetime.datetime.now(),
                                 last_modified_by_id=FAKE_USER_ID)
     db.add(db_labbook)
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
     db.refresh(db_labbook)
     return db_labbook
 
