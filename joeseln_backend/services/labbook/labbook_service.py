@@ -42,6 +42,8 @@ def get_labbook(db: Session, labbook_pk):
 def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch):
     db_labbook = db.query(models.Labbook).get(labbook_pk)
     db_labbook.title = labbook.title
+    db_labbook.last_modified_at = datetime.datetime.now()
+    db_labbook.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:

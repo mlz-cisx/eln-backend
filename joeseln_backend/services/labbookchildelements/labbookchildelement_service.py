@@ -59,6 +59,8 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
     db_labbook_elem.position_y = labbook_childelem.position_y
     db_labbook_elem.width = labbook_childelem.width
     db_labbook_elem.height = labbook_childelem.height
+    db_labbook_elem.last_modified_at = datetime.datetime.now()
+    db_labbook_elem.last_modified_by_id = FAKE_USER_ID
 
     try:
         db.commit()
@@ -142,6 +144,8 @@ def update_all_lb_childelements(db: Session,
         elem.position_y = lb_childelem.position_y
         elem.width = lb_childelem.width
         elem.height = lb_childelem.height
+        elem.last_modified_at = datetime.datetime.now()
+        elem.last_modified_by_id = FAKE_USER_ID
         try:
             db.commit()
         except SQLAlchemyError as e:

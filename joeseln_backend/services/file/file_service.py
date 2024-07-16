@@ -79,6 +79,8 @@ def update_file(file_pk, db: Session, elem: FilePatch):
     db_file = db.query(models.File).get(file_pk)
     db_file.title = elem.title
     db_file.description = elem.description
+    db_file.last_modified_at = datetime.datetime.now()
+    db_file.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -166,8 +168,13 @@ def build_file_download_url_with_token(file_to_process, user):
 def soft_delete_file(db: Session, file_pk, labbook_data):
     file_to_update = db.query(models.File).get(file_pk)
     file_to_update.deleted = True
+    file_to_update.last_modified_at = datetime.datetime.now()
+    file_to_update.last_modified_by_id = FAKE_USER_ID
+
     lb_elem = db.query(models.Labbookchildelement).get(file_to_update.elem_id)
     lb_elem.deleted = True
+    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -188,8 +195,13 @@ def soft_delete_file(db: Session, file_pk, labbook_data):
 def restore_file(db: Session, file_pk):
     file_to_update = db.query(models.File).get(file_pk)
     file_to_update.deleted = False
+    file_to_update.last_modified_at = datetime.datetime.now()
+    file_to_update.last_modified_by_id = FAKE_USER_ID
+
     lb_elem = db.query(models.Labbookchildelement).get(file_to_update.elem_id)
     lb_elem.deleted = False
+    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:

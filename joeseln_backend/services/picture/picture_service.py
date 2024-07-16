@@ -199,6 +199,8 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
     db_picture = db.query(models.Picture).get(pk)
     db_picture.width = form['width']
     db_picture.height = form['height']
+    db_picture.last_modified_at = datetime.datetime.now()
+    db_picture.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -296,8 +298,13 @@ def build_picture_download_url_with_token(picture_to_process, user):
 def soft_delete_picture(db: Session, picture_pk, labbook_data):
     pic_to_update = db.query(models.Picture).get(picture_pk)
     pic_to_update.deleted = True
+    pic_to_update.last_modified_at = datetime.datetime.now()
+    pic_to_update.last_modified_by_id = FAKE_USER_ID
+
     lb_elem = db.query(models.Labbookchildelement).get(pic_to_update.elem_id)
     lb_elem.deleted = True
+    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -319,8 +326,13 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data):
 def restore_picture(db: Session, picture_pk):
     pic_to_update = db.query(models.Picture).get(picture_pk)
     pic_to_update.deleted = False
+    pic_to_update.last_modified_at = datetime.datetime.now()
+    pic_to_update.last_modified_by_id = FAKE_USER_ID
+
     lb_elem = db.query(models.Labbookchildelement).get(pic_to_update.elem_id)
     lb_elem.deleted = False
+    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:

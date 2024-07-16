@@ -45,6 +45,8 @@ def update_note(db: Session, note_pk, note: NoteCreate):
     note_to_update = db.query(models.Note).get(note_pk)
     note_to_update.subject = note.subject
     note_to_update.content = note.content
+    note_to_update.last_modified_at = datetime.datetime.now()
+    note_to_update.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -56,8 +58,13 @@ def update_note(db: Session, note_pk, note: NoteCreate):
 def soft_delete_note(db: Session, note_pk, labbook_data):
     note_to_update = db.query(models.Note).get(note_pk)
     note_to_update.deleted = True
+    note_to_update.last_modified_at = datetime.datetime.now()
+    note_to_update.last_modified_by_id = FAKE_USER_ID
+
     lb_elem = db.query(models.Labbookchildelement).get(note_to_update.elem_id)
     lb_elem.deleted = True
+    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -79,8 +86,13 @@ def soft_delete_note(db: Session, note_pk, labbook_data):
 def restore_note(db: Session, note_pk):
     note_to_update = db.query(models.Note).get(note_pk)
     note_to_update.deleted = False
+    note_to_update.last_modified_at = datetime.datetime.now()
+    note_to_update.last_modified_by_id = FAKE_USER_ID
+
     lb_elem = db.query(models.Labbookchildelement).get(note_to_update.elem_id)
     lb_elem.deleted = False
+    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem.last_modified_by_id = FAKE_USER_ID
     try:
         db.commit()
     except SQLAlchemyError as e:
