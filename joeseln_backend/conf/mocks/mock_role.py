@@ -3,6 +3,7 @@ ROLE_ADMIN = {
     'description': 'admin has full rights on all routes'
 }
 
+
 ROLE_USER = {
     'rolename': 'user',
     'description': 'user has rights on all routes touching labbooks referring to groupname'
