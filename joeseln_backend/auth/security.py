@@ -73,6 +73,11 @@ def get_user(db, username: str):
         user_dict = db[username]
         return UserInDB(**user_dict)
 
+def get_user_without_pw_hash(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return User(**user_dict)
+
 
 def authenticate_user(fake_db, username: str, password: str):
     user = get_user(fake_db, username)
@@ -106,7 +111,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         if token == STATIC_ADMIN_TOKEN:
             # logger.info('you can do everything')
-            user = get_user(fake_users_db, username='johndoe')
+            user = get_user_without_pw_hash(fake_users_db, username='johndoe')
             return user
         else:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -114,7 +119,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             if username is None:
                 raise credentials_exception
             token_data = TokenData(username=username)
-            user = get_user(fake_users_db, username=token_data.username)
+            user = get_user_without_pw_hash(fake_users_db, username=token_data.username)
             if user is None:
                 raise credentials_exception
             return user
@@ -127,7 +132,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             if username is None:
                 raise credentials_exception
             token_data = TokenData(username=username)
-            user = get_user(fake_users_db, username=token_data.username)
+            user = get_user_without_pw_hash(fake_users_db, username=token_data.username)
             if user is None:
                 raise credentials_exception
             return user

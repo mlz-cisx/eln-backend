@@ -843,6 +843,9 @@ async def websocket_endpoint(*, websocket: WebSocket):
             if token:
                 # TODO do ws authentication here
                 logger.info(token)
+            else:
+                WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+
 
 
     except WebSocketDisconnect:
