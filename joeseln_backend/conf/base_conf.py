@@ -27,6 +27,7 @@ KEYCLOAK_BASEURL = f'http://172.25.74.236:8181/realms' \
                    f'/{REALM}/protocol/openid-connect'
 
 STATIC_ADMIN_TOKEN = '#super_secret#'
+STATIC_WS_TOKEN = '#super_ws_secret#'
 
 # Jaeger Settings
 # docker

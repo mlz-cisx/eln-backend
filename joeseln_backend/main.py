@@ -35,7 +35,7 @@ from joeseln_backend.export import export_labbook, export_note, export_picture, 
     export_file
 from joeseln_backend.full_text_search import text_search
 from joeseln_backend.conf.base_conf import ORIGINS, JAEGER_HOST, JAEGER_PORT, \
-    JAEGER_SERVICE_NAME
+    JAEGER_SERVICE_NAME, STATIC_WS_TOKEN
 from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
     get_current_user, authenticate_user, ACCESS_TOKEN_EXPIRE_SECONDS, \
     fake_users_db, create_access_token
@@ -108,7 +108,7 @@ def get_health():
 def read_labbooks(request: Request,
                   db: Session = Depends(get_db),
                   user: dict = Depends(get_current_user)):
-    logger.info(user)
+    # logger.info(user)
     with jaeger_tracer.start_span('GET /labbooks/ user') as span:
         span.log_kv({'user': user})
     labbooks = labbook_service.get_labbooks(db=db,
@@ -827,7 +827,12 @@ async def websocket_endpoint(*, websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
             # logger.info(data)
-            if data['auth'] and '__zone_symbol__value' in json.loads(
+            if data['auth'] == STATIC_WS_TOKEN:
+                token = data['auth']
+                # we don't want to transmit any token from backend !
+                del data['auth']
+                await manager.broadcast_json(message=data)
+            elif data['auth'] and '__zone_symbol__value' in json.loads(
                     json.dumps(data['auth'])):
                 # handling keycloak
                 token = json.loads(json.dumps(data['auth']))[
@@ -835,10 +840,10 @@ async def websocket_endpoint(*, websocket: WebSocket):
             else:
                 # handling jwt auth
                 token = data['auth']
-            # logger.info(token)
-            if data['auth'] == 'backend_secret':
-                del data['auth']
-                await manager.broadcast_json(message=data)
+            if token:
+                # TODO do ws authentication here
+                logger.info(token)
+
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)

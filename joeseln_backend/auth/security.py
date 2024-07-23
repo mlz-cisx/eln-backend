@@ -132,7 +132,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
                 raise credentials_exception
             return user
         else:
-            logger.info('expired')
+            logger.info('token expired ')
 
     except jwt.exceptions.PyJWTError as e:
         logger.error(f'oidc user is considered as non oidc user: {e}')
