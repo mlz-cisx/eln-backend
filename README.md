@@ -4,6 +4,7 @@
 - python 3.10
 - create virtual environment e.g. *venv*
 - install from requirements
+- pip install psycopg2-binary
 - create postgres database
 - enter credentials into joeseln_backend/conf/base_conf.py
 - run joeseln_backend/models/table_creator.py

@@ -74,7 +74,6 @@ pillow==10.3.0
 platformdirs==4.2.0
 prompt-toolkit==3.0.43
 protobuf==4.25.3
-psycopg2==2.9.9
 ptyprocess==0.7.0
 pure-eval==0.2.2
 pyasn1==0.5.1

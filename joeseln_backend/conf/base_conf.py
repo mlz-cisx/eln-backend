@@ -7,7 +7,7 @@ DB_PORT = 5440
 # folder to store pictures
 PICTURES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/pictures/'
 # folder to store files
-FILES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/pictures/'
+FILES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/files/'
 
 # MLZ-ELN URL
 URL_BASE_PATH = 'http://172.25.74.236:8010/'
