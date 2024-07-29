@@ -6,6 +6,7 @@ from uuid import UUID
 class Group_Create(BaseModel):
     groupname: str
 
+
 class GetGroup(BaseModel):
     id: int | str | UUID = Field(..., alias='pk')
     groupname: str
@@ -25,6 +26,7 @@ class UserToGroup_Create(BaseModel):
     class Config:
         populate_by_name = True
         from_attributes = True
+
 
 class Privileges(BaseModel):
     fullAccess: bool

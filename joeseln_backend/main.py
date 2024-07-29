@@ -112,8 +112,9 @@ def read_labbooks(request: Request,
     with jaeger_tracer.start_span('GET /labbooks/ user') as span:
         span.log_kv({'user': user['username']})
     # TODO check user rights on labbooks here
-    labbooks = labbook_service.get_labbooks(db=db,
-                                            params=request.query_params._dict)
+    labbooks = labbook_service.get_labbooks_from_user(db=db,
+                                                      params=request.query_params._dict,
+                                                      username=user['username'])
     return labbooks
 
 
@@ -843,7 +844,8 @@ async def websocket_endpoint(*, websocket: WebSocket):
                 token = data['auth']
             if token:
                 # TODO do ws authentication here
-                logger.info(token)
+                # logger.info(token)
+                pass
             else:
                 WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 

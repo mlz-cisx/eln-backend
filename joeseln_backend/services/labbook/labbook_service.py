@@ -13,7 +13,15 @@ from joeseln_backend.mylogging.root_logger import logger
 
 
 def get_labbooks(db: Session, params):
-    # print(params.get('ordering'))
+    order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
+    return db.query(models.Labbook).filter_by(
+        deleted=bool(params.get('deleted'))).order_by(
+        text(order_params)).offset(params.get('offset')).limit(
+        params.get('limit')).all()
+
+
+def get_labbooks_from_user(db: Session, params, username):
+    logger.info(username)
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     return db.query(models.Labbook).filter_by(
         deleted=bool(params.get('deleted'))).order_by(
