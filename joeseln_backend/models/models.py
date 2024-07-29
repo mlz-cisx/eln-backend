@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, \
-    Text, event, BigInteger
+    Text, event, BigInteger, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from uuid import uuid4
 
@@ -156,7 +156,8 @@ class User(Base):
 class Group(Base):
     __tablename__ = 'group'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    groupname = Column(String, ForeignKey(Labbook.title))
+    # TODO consider group name as foreign key
+    groupname = Column(String, unique=True)
     created_at = Column(DateTime)
     last_modified_at = Column(DateTime)
 
@@ -172,6 +173,7 @@ class Role(Base):
 
 class UserToGroupRole(Base):
     __tablename__ = 'user_to_group_role'
+    __table_args__ = (UniqueConstraint('user_id', 'group_id', 'user_group_role',  name='_user_to_group_role'),                   )
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey(User.id))
     group_id = Column(UUID(as_uuid=True), ForeignKey(Group.id))
