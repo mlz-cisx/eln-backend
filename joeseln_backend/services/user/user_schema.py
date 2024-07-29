@@ -26,3 +26,9 @@ class User_Create(BaseModel):
     password: str
     first_name: str
     last_name: str
+
+class OIDC_User_Create(BaseModel):
+    preferred_username: str
+    email: str
+    given_name: str
+    family_name: str

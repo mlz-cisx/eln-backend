@@ -108,9 +108,10 @@ def get_health():
 def read_labbooks(request: Request,
                   db: Session = Depends(get_db),
                   user: dict = Depends(get_current_user)):
-    # logger.info(user)
+    logger.info(user['username'])
     with jaeger_tracer.start_span('GET /labbooks/ user') as span:
-        span.log_kv({'user': user})
+        span.log_kv({'user': user['username']})
+    # TODO check user rights on labbooks here
     labbooks = labbook_service.get_labbooks(db=db,
                                             params=request.query_params._dict)
     return labbooks
@@ -875,6 +876,7 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
+    # we align to keycloak's sub
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )

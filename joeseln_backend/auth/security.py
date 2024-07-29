@@ -1,8 +1,11 @@
 from fastapi import Depends, HTTPException, status
 import bcrypt
 from pydantic import BaseModel
+from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.services.user.user_service import update_oidc_user
+from joeseln_backend.services.user.user_schema import OIDC_User_Create
 
-from typing import Annotated
+from typing import Annotated, Any
 from datetime import datetime, timedelta, timezone
 import jwt
 from passlib.context import CryptContext
@@ -23,13 +26,23 @@ from joeseln_backend.mylogging.root_logger import logger
 SECRET_KEY = "b014bc552ecfc62a46b6c4bea9d35d6d7e5ff6f0244eff28a3f5ad4be1d3015d"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1
-ACCESS_TOKEN_EXPIRE_SECONDS = 10
+ACCESS_TOKEN_EXPIRE_SECONDS = 1000
 
 fake_users_db = {
     "johndoe": {
         "username": "johndoe",
         "full_name": "John Doe",
         "email": "johndoe@example.com",
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+        "disabled": False,
+        "realm_access": {
+            "roles": ["MyProject1", "MyProject2"]
+        }
+    },
+    "admin": {
+        "username": "admin",
+        "full_name": "Super Admin",
+        "email": "admin@example.com",
         "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
         "disabled": False,
     }
@@ -50,6 +63,9 @@ class User(BaseModel):
     email: str | None = None
     full_name: str | None = None
     disabled: bool | None = None
+    # we align to keycloak's realm access
+    realm_access: Any | None
+
 
 
 class UserInDB(User):
@@ -72,6 +88,7 @@ def get_user(db, username: str):
     if username in db:
         user_dict = db[username]
         return UserInDB(**user_dict)
+
 
 def get_user_without_pw_hash(db, username: str):
     if username in db:
@@ -108,13 +125,15 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         headers={"WWW-Authenticate": "Bearer"},
     )
     _jwt_error = None
+    # try as non oidc user
     try:
         if token == STATIC_ADMIN_TOKEN:
             # logger.info('you can do everything')
-            user = get_user_without_pw_hash(fake_users_db, username='johndoe')
+            user = get_user_without_pw_hash(fake_users_db, username='admin')
             return user
         else:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            # we aligned to keycloak's sub
             username: str = payload.get("sub")
             if username is None:
                 raise credentials_exception
@@ -128,6 +147,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         if Security.check_token_exp(token.encode().decode()):
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM],
                                  leeway=36000)
+            # we aligned to keycloak's sub
             username: str = payload.get("sub")
             if username is None:
                 raise credentials_exception
@@ -143,6 +163,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         logger.error(f'oidc user is considered as non oidc user: {e}')
         _jwt_error = e
 
+    # try as oidc user
     headers = {'Authorization': 'bearer ' + token}
     r_user = requests.get(
         KEYCLOAK_BASEURL + '/userinfo',
@@ -150,7 +171,12 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         verify=False
     )
     if r_user.status_code == HTTP_200_OK:
-        return r_user.json()
+        user = dict(r_user.json())
+        # update user and roles in db
+        update_oidc_user(db=SessionLocal(), oidc_user=OIDC_User_Create.parse_obj(user))
+        # align to usual naming for usernames
+        user['username'] = user['preferred_username']
+        return user
     elif r_user.status_code == HTTP_401_UNAUTHORIZED:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,

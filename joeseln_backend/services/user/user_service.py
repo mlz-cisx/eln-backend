@@ -9,6 +9,39 @@ def get_user_by_uname(db: Session, username):
     return db.query(models.User).filter_by(username=username).first()
 
 
+def update_oidc_user(db: Session, oidc_user: OIDC_User_Create):
+    db_user = get_user_by_uname(db=db, username=oidc_user.preferred_username)
+    if not db_user:
+        db_user = models.User(username=oidc_user.preferred_username,
+                              email=oidc_user.email,
+                              oidc_user=True,
+                              first_name=oidc_user.given_name,
+                              last_name=oidc_user.family_name,
+                              created_at=datetime.datetime.now(),
+                              last_modified_at=datetime.datetime.now()
+                              )
+
+        try:
+            db.add(db_user)
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            return
+        db.refresh(db_user)
+        return oidc_user
+    elif db_user.email != oidc_user.email:
+        db_user.email = oidc_user.email
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+
+        db.refresh(db_user)
+        return oidc_user
+    else:
+        return oidc_user
+
+
 def create_user(db: Session, user: User_Create):
     db_user = models.User(username=user.username,
                           email=user.email,
