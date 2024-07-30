@@ -147,7 +147,6 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             username: str = payload.get("sub")
             if username is None:
                 raise credentials_exception
-            token_data = TokenData(username=username)
             user = get_user_with_groups_by_uname(db=SessionLocal(),
                                                  username=username)
             if user is None:
@@ -162,7 +161,6 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             username: str = payload.get("sub")
             if username is None:
                 raise credentials_exception
-            token_data = TokenData(username=username)
             user = get_user_with_groups_by_uname(db=SessionLocal(),
                                                  username=username)
 
@@ -189,7 +187,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         update_oidc_user(db=SessionLocal(),
                          oidc_user=OIDC_User_Create.parse_obj(user))
         # align to usual naming for usernames
-        user['username'] = user['preferred_username']
+        user['username'] = user.pop('preferred_username')
         return user
     elif r_user.status_code == HTTP_401_UNAUTHORIZED:
         raise HTTPException(

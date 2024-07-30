@@ -21,7 +21,8 @@ def get_labbooks(db: Session, params):
 
 
 def get_labbooks_from_user(db: Session, params, user):
-    logger.info(user)
+    logger.info(user['realm_access']['roles'])
+    # TODO filter with roles in realm_access from user
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     return db.query(models.Labbook).filter_by(
         deleted=bool(params.get('deleted'))).order_by(
@@ -82,7 +83,7 @@ def get_labbook_export_link(db: Session, labbook_pk):
 
 def build_labbook_download_url_with_token(lb_to_process, user):
     user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                      'secret')
+                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(

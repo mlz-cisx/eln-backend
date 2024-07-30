@@ -111,13 +111,13 @@ def get_health():
 def read_labbooks(request: Request,
                   db: Session = Depends(get_db),
                   user: dict = Depends(get_current_user)):
-    logger.info(user)
+    if not isinstance(user, dict):
+        user = vars(user)
     with jaeger_tracer.start_span('GET /labbooks/ user') as span:
-        span.log_kv({'user': user})
-    # TODO check user rights on labbooks here
+        span.log_kv({'user': user['username']})
     labbooks = labbook_service.get_labbooks_from_user(db=db,
                                                       params=request.query_params._dict,
-                                                      user=user)
+                                                      user=dict(user))
     return labbooks
 
 
@@ -864,6 +864,9 @@ async def websocket_endpoint(*, websocket: WebSocket):
 
 @app.get('/users/me', response_model=user_schema.User)
 async def user_me(user: dict = Depends(get_current_user)):
+    if not isinstance(user, dict):
+        user = vars(user)
+    logger.info(user)
     return user
 
 
