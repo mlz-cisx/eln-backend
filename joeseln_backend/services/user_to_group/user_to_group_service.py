@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from joeseln_backend.models import models
-from joeseln_backend.services.user.user_service import get_user_by_uname
 from joeseln_backend.services.user_to_group.user_to_group_schema import *
 from joeseln_backend.mylogging.root_logger import logger
 
@@ -44,8 +43,22 @@ def create_user_to_group(db: Session, user_to_group: UserToGroup_Create):
 
 def get_user_group_roles(db: Session, username,
                          groupname):
-    db_user = get_user_by_uname(db=db, username=username).first()
-    db_group = get_group_by_groupname(db=db, groupname=groupname).first()
-    group_roles = db.query(models.UserToGroupRole).filter_by(user_id=db_user.id,
-                                                             group_id=db_group.id).all()
-    return group_roles
+    result = db.query(models.Role).join(models.UserToGroupRole,
+                                        models.Role.id == models.UserToGroupRole.user_group_role).join(
+        models.User, models.UserToGroupRole.user_id == models.User.id).join(
+        models.Group,
+        models.Group.id == models.UserToGroupRole.group_id).filter(
+        models.User.username == username).filter(
+        models.Group.groupname == groupname).all()
+    return result
+
+
+def get_user_groups(db: Session, username):
+    result = db.query(models.Group).join(models.UserToGroupRole,
+                                         models.Group.id == models.UserToGroupRole.group_id).join(
+        models.User, models.UserToGroupRole.user_id == models.User.id).filter(
+        models.User.username == username).all()
+
+    result = [x.groupname for x in result]
+
+    return result

@@ -241,7 +241,7 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
 
 
 def build_download_url_with_token(picture, user):
-    user = security.authenticate_user(security.fake_users_db, 'johndoe',
+    user = security._authenticate_user(security.fake_users_db, 'johndoe',
                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -294,7 +294,7 @@ def get_picture_export_link(db: Session, picture_pk):
 
 
 def build_picture_download_url_with_token(picture_to_process, user):
-    user = security.authenticate_user(security.fake_users_db, 'johndoe',
+    user = security._authenticate_user(security.fake_users_db, 'johndoe',
                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)

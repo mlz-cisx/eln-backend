@@ -26,7 +26,7 @@ def get_lb_childelements(db: Session, labbook_pk, as_export):
         labbook_id=labbook_pk, deleted=False).order_by(
         models.Labbookchildelement.position_y).all()
 
-    user = security.authenticate_user(security.fake_users_db, 'johndoe',
+    user = security._authenticate_user(security.fake_users_db, 'johndoe',
                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)

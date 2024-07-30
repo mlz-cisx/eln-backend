@@ -134,7 +134,7 @@ def get_note_export_link(db: Session, note_pk):
 
 
 def build_note_download_url_with_token(note_to_process, user):
-    user = security.authenticate_user(security.fake_users_db, 'johndoe',
+    user = security._authenticate_user(security.fake_users_db, 'johndoe',
                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)

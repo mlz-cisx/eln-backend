@@ -7,7 +7,7 @@ class Group_Create(BaseModel):
     groupname: str
 
 
-class GetGroup(BaseModel):
+class Group(BaseModel):
     id: int | str | UUID = Field(..., alias='pk')
     groupname: str
     created_at: datetime.datetime
@@ -26,12 +26,3 @@ class UserToGroup_Create(BaseModel):
     class Config:
         populate_by_name = True
         from_attributes = True
-
-
-class Privileges(BaseModel):
-    fullAccess: bool
-    view: bool
-    edit: bool
-    delete: bool
-    trash: bool
-    restore: bool

@@ -30,6 +30,8 @@ from joeseln_backend.services.labbook import labbook_version_service
 from joeseln_backend.services.labbook import labbook_schemas, labbook_service
 from joeseln_backend.services.file import file_version_service, file_schemas, \
     file_service
+
+from joeseln_backend.services.user import user_schema
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
     export_file
@@ -37,8 +39,9 @@ from joeseln_backend.full_text_search import text_search
 from joeseln_backend.conf.base_conf import ORIGINS, JAEGER_HOST, JAEGER_PORT, \
     JAEGER_SERVICE_NAME, STATIC_WS_TOKEN
 from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
-    get_current_user, authenticate_user, ACCESS_TOKEN_EXPIRE_SECONDS, \
-    fake_users_db, create_access_token
+    get_current_user, authenticate_user, \
+    ACCESS_TOKEN_EXPIRE_SECONDS, \
+    create_access_token
 from joeseln_backend.ws.connection_manager import manager
 
 # first logger
@@ -108,13 +111,13 @@ def get_health():
 def read_labbooks(request: Request,
                   db: Session = Depends(get_db),
                   user: dict = Depends(get_current_user)):
-    logger.info(user['username'])
+    logger.info(user)
     with jaeger_tracer.start_span('GET /labbooks/ user') as span:
-        span.log_kv({'user': user['username']})
+        span.log_kv({'user': user})
     # TODO check user rights on labbooks here
     labbooks = labbook_service.get_labbooks_from_user(db=db,
                                                       params=request.query_params._dict,
-                                                      username=user['username'])
+                                                      user=user)
     return labbooks
 
 
@@ -859,18 +862,19 @@ async def websocket_endpoint(*, websocket: WebSocket):
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
 
-@app.get('/users/me')
+@app.get('/users/me', response_model=user_schema.User)
 async def user_me(user: dict = Depends(get_current_user)):
-    # logger.info(user)
     return user
 
 
 @app.post("/token")
 async def login_for_access_token(
-        form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+        form_data: Annotated[OAuth2PasswordRequestForm, Depends(),],
+        db: Session = Depends(get_db),
 ) -> Token:
-    user = authenticate_user(fake_users_db, form_data.username,
-                             form_data.password)
+    user = authenticate_user(db=db, username=form_data.username,
+                             password=form_data.password)
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -1,9 +1,22 @@
 import datetime
 from pydantic import BaseModel, Field
 from uuid import UUID
+from typing import Any
 
 
 class User(BaseModel):
+    id: int | str | UUID | None = None
+    username: str
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    realm_access: Any | None = None
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
+
+class UserExtended(BaseModel):
     id: int | str | UUID = Field(..., alias='pk')
     username: str
     email: str

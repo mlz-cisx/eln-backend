@@ -130,7 +130,7 @@ def process_file_upload_form(form, db, contents):
 
 
 def build_download_url_with_token(file_to_process, user):
-    user = security.authenticate_user(security.fake_users_db, 'johndoe',
+    user = security._authenticate_user(security.fake_users_db, 'johndoe',
                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -164,7 +164,7 @@ def get_file_export_link(db: Session, file_pk):
 
 
 def build_file_download_url_with_token(file_to_process, user):
-    user = security.authenticate_user(security.fake_users_db, 'johndoe',
+    user = security._authenticate_user(security.fake_users_db, 'johndoe',
                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)

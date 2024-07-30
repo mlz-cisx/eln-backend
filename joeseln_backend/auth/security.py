@@ -1,8 +1,10 @@
+from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 import bcrypt
 from pydantic import BaseModel
 from joeseln_backend.database.database import SessionLocal
-from joeseln_backend.services.user.user_service import update_oidc_user
+from joeseln_backend.services.user.user_service import update_oidc_user, \
+    get_user_by_uname, get_user_with_groups_by_uname
 from joeseln_backend.services.user.user_schema import OIDC_User_Create
 
 from typing import Annotated, Any
@@ -64,8 +66,7 @@ class User(BaseModel):
     full_name: str | None = None
     disabled: bool | None = None
     # we align to keycloak's realm access
-    realm_access: Any | None
-
+    realm_access: Any | None = None
 
 
 class UserInDB(User):
@@ -96,11 +97,20 @@ def get_user_without_pw_hash(db, username: str):
         return User(**user_dict)
 
 
-def authenticate_user(fake_db, username: str, password: str):
+def _authenticate_user(fake_db, username: str, password: str):
     user = get_user(fake_db, username)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def authenticate_user(db: Session, username: str, password: str):
+    user = get_user_by_uname(db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.password):
         return False
     return user
 
@@ -129,7 +139,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         if token == STATIC_ADMIN_TOKEN:
             # logger.info('you can do everything')
-            user = get_user_without_pw_hash(fake_users_db, username='admin')
+            user = get_user_by_uname(db=SessionLocal(), username='admin')
             return user
         else:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -138,7 +148,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             if username is None:
                 raise credentials_exception
             token_data = TokenData(username=username)
-            user = get_user_without_pw_hash(fake_users_db, username=token_data.username)
+            user = get_user_with_groups_by_uname(db=SessionLocal(),
+                                                 username=username)
             if user is None:
                 raise credentials_exception
             return user
@@ -152,7 +163,9 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             if username is None:
                 raise credentials_exception
             token_data = TokenData(username=username)
-            user = get_user_without_pw_hash(fake_users_db, username=token_data.username)
+            user = get_user_with_groups_by_uname(db=SessionLocal(),
+                                                 username=username)
+
             if user is None:
                 raise credentials_exception
             return user
@@ -173,7 +186,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     if r_user.status_code == HTTP_200_OK:
         user = dict(r_user.json())
         # update user and roles in db
-        update_oidc_user(db=SessionLocal(), oidc_user=OIDC_User_Create.parse_obj(user))
+        update_oidc_user(db=SessionLocal(),
+                         oidc_user=OIDC_User_Create.parse_obj(user))
         # align to usual naming for usernames
         user['username'] = user['preferred_username']
         return user
