@@ -31,7 +31,7 @@ from joeseln_backend.services.labbook import labbook_schemas, labbook_service
 from joeseln_backend.services.file import file_version_service, file_schemas, \
     file_service
 
-from joeseln_backend.services.user import user_schema
+from joeseln_backend.services.user.user_schema import User
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
     export_file
@@ -110,14 +110,12 @@ def get_health():
 @app.get("/labbooks/", response_model=list[labbook_schemas.Labbook])
 def read_labbooks(request: Request,
                   db: Session = Depends(get_db),
-                  user: dict = Depends(get_current_user)):
-    if not isinstance(user, dict):
-        user = vars(user)
+                  user: User = Depends(get_current_user)):
     with jaeger_tracer.start_span('GET /labbooks/ user') as span:
-        span.log_kv({'user': user['username']})
+        span.log_kv({'user': user.username})
     labbooks = labbook_service.get_labbooks_from_user(db=db,
                                                       params=request.query_params._dict,
-                                                      user=dict(user))
+                                                      user=user)
     return labbooks
 
 
@@ -125,7 +123,7 @@ def read_labbooks(request: Request,
 def patch_labbook(labbook: labbook_schemas.LabbookPatch,
                   labbook_pk: UUID,
                   db: Session = Depends(get_db),
-                  user: dict = Depends(get_current_user)):
+                  user: User = Depends(get_current_user)):
     # logger.info(user)
     return labbook_service.patch_labbook(db=db, labbook_pk=labbook_pk,
                                          labbook=labbook)
@@ -134,7 +132,7 @@ def patch_labbook(labbook: labbook_schemas.LabbookPatch,
 @app.get("/labbooks/{labbook_pk}", response_model=labbook_schemas.Labbook)
 def read_labbook(labbook_pk: UUID,
                  db: Session = Depends(get_db),
-                 user: dict = Depends(get_current_user)):
+                 user: User = Depends(get_current_user)):
     # logger.info(user)
     labbook = labbook_service.get_labbook(db=db, labbook_pk=labbook_pk)
     if labbook is None:
@@ -145,7 +143,7 @@ def read_labbook(labbook_pk: UUID,
 @app.get("/labbooks/{labbook_pk}/export/", response_class=FileResponse)
 def export_labbook_content(request: Request, labbook_pk: UUID,
                            db: Session = Depends(get_db),
-                           user: dict = Depends(get_current_user)):
+                           user: User = Depends(get_current_user)):
     # logger.info(user)
     dwldable_labbook = export_labbook.get_export_data(db=db, lb_pk=labbook_pk,
                                                       jwt=request.query_params._dict)
@@ -155,7 +153,7 @@ def export_labbook_content(request: Request, labbook_pk: UUID,
 @app.get("/labbooks/{labbook_pk}/get_export_link/")
 def export_link_labbook(labbook_pk: UUID,
                         db: Session = Depends(get_db),
-                        user: dict = Depends(get_current_user)):
+                        user: User = Depends(get_current_user)):
     # logger.info(user)
     export_link = labbook_service.get_labbook_export_link(db=db,
                                                           labbook_pk=labbook_pk)
@@ -165,7 +163,7 @@ def export_link_labbook(labbook_pk: UUID,
 @app.post("/labbooks/", response_model=labbook_schemas.Labbook)
 def create_labbook(labbook: labbook_schemas.LabbookCreate,
                    db: Session = Depends(get_db),
-                   user: dict = Depends(get_current_user)):
+                   user: User = Depends(get_current_user)):
     # logger.info(user)
     return labbook_service.create_labbook(db=db, labbook=labbook)
 
@@ -174,7 +172,7 @@ def create_labbook(labbook: labbook_schemas.LabbookCreate,
          response_model=list[labbookchildelement_schemas.Labbookchildelement])
 def read_labbook_elems(labbook_pk: UUID,
                        db: Session = Depends(get_db),
-                       user: dict = Depends(get_current_user)):
+                       user: User = Depends(get_current_user)):
     # logger.info(user)
     lb_elements = labbookchildelement_service.get_lb_childelements(db=db,
                                                                    labbook_pk=labbook_pk,
@@ -188,7 +186,7 @@ async def create_labbook_elem(
         labbook_pk: UUID,
         elem: labbookchildelement_schemas.Labbookchildelement_Create,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     lb_element = labbookchildelement_service. \
         create_lb_childelement(db=db, labbook_pk=labbook_pk,
@@ -203,7 +201,7 @@ async def patch_labbook_elem(
         element_pk: UUID,
         elem: labbookchildelement_schemas.Labbookchildelement_Create,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     lb_element = labbookchildelement_service. \
         patch_lb_childelement(db=db,
@@ -218,7 +216,7 @@ async def update_labbook_elements(
         labbook_pk: str,
         elems: list[labbookchildelement_schemas.Labbookchildelement_Update],
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     labbookchildelement_service. \
         update_all_lb_childelements(db=db,
@@ -232,7 +230,7 @@ def get_labbook_history(
         request: Request,
         labbook_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     logger.info(request.query_params._dict)
     return ['ok']
@@ -244,7 +242,7 @@ def get_labbook_versions(
         request: Request,
         labbook_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return labbook_version_service.get_all_labbook_versions(db=db,
                                                             labbook_pk=labbook_pk)
@@ -256,7 +254,7 @@ def add_labbook_version(
         summary: labbook_schemas.LabbookVersionSummary,
         labbook_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return labbook_version_service.add_labbook_version(db=db,
                                                        labbook_pk=labbook_pk,
@@ -268,7 +266,7 @@ def restore_labbook_version(
         labbook_pk: UUID,
         version_pk: str,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return labbook_version_service.restore_labbook_version(db=db,
                                                            labbook_pk=labbook_pk,
@@ -281,7 +279,7 @@ def preview_labbook_version(
         labbook_pk: UUID,
         version_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return labbook_version_service.get_labbook_version_metadata(db=db,
                                                                 version_pk=version_pk)
@@ -292,7 +290,7 @@ def preview_labbook_version(
 def create_note(
         elem: note_schemas.NoteCreate,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_note = note_service.create_note(db=db, note=elem)
     return db_note
@@ -303,7 +301,7 @@ def create_note(
 def read_notes(
         request: Request,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_notes = note_service.get_all_notes(db=db,
                                           params=request.query_params._dict)
@@ -316,7 +314,7 @@ def patch_note(
         note_pk: UUID,
         elem: note_schemas.NoteCreate,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_note = note_service.update_note(db=db, note_pk=note_pk, note=elem)
     return db_note
@@ -328,7 +326,7 @@ def soft_delete_note(
         note_pk: UUID,
         labbook_data: labbookchildelement_schemas.Labbookchildelement_Delete,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_note = note_service.soft_delete_note(db=db, note_pk=note_pk,
                                             labbook_data=labbook_data)
@@ -340,7 +338,7 @@ def soft_delete_note(
 def restore_note(
         note_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_note = note_service.restore_note(db=db, note_pk=note_pk)
     return db_note
@@ -351,7 +349,7 @@ def restore_note(
 def get_note(
         note_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_note = note_service.get_note(db=db, note_pk=note_pk)
     return db_note
@@ -363,7 +361,7 @@ def export_note_content(
         request: Request,
         note_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     dwldable_note = export_note.get_export_data(db=db, note_pk=note_pk,
                                                 jwt=request.query_params._dict)
@@ -374,7 +372,7 @@ def export_note_content(
 def export_link__note(
         note_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     export_link = note_service.get_note_export_link(db=db, note_pk=note_pk)
     return export_link
@@ -385,7 +383,7 @@ def get_note_history(
         request: Request,
         note_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return ['ok']
 
@@ -396,7 +394,7 @@ async def get_note_versions(
         request: Request,
         note_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return note_version_service.get_all_note_versions(db=db, note_pk=note_pk)
 
@@ -406,7 +404,7 @@ def add_note_version(
         summary: note_schemas.NoteVersionSummary,
         note_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_note = note_version_service.add_note_version(db=db,
                                                     note_pk=note_pk,
@@ -419,7 +417,7 @@ async def restore_note_version(
         note_pk: UUID,
         version_pk: str,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_note = note_version_service.restore_note_version(db=db, note_pk=note_pk,
                                                         version_pk=version_pk)
@@ -431,7 +429,7 @@ async def restore_note_version(
 async def preview_note_version(
         version_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return note_version_service.get_note_version_metadata(db=db,
                                                           version_pk=version_pk)
@@ -440,7 +438,7 @@ async def preview_note_version(
 @app.post("/pictures/", response_model=picture_schemas.Picture)
 async def UploadImage(request: Request,
                       db: Session = Depends(get_db),
-                      user: dict = Depends(get_current_user)):
+                      user: User = Depends(get_current_user)):
     # logger.info(user)
     async with request.form() as form:
         # picture upload
@@ -463,7 +461,7 @@ async def UploadImage(request: Request,
 def read_pictures(
         request: Request,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_pictures = picture_service.get_all_pictures(db=db,
                                                    params=request.query_params._dict)
@@ -475,7 +473,7 @@ def read_pictures(
 def get_picture(
         picture_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_picture = picture_service.get_picture(db=db, picture_pk=picture_pk)
 
@@ -531,7 +529,7 @@ def export_picture_content(
         request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     dwldable_pic = export_picture.get_export_data(db=db, picture_pk=picture_pk,
                                                   jwt=request.query_params._dict)
@@ -543,7 +541,7 @@ def export_link_picture(
         request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     export_link = picture_service.get_picture_export_link(db=db,
                                                           picture_pk=picture_pk)
@@ -557,7 +555,7 @@ def soft_delete_picture(
         picture_pk: UUID,
         labbook_data: labbookchildelement_schemas.Labbookchildelement_Delete,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_pic = picture_service.soft_delete_picture(db=db, picture_pk=picture_pk,
                                                  labbook_data=labbook_data)
@@ -569,7 +567,7 @@ def soft_delete_picture(
 def restore_picture(
         picture_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_pic = picture_service.restore_picture(db=db, picture_pk=picture_pk)
     return db_pic
@@ -581,7 +579,7 @@ async def patch_picture(
         request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     async with request.form() as form:
         bi_img_contents = await form['background_image'].read()
@@ -601,7 +599,7 @@ def get_picture_history(
         request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return ['ok']
 
@@ -612,7 +610,7 @@ def get_picture_versions(
         request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return picture_version_service.get_all_picture_versions(db=db,
                                                             picture_pk=picture_pk)
@@ -624,7 +622,7 @@ def add_picture_version(
         summary: picture_schemas.PictureVersionSummary,
         picture_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return picture_version_service.add_picture_version(db=db,
                                                        picture_pk=picture_pk,
@@ -638,7 +636,7 @@ def restore_picture_version(
         version_pk: str,
         payload: Any = Body(None),
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_picture = picture_version_service.restore_picture_version(db=db,
                                                                  picture_pk=picture_pk,
@@ -652,7 +650,7 @@ def preview_picture_version(
         picture_pk: UUID,
         version_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return picture_version_service.get_picture_version_metadata(db=db,
                                                                 version_pk=version_pk)
@@ -661,7 +659,7 @@ def preview_picture_version(
 @app.post("/files/", response_model=file_schemas.File)
 async def UploadFile(request: Request,
                      db: Session = Depends(get_db),
-                     user: dict = Depends(get_current_user)):
+                     user: User = Depends(get_current_user)):
     # logger.info(user)
     async with request.form() as form:
         contents = await form['path'].read()
@@ -676,7 +674,7 @@ async def UploadFile(request: Request,
 def read_files(
         request: Request,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_files = file_service.get_all_files(db=db,
                                           params=request.query_params._dict)
@@ -689,7 +687,7 @@ def patch_file(
         elem: file_schemas.FilePatch,
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     file_reponse = file_service.update_file(file_pk=file_pk, db=db, elem=elem)
     return file_reponse
@@ -699,7 +697,7 @@ def patch_file(
 def get_file(
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     file_reponse = file_service.get_file(db=db, file_pk=file_pk)
     return file_reponse
@@ -711,7 +709,7 @@ def download_file(
         request: Request,
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     dwldable_file = file_service.build_file_download_response(file_pk=file_pk,
                                                               db=db,
@@ -726,7 +724,7 @@ def export_file_content(
         request: Request,
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     dwldable_file = export_file.get_export_data(db=db, file_pk=file_pk,
                                                 jwt=request.query_params._dict)
@@ -739,7 +737,7 @@ def export_link_file(
         request: Request,
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     export_link = file_service.get_file_export_link(db=db, file_pk=file_pk)
     return export_link
@@ -751,7 +749,7 @@ def soft_delete_file(
         file_pk: UUID,
         labbook_data: labbookchildelement_schemas.Labbookchildelement_Delete,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_file = file_service.soft_delete_file(db=db, file_pk=file_pk,
                                             labbook_data=labbook_data)
@@ -763,7 +761,7 @@ def soft_delete_file(
 def restore_file(
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_file = file_service.restore_file(db=db, file_pk=file_pk)
     return db_file
@@ -774,7 +772,7 @@ def get_file_history(
         request: Request,
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return ['ok']
 
@@ -785,7 +783,7 @@ def get_file_versions(
         request: Request,
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return file_version_service.get_all_file_versions(db=db, file_pk=file_pk)
 
@@ -795,7 +793,7 @@ def add_file_version(
         summary: file_schemas.FileVersionSummary,
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return file_version_service.add_file_version(db=db, file_pk=file_pk,
                                                  summary=summary.summary)[0]
@@ -806,7 +804,7 @@ def restore_file_version(
         file_pk: UUID,
         version_pk: str,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     db_file = file_version_service.restore_file_version(db=db, file_pk=file_pk,
                                                         version_pk=version_pk)
@@ -819,7 +817,7 @@ def preview_file_version(
         file_pk: UUID,
         version_pk: UUID,
         db: Session = Depends(get_db),
-        user: dict = Depends(get_current_user)):
+        user: User = Depends(get_current_user)):
     # logger.info(user)
     return file_version_service.get_file_version_metadata(db=db,
                                                           version_pk=version_pk)
@@ -847,8 +845,8 @@ async def websocket_endpoint(*, websocket: WebSocket):
                 token = data['auth']
             if token:
                 # TODO do ws authentication here
-                # logger.info(token)
-                pass
+                user = await get_current_user(token=token)
+                logger.info(f'websocket token for : {user.username}')
             else:
                 WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
@@ -862,11 +860,9 @@ async def websocket_endpoint(*, websocket: WebSocket):
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
 
-@app.get('/users/me', response_model=user_schema.User)
-async def user_me(user: dict = Depends(get_current_user)):
-    if not isinstance(user, dict):
-        user = vars(user)
-    logger.info(user)
+@app.get('/users/me', response_model=User)
+async def user_me(user: User = Depends(get_current_user)):
+    logger.info(user.username)
     return user
 
 
@@ -895,7 +891,7 @@ async def login_for_access_token(
 @app.get("/search/")
 def eln_search(request: Request,
                db: Session = Depends(get_db),
-               user: dict = Depends(get_current_user)):
+               user: User = Depends(get_current_user)):
     # logger.info(user)
     result = text_search.search_with_model(db=db,
                                            model=request.query_params._dict[

@@ -10,11 +10,12 @@ class User(BaseModel):
     email: str
     first_name: str | None = None
     last_name: str | None = None
-    realm_access: Any | None = None
+    groups: Any | None = None
 
     class Config:
         populate_by_name = True
         from_attributes = True
+
 
 class UserExtended(BaseModel):
     id: int | str | UUID = Field(..., alias='pk')
@@ -40,8 +41,14 @@ class User_Create(BaseModel):
     first_name: str
     last_name: str
 
+
 class OIDC_User_Create(BaseModel):
     preferred_username: str
     email: str
     given_name: str
     family_name: str
+    realm_access: Any | None = None
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True

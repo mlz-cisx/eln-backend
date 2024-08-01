@@ -15,7 +15,7 @@ def get_user_with_groups_by_uname(db: Session, username):
     user = db.query(models.User).filter_by(username=username).first()
     groups = get_user_groups(db=db, username=username)
     # we align to keykloak realm access
-    user.realm_access = {'roles': groups}
+    user.groups = groups
     return user
 
 
@@ -38,7 +38,8 @@ def update_oidc_user(db: Session, oidc_user: OIDC_User_Create):
             logger.error(e)
             return
         db.refresh(db_user)
-        return oidc_user
+        db_user.groups = oidc_user.realm_access['roles']
+        return db_user
     elif db_user.email != oidc_user.email:
         db_user.email = oidc_user.email
         try:
@@ -47,9 +48,11 @@ def update_oidc_user(db: Session, oidc_user: OIDC_User_Create):
             logger.error(e)
 
         db.refresh(db_user)
-        return oidc_user
+        db_user.groups = oidc_user.realm_access['roles']
+        return db_user
     else:
-        return oidc_user
+        db_user.groups = oidc_user.realm_access['roles']
+        return db_user
 
 
 def create_user(db: Session, user: User_Create):

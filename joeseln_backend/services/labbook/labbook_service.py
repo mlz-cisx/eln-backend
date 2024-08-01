@@ -21,7 +21,7 @@ def get_labbooks(db: Session, params):
 
 
 def get_labbooks_from_user(db: Session, params, user):
-    logger.info(user['realm_access']['roles'])
+    logger.info(user.username)
     # TODO filter with roles in realm_access from user
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     return db.query(models.Labbook).filter_by(

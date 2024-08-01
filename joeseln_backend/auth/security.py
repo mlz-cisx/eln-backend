@@ -184,10 +184,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     if r_user.status_code == HTTP_200_OK:
         user = dict(r_user.json())
         # update user and roles in db
-        update_oidc_user(db=SessionLocal(),
+        user = update_oidc_user(db=SessionLocal(),
                          oidc_user=OIDC_User_Create.parse_obj(user))
-        # align to usual naming for usernames
-        user['username'] = user.pop('preferred_username')
         return user
     elif r_user.status_code == HTTP_401_UNAUTHORIZED:
         raise HTTPException(
