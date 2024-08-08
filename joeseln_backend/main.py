@@ -843,13 +843,12 @@ async def websocket_endpoint(*, websocket: WebSocket):
             else:
                 # handling jwt auth
                 token = data['auth']
-            if token:
+            if token and token != STATIC_WS_TOKEN:
                 # TODO do ws authentication here
-                pass
+                user = await get_current_user(token=token)
+                logger.info(f'websocket token for : {user.username}')
             else:
                 WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-
-
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
