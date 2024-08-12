@@ -30,6 +30,26 @@ def get_labbooks_from_user(db: Session, params, user):
         params.get('limit')).all()
 
 
+def _get_labbooks_from_user(db: Session, params, user):
+    logger.info(user.username)
+    # TODO filter with roles in realm_access from user
+    order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
+    if order_params:
+        order_text = f'labbook.{order_params}'
+    else:
+        order_text = ''
+    labbooks = db.query(models.Labbook).join(models.Group,
+                                             models.Group.groupname == models.Labbook.title).join(
+        models.UserToGroupRole,
+        models.Group.id == models.UserToGroupRole.group_id).join(
+        models.User, models.UserToGroupRole.user_id == models.User.id).filter(
+        models.Labbook.deleted == bool(params.get('deleted'))).filter(
+        models.User.username == user.username).order_by(
+        text(order_text)).offset(params.get('offset')).limit(
+        params.get('limit')).all()
+    return labbooks
+
+
 def create_labbook(db: Session, labbook: LabbookCreate):
     db_labbook = models.Labbook(version_number=0,
                                 title=labbook.title,
