@@ -4,6 +4,10 @@ from sqlalchemy.sql import text
 
 from joeseln_backend.models import models
 from joeseln_backend.services.labbook.labbook_schemas import *
+from joeseln_backend.services.user_to_group.user_to_group_service import \
+    get_user_group_roles
+from joeseln_backend.services.privileges.privileges_service import \
+    create_labbook_privileges
 from joeseln_backend.auth import security
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.base_conf import URL_BASE_PATH
@@ -67,8 +71,24 @@ def create_labbook(db: Session, labbook: LabbookCreate):
     return db_labbook
 
 
-def get_labbook(db: Session, labbook_pk):
+def get_labbook_for_export(db: Session, labbook_pk):
     return db.query(models.Labbook).get(labbook_pk)
+
+
+def get_labbook_with_privileges(db: Session, labbook_pk, user):
+    db_lb = db.query(models.Labbook).join(models.Group,
+                                          models.Group.groupname == models.Labbook.title).filter(
+        models.Labbook.id == labbook_pk).first()
+    if db_lb:
+        user_roles = get_user_group_roles(db=db,
+                                          username=user.username,
+                                          groupname=db_lb.title)
+
+        privileges = create_labbook_privileges(user_roles=user_roles)
+
+        return {'privileges': privileges, 'labbook': db_lb}
+
+    return {'privileges': None, 'labbook': None}
 
 
 def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch):

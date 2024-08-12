@@ -5,6 +5,7 @@ from uuid import UUID
 
 from joeseln_backend.conf.content_types import *
 from joeseln_backend.conf.mocks.mock_user import MockUser
+from joeseln_backend.services.privileges.privileges_schema import Privileges
 
 
 class Labbook(BaseModel):
@@ -85,3 +86,6 @@ class LabbookPreviewVersion(BaseModel):
         from_attributes = True
 
 
+class labbook_with_privileges(BaseModel):
+    labbook: Labbook | None
+    privileges: Privileges | None

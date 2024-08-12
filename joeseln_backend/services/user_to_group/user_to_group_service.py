@@ -43,8 +43,8 @@ def create_user_to_group(db: Session, user_to_group: UserToGroup_Create):
 
 def get_user_group_roles(db: Session, username,
                          groupname):
-    result = db.query(models.Role).join(models.UserToGroupRole,
-                                        models.Role.id == models.UserToGroupRole.user_group_role).join(
+    result = db.query(models.Role.rolename).join(models.UserToGroupRole,
+                                                 models.Role.id == models.UserToGroupRole.user_group_role).join(
         models.User, models.UserToGroupRole.user_id == models.User.id).join(
         models.Group,
         models.Group.id == models.UserToGroupRole.group_id).filter(
@@ -62,3 +62,14 @@ def get_user_groups(db: Session, username):
     result = [x.groupname for x in result]
 
     return result
+
+
+def check_for_admin_role(db: Session, username):
+    result = db.query(models.Role).join(models.UserToGroupRole,
+                                        models.Role.id == models.UserToGroupRole.user_group_role).join(
+        models.User, models.UserToGroupRole.user_id == models.User.id).join(
+        models.Group,
+        models.Group.id == models.UserToGroupRole.group_id).filter(
+        models.User.username == username).filter(
+        models.Role.rolename == 'admin').all()
+    return bool(int(len(result)))

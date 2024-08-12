@@ -8,7 +8,7 @@ my_session = SessionLocal()
 
 test_user = get_user_by_uname(db=my_session, username='user1')
 test_group = get_group_by_groupname(db=my_session, groupname='test_group_3')
-test_role = get_role_by_rolename(db=my_session, rolename='user')
+test_role = get_role_by_rolename(db=my_session, rolename='admin')
 
 TEST_USER_TO_GROUP = {
     'user_id': test_user.id,

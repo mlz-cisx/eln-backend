@@ -129,12 +129,15 @@ def patch_labbook(labbook: labbook_schemas.LabbookPatch,
                                          labbook=labbook)
 
 
-@app.get("/labbooks/{labbook_pk}", response_model=labbook_schemas.Labbook)
+@app.get("/labbooks/{labbook_pk}",
+         response_model=labbook_schemas.labbook_with_privileges)
 def read_labbook(labbook_pk: UUID,
                  db: Session = Depends(get_db),
                  user: User = Depends(get_current_user)):
     # logger.info(user)
-    labbook = labbook_service.get_labbook(db=db, labbook_pk=labbook_pk)
+    labbook = labbook_service.get_labbook_with_privileges(db=db,
+                                                          labbook_pk=labbook_pk,
+                                                          user=user)
     if labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return labbook

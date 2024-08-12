@@ -6,7 +6,7 @@ from fastapi.responses import Response
 
 from joeseln_backend.services.labbookchildelements.labbookchildelement_service import \
     get_lb_childelements
-from joeseln_backend.services.labbook.labbook_service import get_labbook
+from joeseln_backend.services.labbook.labbook_service import get_labbook_for_export
 
 
 def get_export_data(db, lb_pk, jwt):
@@ -15,10 +15,7 @@ def get_export_data(db, lb_pk, jwt):
     templates_dir = os.path.join(root, '', 'templates')
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template('labbook.jinja2')
-
-    lb = get_labbook(db=db, labbook_pk=lb_pk)
-    # print(vars(lb))
-
+    lb = get_labbook_for_export(db=db, labbook_pk=lb_pk)
     elems = get_lb_childelements(db=db, labbook_pk=lb_pk, as_export=True)
     # for elem in elems:
     #     print(vars(elem))
