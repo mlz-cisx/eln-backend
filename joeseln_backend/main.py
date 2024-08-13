@@ -848,7 +848,7 @@ async def websocket_endpoint(*, websocket: WebSocket):
                 token = data['auth']
             if token and token != STATIC_WS_TOKEN:
                 # TODO do ws authentication here
-                logger.info(token)
+                pass
             else:
                 WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 

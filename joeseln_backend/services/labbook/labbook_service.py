@@ -5,7 +5,9 @@ from sqlalchemy.sql import text
 from joeseln_backend.models import models
 from joeseln_backend.services.labbook.labbook_schemas import *
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_group_roles
+    get_user_group_roles, check_for_admin_role, get_user_groups
+from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
+    ADMIN
 from joeseln_backend.services.privileges.privileges_service import \
     create_labbook_privileges
 from joeseln_backend.auth import security
@@ -24,7 +26,7 @@ def get_labbooks(db: Session, params):
         params.get('limit')).all()
 
 
-def get_labbooks_from_user(db: Session, params, user):
+def _get_labbooks_from_user(db: Session, params, user):
     logger.info(user.username)
     # TODO filter with roles in realm_access from user
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
@@ -34,10 +36,13 @@ def get_labbooks_from_user(db: Session, params, user):
         params.get('limit')).all()
 
 
-def _get_labbooks_from_user(db: Session, params, user):
-    logger.info(user.username)
-    # TODO filter with roles in realm_access from user
+def get_labbooks_from_user(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
+    if check_for_admin_role(db=db, username=user.username):
+        return db.query(models.Labbook).filter_by(
+            deleted=bool(params.get('deleted'))).order_by(
+            text(order_params)).offset(params.get('offset')).limit(
+            params.get('limit')).all()
     if order_params:
         order_text = f'labbook.{order_params}'
     else:
@@ -76,9 +81,16 @@ def get_labbook_for_export(db: Session, labbook_pk):
 
 
 def get_labbook_with_privileges(db: Session, labbook_pk, user):
-    db_lb = db.query(models.Labbook).join(models.Group,
-                                          models.Group.groupname == models.Labbook.title).filter(
+    if check_for_admin_role(db=db, username=user.username):
+        return {'privileges': ADMIN,
+                'labbook': db.query(models.Labbook).get(labbook_pk)}
+
+    user_groups = get_user_groups(db=db, username=user.username)
+    db_lb = db.query(models.Labbook).filter(
+        models.Labbook.title.in_(user_groups),
         models.Labbook.id == labbook_pk).first()
+
+    print(db_lb)
     if db_lb:
         user_roles = get_user_group_roles(db=db,
                                           username=user.username,
@@ -88,7 +100,7 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
 
         return {'privileges': privileges, 'labbook': db_lb}
 
-    return {'privileges': None, 'labbook': None}
+    return None
 
 
 def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch):
