@@ -173,7 +173,8 @@ class Role(Base):
 
 class UserToGroupRole(Base):
     __tablename__ = 'user_to_group_role'
-    __table_args__ = (UniqueConstraint('user_id', 'group_id', 'user_group_role',  name='_user_to_group_role'),                   )
+    __table_args__ = (UniqueConstraint('user_id', 'group_id', 'user_group_role',
+                                       name='_user_to_group_role'),)
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey(User.id))
     group_id = Column(UUID(as_uuid=True), ForeignKey(Group.id))

@@ -2,21 +2,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from joeseln_backend.models import models
 from joeseln_backend.services.user.user_schema import *
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_groups
 from joeseln_backend.mylogging.root_logger import logger
 
 
 def get_user_by_uname(db: Session, username):
     return db.query(models.User).filter_by(username=username).first()
 
-
-def get_user_with_groups_by_uname(db: Session, username):
-    user = db.query(models.User).filter_by(username=username).first()
-    groups = get_user_groups(db=db, username=username)
-    # we align to keykloak realm access
-    user.groups = groups
-    return user
 
 
 def update_oidc_user(db: Session, oidc_user: OIDC_User_Create):
