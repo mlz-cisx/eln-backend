@@ -130,6 +130,45 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
+def get_user_from_jwt(token: Annotated[str, Depends(oauth2_scheme)]):
+    try:
+        if token == STATIC_ADMIN_TOKEN:
+            # logger.info('you can do everything')
+            user = get_user_by_uname(db=SessionLocal(), username='admin')
+            return user
+        else:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            # we aligned to keycloak's sub
+            username: str = payload.get("sub")
+            if username is None:
+                return
+            user = get_user_with_groups_by_uname(db=SessionLocal(),
+                                                 username=username)
+            if user is None:
+                return
+            return user
+    except jwt.exceptions.ExpiredSignatureError as e:
+        # logger.info(e)
+        if Security.check_token_exp(token.encode().decode()):
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM],
+                                 leeway=36000)
+            # we aligned to keycloak's sub
+            username: str = payload.get("sub")
+            if username is None:
+                return
+            user = get_user_with_groups_by_uname(db=SessionLocal(),
+                                                 username=username)
+
+            if user is None:
+                return
+            return user
+        else:
+            logger.info('token expired ')
+
+    except jwt.exceptions.PyJWTError as e:
+        logger.error(f'PyJWTError: {e}')
+
+
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -149,6 +188,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             username: str = payload.get("sub")
             if username is None:
                 raise credentials_exception
+            # TODO for a better performance this could be called only at /users/me
             user = get_user_with_groups_by_uname(db=SessionLocal(),
                                                  username=username)
             if user is None:
@@ -163,6 +203,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             username: str = payload.get("sub")
             if username is None:
                 raise credentials_exception
+            # TODO for a better performance this could be called only at /users/me
             user = get_user_with_groups_by_uname(db=SessionLocal(),
                                                  username=username)
 
@@ -185,7 +226,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     )
     if r_user.status_code == HTTP_200_OK:
         user = dict(r_user.json())
-        # update user and roles in db
+        # TODO for a better performance this could be called only at /users/me
         user = update_oidc_user(db=SessionLocal(),
                                 oidc_user=OIDC_User_Create.parse_obj(user))
         update_oidc_user_groups(db=SessionLocal(), user=user)
