@@ -26,16 +26,6 @@ def get_labbooks(db: Session, params):
         params.get('limit')).all()
 
 
-def _get_labbooks_from_user(db: Session, params, user):
-    logger.info(user.username)
-    # TODO filter with roles in realm_access from user
-    order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
-    return db.query(models.Labbook).filter_by(
-        deleted=bool(params.get('deleted'))).order_by(
-        text(order_params)).offset(params.get('offset')).limit(
-        params.get('limit')).all()
-
-
 def get_labbooks_from_user(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     if check_for_admin_role(db=db, username=user.username):
@@ -90,7 +80,6 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
         models.Labbook.title.in_(user_groups),
         models.Labbook.id == labbook_pk).first()
 
-    print(db_lb)
     if db_lb:
         user_roles = get_user_group_roles(db=db,
                                           username=user.username,
@@ -121,10 +110,19 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch):
     return db_labbook
 
 
-def get_labbook_export_link(db: Session, labbook_pk):
-    db_labbook = db.query(models.Labbook).get(labbook_pk)
-    db_labbook = build_labbook_download_url_with_token(lb_to_process=db_labbook,
-                                                       user='foo')
+def get_labbook_export_link(db: Session, labbook_pk, user):
+    if not check_for_admin_role(db=db, username=user.username):
+        user_groups = get_user_groups(db=db, username=user.username)
+        db_lb = db.query(models.Labbook).filter(
+            models.Labbook.title.in_(user_groups),
+            models.Labbook.id == labbook_pk).first()
+        if not db_lb:
+            return None
+    else:
+        db_lb = db.query(models.Labbook).get(labbook_pk)
+
+    db_labbook = build_labbook_download_url_with_token(lb_to_process=db_lb,
+                                                       user=user)
     export_link = {
         'url': db_labbook.path,
         'filename': db_labbook.title
@@ -134,13 +132,10 @@ def get_labbook_export_link(db: Session, labbook_pk):
 
 
 def build_labbook_download_url_with_token(lb_to_process, user):
-    user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-
     lb_to_process.path = f'{URL_BASE_PATH}labbooks/{lb_to_process.id}/export?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     return lb_to_process

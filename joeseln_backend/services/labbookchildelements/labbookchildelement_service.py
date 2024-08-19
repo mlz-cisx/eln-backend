@@ -3,6 +3,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from joeseln_backend.models import models
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import *
+from joeseln_backend.services.user_to_group.user_to_group_service import \
+    get_user_groups, check_for_admin_role
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.services.picture import picture_service
 from joeseln_backend.services.file import file_service
@@ -21,13 +23,42 @@ def map_to_child_object_model(child_object_content_type):
         return 'shared_elements.file'
 
 
-def get_lb_childelements(db: Session, labbook_pk, as_export):
+def get_lb_childelements_for_export(db: Session, labbook_pk, access_token,
+                                    as_export):
     query = db.query(models.Labbookchildelement).filter_by(
         labbook_id=labbook_pk, deleted=False).order_by(
         models.Labbookchildelement.position_y).all()
 
-    user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                      'secret')
+    for elem in query:
+        if elem.child_object_content_type == 30:
+            elem.child_object = db.query(models.Note).get(elem.child_object_id)
+            db.close()
+        if elem.child_object_content_type == 40:
+            elem.child_object = picture_service.get_picture_in_lb_init(db=db,
+                                                                       picture_pk=elem.child_object_id,
+                                                                       access_token=access_token,
+                                                                       as_export=as_export)
+
+        if elem.child_object_content_type == 50:
+            elem.child_object = file_service.get_file(db=db,
+                                                      file_pk=elem.child_object_id)
+
+    return query
+
+
+def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
+    if not check_for_admin_role(db=db, username=user.username):
+        user_groups = get_user_groups(db=db, username=user.username)
+        db_lb = db.query(models.Labbook).filter(
+            models.Labbook.title.in_(user_groups),
+            models.Labbook.id == labbook_pk).first()
+        if not db_lb:
+            return None
+
+    query = db.query(models.Labbookchildelement).filter_by(
+        labbook_id=labbook_pk, deleted=False).order_by(
+        models.Labbookchildelement.position_y).all()
+
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(

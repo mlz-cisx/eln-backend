@@ -8,9 +8,6 @@ from joeseln_backend.services.user_to_group.user_to_group_service import \
 from joeseln_backend.services.user_to_group.user_to_group_schema import Group, \
     UserToGroup_Create
 
-from joeseln_backend.services.labbook.labbook_service import \
-    _get_labbooks_from_user
-
 my_session = SessionLocal()
 
 # test_group = create_group(db=my_session, groupname='test_group_4')

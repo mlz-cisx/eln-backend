@@ -147,9 +147,12 @@ def read_labbook(labbook_pk: UUID,
 def export_labbook_content(request: Request, labbook_pk: UUID,
                            db: Session = Depends(get_db),
                            user: User = Depends(get_current_user)):
-    # logger.info(user)
     dwldable_labbook = export_labbook.get_export_data(db=db, lb_pk=labbook_pk,
-                                                      jwt=request.query_params._dict)
+                                                      jwt=
+                                                      request.query_params._dict
+                                                      ['jwt'])
+    if dwldable_labbook is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_labbook
 
 
@@ -157,9 +160,11 @@ def export_labbook_content(request: Request, labbook_pk: UUID,
 def export_link_labbook(labbook_pk: UUID,
                         db: Session = Depends(get_db),
                         user: User = Depends(get_current_user)):
-    # logger.info(user)
     export_link = labbook_service.get_labbook_export_link(db=db,
-                                                          labbook_pk=labbook_pk)
+                                                          labbook_pk=labbook_pk,
+                                                          user=user)
+    if export_link is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return export_link
 
 
@@ -177,9 +182,12 @@ def read_labbook_elems(labbook_pk: UUID,
                        db: Session = Depends(get_db),
                        user: User = Depends(get_current_user)):
     # logger.info(user)
-    lb_elements = labbookchildelement_service.get_lb_childelements(db=db,
-                                                                   labbook_pk=labbook_pk,
-                                                                   as_export=False)
+    lb_elements = labbookchildelement_service.get_lb_childelements_from_user(
+        db=db,
+        labbook_pk=labbook_pk,
+        as_export=False, user=user)
+    if lb_elements is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_elements
 
 
