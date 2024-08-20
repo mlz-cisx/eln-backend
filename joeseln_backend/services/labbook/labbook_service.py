@@ -70,20 +70,22 @@ def get_labbooks_from_user(db: Session, params, user):
     return labbooks
 
 
-def create_labbook(db: Session, labbook: LabbookCreate):
-    db_labbook = models.Labbook(version_number=0,
-                                title=labbook.title,
-                                description=labbook.description,
-                                created_at=datetime.datetime.now(),
-                                created_by_id=FAKE_USER_ID,
-                                last_modified_at=datetime.datetime.now(),
-                                last_modified_by_id=FAKE_USER_ID)
-    db.add(db_labbook)
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-    db.refresh(db_labbook)
+def create_labbook(db: Session, labbook: LabbookCreate, user):
+    db_labbook= None
+    if check_for_admin_role(db=db, username=user.username):
+        db_labbook = models.Labbook(version_number=0,
+                                    title=labbook.title,
+                                    description=labbook.description,
+                                    created_at=datetime.datetime.now(),
+                                    created_by_id=FAKE_USER_ID,
+                                    last_modified_at=datetime.datetime.now(),
+                                    last_modified_by_id=FAKE_USER_ID)
+        db.add(db_labbook)
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+        db.refresh(db_labbook)
     return db_labbook
 
 
@@ -166,7 +168,8 @@ def get_labbook_export_link(db: Session, labbook_pk, user):
     if not check_for_admin_role(db=db, username=user.username):
         user_groups = get_user_groups(db=db, username=user.username)
         db_lb = db.query(models.Labbook).filter(
-            models.Labbook.title.in_(user_groups),
+            or_(*[models.Labbook.title.contains(name) for name in
+                  user_groups])).filter(
             models.Labbook.id == labbook_pk).first()
         if not db_lb:
             return None

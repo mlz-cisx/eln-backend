@@ -175,7 +175,15 @@ def create_labbook(labbook: labbook_schemas.LabbookCreate,
                    user: User = Depends(get_current_user)):
     # logger.info(user)
     # only for admins
-    return labbook_service.create_labbook(db=db, labbook=labbook)
+    new_lb = labbook_service.create_labbook(db=db, labbook=labbook, user = user)
+    if new_lb:
+        return new_lb
+    else:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+
+
+
+
 
 
 @app.get("/labbooks/{labbook_pk}/elements/",
