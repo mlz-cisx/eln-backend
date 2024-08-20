@@ -1,3 +1,4 @@
+from sqlalchemy import literal
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from joeseln_backend.models import models
@@ -75,6 +76,18 @@ def get_user_group_roles(db: Session, username,
     return result
 
 
+def get_user_group_roles_with_match(db: Session, username,
+                                    groupname):
+    result = db.query(models.Role.rolename).join(models.UserToGroupRole,
+                                                 models.Role.id == models.UserToGroupRole.user_group_role).join(
+        models.User, models.UserToGroupRole.user_id == models.User.id).join(
+        models.Group,
+        models.Group.id == models.UserToGroupRole.group_id).filter(
+        models.User.username == username).filter(
+        literal(groupname).contains(models.Group.groupname)).all()
+    return result
+
+
 def get_user_groups(db: Session, username):
     result = db.query(models.Group).join(models.UserToGroupRole,
                                          models.Group.id == models.UserToGroupRole.group_id).join(
@@ -103,7 +116,8 @@ def get_user_groups_role_groupadmin(db: Session, username):
         models.User, models.UserToGroupRole.user_id == models.User.id).join(
         models.Role,
         models.Role.id == models.UserToGroupRole.user_group_role).filter(
-        models.User.username == username, models.Role.rolename == 'groupadmin').all()
+        models.User.username == username,
+        models.Role.rolename == 'groupadmin').all()
     result = [x.groupname for x in result]
     return result
 
@@ -114,7 +128,6 @@ def update_oidc_user_groups(db: Session, user):
     user_groups = get_user_groups_role_user(db=db, username=user.username)
     logger.info(user_groups)
 
-
     for oidc_group in oidc_groups:
         if not get_group_by_groupname(db=db, groupname=oidc_group):
             create_group(db=db, groupname=oidc_group)
@@ -124,11 +137,11 @@ def update_oidc_user_groups(db: Session, user):
 
     for user_group in user_groups:
         if user_group not in oidc_groups:
-            remove_as_user_from_group(db=db,username=user.username,groupname=user_group)
+            remove_as_user_from_group(db=db, username=user.username,
+                                      groupname=user_group)
 
     user_groups = get_user_groups_role_user(db=db, username=user.username)
     logger.info(user_groups)
-
 
 
 def check_for_admin_role(db: Session, username):

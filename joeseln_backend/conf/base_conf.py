@@ -4,6 +4,10 @@ DB_PASSWORD = 'joeseln'
 DB_TABLE = 'joeseln'
 DB_PORT = 5440
 
+# two modes: match and equal
+LABBOOK_QUERY_MODE = 'match'
+# LABBOOK_QUERY_MODE = 'equal'
+
 # folder to store pictures
 PICTURES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/pictures/'
 # folder to store files

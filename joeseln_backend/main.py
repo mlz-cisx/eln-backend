@@ -125,6 +125,7 @@ def patch_labbook(labbook: labbook_schemas.LabbookPatch,
                   db: Session = Depends(get_db),
                   user: User = Depends(get_current_user)):
     # logger.info(user)
+    # only for admins and groupadmins
     return labbook_service.patch_labbook(db=db, labbook_pk=labbook_pk,
                                          labbook=labbook)
 
@@ -173,6 +174,7 @@ def create_labbook(labbook: labbook_schemas.LabbookCreate,
                    db: Session = Depends(get_db),
                    user: User = Depends(get_current_user)):
     # logger.info(user)
+    # only for admins
     return labbook_service.create_labbook(db=db, labbook=labbook)
 
 
@@ -199,6 +201,7 @@ async def create_labbook_elem(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # all groupmembers
     lb_element = labbookchildelement_service. \
         create_lb_childelement(db=db, labbook_pk=labbook_pk,
                                labbook_childelem=elem)
@@ -214,6 +217,7 @@ async def patch_labbook_elem(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # elements created by admin can't be touched
     lb_element = labbookchildelement_service. \
         patch_lb_childelement(db=db,
                               labbook_pk=labbook_pk,
@@ -229,6 +233,7 @@ async def update_labbook_elements(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # all groupmembers
     labbookchildelement_service. \
         update_all_lb_childelements(db=db,
                                     labbook_childelems=elems,
@@ -243,6 +248,7 @@ def get_labbook_history(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # for all users
     logger.info(request.query_params._dict)
     return ['ok']
 
@@ -255,6 +261,7 @@ def get_labbook_versions(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # for all users
     return labbook_version_service.get_all_labbook_versions(db=db,
                                                             labbook_pk=labbook_pk)
 
@@ -267,6 +274,7 @@ def add_labbook_version(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # only for admins and groupadmins
     return labbook_version_service.add_labbook_version(db=db,
                                                        labbook_pk=labbook_pk,
                                                        summary=summary.summary)
@@ -279,6 +287,7 @@ def restore_labbook_version(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # only for admins and groupadmins
     return labbook_version_service.restore_labbook_version(db=db,
                                                            labbook_pk=labbook_pk,
                                                            version_pk=version_pk)
@@ -292,6 +301,7 @@ def preview_labbook_version(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # only for admins and groupadmins
     return labbook_version_service.get_labbook_version_metadata(db=db,
                                                                 version_pk=version_pk)
 

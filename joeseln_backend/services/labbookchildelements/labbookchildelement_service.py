@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import or_
 
+from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 from joeseln_backend.models import models
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import *
 from joeseln_backend.services.user_to_group.user_to_group_service import \
@@ -49,9 +51,16 @@ def get_lb_childelements_for_export(db: Session, labbook_pk, access_token,
 def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
     if not check_for_admin_role(db=db, username=user.username):
         user_groups = get_user_groups(db=db, username=user.username)
-        db_lb = db.query(models.Labbook).filter(
-            models.Labbook.title.in_(user_groups),
-            models.Labbook.id == labbook_pk).first()
+        if LABBOOK_QUERY_MODE == 'match':
+            db_lb = db.query(models.Labbook).filter(
+                or_(*[models.Labbook.title.match(name) for name in
+                      user_groups])).filter(
+                models.Labbook.id == labbook_pk).first()
+        else:
+            db_lb = db.query(models.Labbook).filter(
+                models.Labbook.title.in_(user_groups),
+                models.Labbook.id == labbook_pk).first()
+
         if not db_lb:
             return None
 

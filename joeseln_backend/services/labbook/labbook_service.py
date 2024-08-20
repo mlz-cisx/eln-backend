@@ -2,10 +2,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import text
 
+from sqlalchemy import or_
+
 from joeseln_backend.models import models
 from joeseln_backend.services.labbook.labbook_schemas import *
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_group_roles, check_for_admin_role, get_user_groups
+    get_user_group_roles, get_user_group_roles_with_match, check_for_admin_role, \
+    get_user_groups
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
 from joeseln_backend.services.privileges.privileges_service import \
@@ -16,6 +19,7 @@ from joeseln_backend.conf.base_conf import URL_BASE_PATH
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
 from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 
 
 def get_labbooks(db: Session, params):
@@ -37,15 +41,32 @@ def get_labbooks_from_user(db: Session, params, user):
         order_text = f'labbook.{order_params}'
     else:
         order_text = ''
-    labbooks = db.query(models.Labbook).join(models.Group,
-                                             models.Group.groupname == models.Labbook.title).join(
-        models.UserToGroupRole,
-        models.Group.id == models.UserToGroupRole.group_id).join(
-        models.User, models.UserToGroupRole.user_id == models.User.id).filter(
-        models.Labbook.deleted == bool(params.get('deleted'))).filter(
-        models.User.username == user.username).order_by(
-        text(order_text)).offset(params.get('offset')).limit(
-        params.get('limit')).all()
+
+    labbooks = []
+    if LABBOOK_QUERY_MODE == 'match':
+        labbooks = db.query(models.Labbook).join(models.Group,
+                                                 models.Labbook.title.match(
+                                                     models.Group.groupname)).join(
+            models.UserToGroupRole,
+            models.Group.id == models.UserToGroupRole.group_id).join(
+            models.User,
+            models.UserToGroupRole.user_id == models.User.id).filter(
+            models.Labbook.deleted == bool(params.get('deleted'))).filter(
+            models.User.username == user.username).order_by(
+            text(order_text)).offset(params.get('offset')).limit(
+            params.get('limit')).all()
+    elif LABBOOK_QUERY_MODE == 'equal':
+        labbooks = db.query(models.Labbook).join(models.Group,
+                                                 models.Group.groupname == models.Labbook.title).join(
+            models.UserToGroupRole,
+            models.Group.id == models.UserToGroupRole.group_id).join(
+            models.User,
+            models.UserToGroupRole.user_id == models.User.id).filter(
+            models.Labbook.deleted == bool(params.get('deleted'))).filter(
+            models.User.username == user.username).order_by(
+            text(order_text)).offset(params.get('offset')).limit(
+            params.get('limit')).all()
+
     return labbooks
 
 
@@ -76,16 +97,29 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
                 'labbook': db.query(models.Labbook).get(labbook_pk)}
 
     user_groups = get_user_groups(db=db, username=user.username)
-    db_lb = db.query(models.Labbook).filter(
-        models.Labbook.title.in_(user_groups),
-        models.Labbook.id == labbook_pk).first()
+    db_lb = None
+    if LABBOOK_QUERY_MODE == 'match':
+        db_lb = db.query(models.Labbook).filter(
+            or_(*[models.Labbook.title.match(name) for name in
+                  user_groups])).filter(models.Labbook.id == labbook_pk).first()
+    elif LABBOOK_QUERY_MODE == 'equal':
+        db_lb = db.query(models.Labbook).filter(
+            models.Labbook.title.in_(user_groups),
+            models.Labbook.id == labbook_pk).first()
 
     if db_lb:
-        user_roles = get_user_group_roles(db=db,
-                                          username=user.username,
-                                          groupname=db_lb.title)
+        if LABBOOK_QUERY_MODE == 'match':
+            user_roles = get_user_group_roles_with_match(db=db,
+                                                         username=user.username,
+                                                         groupname=db_lb.title)
 
-        privileges = create_labbook_privileges(user_roles=user_roles)
+            privileges = create_labbook_privileges(user_roles=user_roles)
+        else:
+            user_roles = get_user_group_roles(db=db,
+                                              username=user.username,
+                                              groupname=db_lb.title)
+
+            privileges = create_labbook_privileges(user_roles=user_roles)
 
         return {'privileges': privileges, 'labbook': db_lb}
 
