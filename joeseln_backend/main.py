@@ -127,7 +127,7 @@ def patch_labbook(labbook: labbook_schemas.LabbookPatch,
     # logger.info(user)
     # only for admins and groupadmins
     return labbook_service.patch_labbook(db=db, labbook_pk=labbook_pk,
-                                         labbook=labbook)
+                                         labbook=labbook, user=user)
 
 
 @app.get("/labbooks/{labbook_pk}",

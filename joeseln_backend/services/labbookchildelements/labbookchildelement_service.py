@@ -53,7 +53,7 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
         user_groups = get_user_groups(db=db, username=user.username)
         if LABBOOK_QUERY_MODE == 'match':
             db_lb = db.query(models.Labbook).filter(
-                or_(*[models.Labbook.title.match(name) for name in
+                or_(*[models.Labbook.title.contains(name) for name in
                       user_groups])).filter(
                 models.Labbook.id == labbook_pk).first()
         else:

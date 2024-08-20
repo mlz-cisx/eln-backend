@@ -45,7 +45,7 @@ def get_labbooks_from_user(db: Session, params, user):
     labbooks = []
     if LABBOOK_QUERY_MODE == 'match':
         labbooks = db.query(models.Labbook).join(models.Group,
-                                                 models.Labbook.title.match(
+                                                 models.Labbook.title.contains(
                                                      models.Group.groupname)).join(
             models.UserToGroupRole,
             models.Group.id == models.UserToGroupRole.group_id).join(
@@ -100,7 +100,7 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
     db_lb = None
     if LABBOOK_QUERY_MODE == 'match':
         db_lb = db.query(models.Labbook).filter(
-            or_(*[models.Labbook.title.match(name) for name in
+            or_(*[models.Labbook.title.contains(name) for name in
                   user_groups])).filter(models.Labbook.id == labbook_pk).first()
     elif LABBOOK_QUERY_MODE == 'equal':
         db_lb = db.query(models.Labbook).filter(
@@ -126,16 +126,34 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
     return None
 
 
-def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch):
+def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
     db_labbook = db.query(models.Labbook).get(labbook_pk)
-    db_labbook.title = labbook.title
-    db_labbook.last_modified_at = datetime.datetime.now()
-    db_labbook.last_modified_by_id = FAKE_USER_ID
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-    db.refresh(db_labbook)
+    lb_privileges = None
+    if check_for_admin_role(db=db, username=user.username):
+        lb_privileges = ADMIN
+    elif LABBOOK_QUERY_MODE == 'match':
+        user_roles = get_user_group_roles_with_match(db=db,
+                                                     username=user.username,
+                                                     groupname=db_labbook.title)
+        lb_privileges = create_labbook_privileges(user_roles=user_roles)
+
+    elif LABBOOK_QUERY_MODE == 'equal':
+        user_roles = get_user_group_roles(db=db,
+                                          username=user.username,
+                                          groupname=db_labbook.title)
+
+        lb_privileges = create_labbook_privileges(user_roles=user_roles)
+
+    if lb_privileges['edit']:
+        db_labbook.title = labbook.title
+        db_labbook.last_modified_at = datetime.datetime.now()
+        db_labbook.last_modified_by_id = FAKE_USER_ID
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+        db.refresh(db_labbook)
+    # TODO use ws?
     # try:
     #     transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
     # except RuntimeError as e:
