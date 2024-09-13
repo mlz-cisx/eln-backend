@@ -4,7 +4,8 @@ from weasyprint import HTML
 import io
 from fastapi.responses import Response
 
-from joeseln_backend.services.note.note_service import get_note
+from joeseln_backend.services.note.note_service import get_note, \
+    get_note_relations
 
 
 def get_export_data(db, note_pk, jwt):
@@ -15,10 +16,8 @@ def get_export_data(db, note_pk, jwt):
     template = env.get_template('note.jinja2')
 
     db_note = get_note(db=db, note_pk=note_pk)
-    # print(vars(lb))
-    # for elem in elems:
-    #     print(vars(elem))
-    data = {'instance': db_note}
+    db_note_relations = get_note_relations(db=db, note_pk=note_pk, params='')
+    data = {'instance': db_note, 'note_relations': db_note_relations}
     buf = io.StringIO()
     buf.write(template.render(data))
     buf.seek(0)

@@ -30,7 +30,7 @@ class Labbookchildelement(BaseModel):
     last_modified_by_id: int
 
     # mocked fields
-    num_related_comments: int = 0
+    num_related_comments: int
     num_relations: int = 0
     content_type: int = element_content_type
 

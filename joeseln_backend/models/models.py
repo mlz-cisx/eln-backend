@@ -146,6 +146,7 @@ class User(Base):
     username = Column(Text, unique=True)
     email = Column(Text, unique=True)
     oidc_user = Column(Boolean, default=False)
+    admin = Column(Boolean, default=False)
     password = Column(Text, default='not set')
     first_name = Column(Text)
     last_name = Column(Text)
@@ -261,6 +262,41 @@ class SessionToken(Base):
     id = Column(BigInteger, primary_key=True)
     token = Column(Text)
     expiration_time = Column(BigInteger)
+
+
+class Relation(Base):
+    __tablename__ = 'relation'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    # comment id
+    left_object_id = Column(UUID(as_uuid=True))
+    # note id, ...
+    right_object_id = Column(UUID(as_uuid=True))
+    private = Column(Boolean, default=False)
+    # comment
+    left_content_type = Column(Integer)
+    left_content_type_model = Column(Text)
+    # note, file, image
+    right_content_type = Column(Integer)
+    right_content_type_model = Column(Text)
+    created_at = Column(DateTime)
+    created_by_id = Column(Integer)
+    last_modified_at = Column(DateTime)
+    last_modified_by_id = Column(Integer)
+    version_number = Column(Integer)
+    deleted = Column(Boolean, default=False)
+
+
+class Comment(Base):
+    __tablename__ = 'comment'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    deleted = Column(Boolean, default=False)
+    content = Column(Text, default='')
+    version_number = Column(Integer)
+    created_at = Column(DateTime)
+    created_by_id = Column(Integer)
+    last_modified_at = Column(DateTime)
+    last_modified_by_id = Column(Integer)
+
 
 
 @event.listens_for(Note, "after_insert")

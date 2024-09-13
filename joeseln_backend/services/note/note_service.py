@@ -11,10 +11,10 @@ from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 from joeseln_backend.conf.base_conf import URL_BASE_PATH
 
 from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.comment.comment_schemas import Comment
 
 
 def get_all_notes(db: Session, params):
-    # print(params)
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     return db.query(models.Note).filter_by(
         deleted=bool(params.get('deleted'))).order_by(
@@ -24,6 +24,40 @@ def get_all_notes(db: Session, params):
 
 def get_note(db: Session, note_pk):
     return db.query(models.Note).get(note_pk)
+
+
+def get_note_relations(db: Session, note_pk, params):
+    relations = db.query(models.Relation).filter_by(
+        right_object_id=note_pk, deleted=False).order_by(
+        models.Relation.created_at).all()
+
+    for rel in relations:
+        if rel.left_content_type == 70:
+            rel.left_content_object = Comment.parse_obj(
+                db.query(models.Comment).get(rel.left_object_id))
+        else:
+            rel.left_content_object = None
+        rel.right_content_object = db.query(models.Note).get(note_pk)
+    return relations
+
+
+def delete_note_relation(db: Session, note_pk, relation_pk):
+    db_relation = db.query(models.Relation).get(relation_pk)
+    db_relation.deleted = True
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+    db.refresh(db_relation)
+
+    return get_note_relations(db=db, note_pk=note_pk, params='')
+
+
+def get_note_related_comments_count(db: Session, note_pk):
+    relations_count = db.query(models.Relation).filter_by(
+        right_object_id=note_pk, deleted=False, left_content_type=70).count()
+
+    return relations_count
 
 
 def create_note(db: Session, note: NoteCreate):
@@ -135,7 +169,7 @@ def get_note_export_link(db: Session, note_pk):
 
 def build_note_download_url_with_token(note_to_process, user):
     user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                      'secret')
+                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(

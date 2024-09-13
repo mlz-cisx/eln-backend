@@ -4,7 +4,7 @@ from joeseln_backend.services.user_to_group.user_to_group_service import \
     check_for_admin_role, remove_all_admin_roles, remove_all_group_roles, \
     remove_as_groupadmin_from_group, remove_as_user_from_group, \
     get_user_groups_role_user, get_user_groups_role_groupadmin, \
-    add_as_admin_to_group
+    add_as_admin_to_group ,new_check_for_admin_role, remove_admin_role, add_admin_role
 from joeseln_backend.services.user_to_group.user_to_group_schema import Group, \
     UserToGroup_Create
 
@@ -30,16 +30,25 @@ for group in groups:
     for role in user_roles:
         print(f'{role[0]} in {group}')
 
-admin_role = check_for_admin_role(db=my_session, username='wb_test_1')
+# admin_role = check_for_admin_role(db=my_session, username='wb_test_1')
 
-remove_all_admin_roles(db=my_session, username='user1')
+remove_admin_role(db=my_session, username='wb_test_1')
 
-remove_all_group_roles(db=my_session, username='wb_test_1',
-                       groupname='test_group_3')
+print(new_check_for_admin_role(db=my_session, username='wb_test_1'))
 
-remove_as_user_from_group(db=my_session, username='user1',
-                          groupname='test_group_3')
+add_admin_role(db=my_session, username='wb_test_1')
 
-print(get_user_groups_role_groupadmin(db=my_session, username='admin'))
+print(new_check_for_admin_role(db=my_session, username='wb_test_1'))
+
+
+# remove_all_admin_roles(db=my_session, username='user1')
+#
+# remove_all_group_roles(db=my_session, username='wb_test_1',
+#                        groupname='test_group_3')
+#
+# remove_as_user_from_group(db=my_session, username='user1',
+#                           groupname='test_group_3')
+#
+# print(get_user_groups_role_groupadmin(db=my_session, username='admin'))
 
 # add_as_admin_to_group(db=my_session, username='admin', groupname='test1')

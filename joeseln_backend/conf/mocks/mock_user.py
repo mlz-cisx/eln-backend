@@ -27,6 +27,11 @@ MockUser = json.dumps({
     }
 })
 
+MOCK_USER = {
+    'username': 'mock_user',
+    'email': 'mock_user@foo.com',
+}
+
 TEST_USER_1 = {
     'username': 'admin',
     'email': 'admin@foo.com',

@@ -31,6 +31,10 @@ from joeseln_backend.services.labbook import labbook_schemas, labbook_service
 from joeseln_backend.services.file import file_version_service, file_schemas, \
     file_service
 
+from joeseln_backend.services.comment import comment_schemas, comment_service
+
+from joeseln_backend.services.relation import relation_schemas
+
 from joeseln_backend.services.user.user_schema import User
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
@@ -175,15 +179,11 @@ def create_labbook(labbook: labbook_schemas.LabbookCreate,
                    user: User = Depends(get_current_user)):
     # logger.info(user)
     # only for admins
-    new_lb = labbook_service.create_labbook(db=db, labbook=labbook, user = user)
+    new_lb = labbook_service.create_labbook(db=db, labbook=labbook, user=user)
     if new_lb:
         return new_lb
     else:
         raise HTTPException(status_code=404, detail="Labbook not found")
-
-
-
-
 
 
 @app.get("/labbooks/{labbook_pk}/elements/",
@@ -462,6 +462,49 @@ async def preview_note_version(
     # logger.info(user)
     return note_version_service.get_note_version_metadata(db=db,
                                                           version_pk=version_pk)
+
+
+@app.get("/notes/{note_pk}/relations/",
+         response_model=list[relation_schemas.Relation])
+def get_note_relations(
+        request: Request,
+        note_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return note_service.get_note_relations(db=db, note_pk=note_pk,
+                                           params=request.query_params._dict)
+
+
+@app.post("/notes/{note_pk}/relations/")
+def add_note_relation(
+        request: Request,
+        note_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    logger.info(request.query_params._dict)
+    return ['ok']
+
+
+@app.put("/notes/{note_pk}/relations/{relation_pk}/")
+def put_note_relation(
+        request: Request,
+        note_pk: UUID,
+        relation_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    logger.info(request.query_params._dict)
+    return ['ok']
+
+
+@app.delete("/notes/{note_pk}/relations/{relation_pk}/")
+def delete_note_relation(
+        request: Request,
+        note_pk: UUID,
+        relation_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    note_service.delete_note_relation(db=db, note_pk=note_pk, relation_pk=relation_pk)
+    return ['ok']
 
 
 @app.post("/pictures/", response_model=picture_schemas.Picture)
@@ -850,6 +893,15 @@ def preview_file_version(
     # logger.info(user)
     return file_version_service.get_file_version_metadata(db=db,
                                                           version_pk=version_pk)
+
+
+@app.post("/comments/")
+def create_comment(
+        comment: comment_schemas.CreateComment,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    logger.info(user)
+    return comment_service.create_comment(db=db, comment=comment)
 
 
 @app.websocket("/ws/elements/")

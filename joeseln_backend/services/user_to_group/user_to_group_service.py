@@ -144,7 +144,7 @@ def update_oidc_user_groups(db: Session, user):
     logger.info(user_groups)
 
 
-def check_for_admin_role(db: Session, username):
+def deprecated_check_for_admin_role(db: Session, username):
     result = db.query(models.Role).join(models.UserToGroupRole,
                                         models.Role.id == models.UserToGroupRole.user_group_role).join(
         models.User, models.UserToGroupRole.user_id == models.User.id).join(
@@ -153,6 +153,36 @@ def check_for_admin_role(db: Session, username):
         models.User.username == username).filter(
         models.Role.rolename == 'admin').all()
     return bool(int(len(result)))
+
+
+def check_for_admin_role(db: Session, username):
+    user = db.query(models.User).filter(
+        models.User.username == username).first()
+    return user.admin
+
+
+def add_admin_role(db: Session, username):
+    user = db.query(models.User).filter(
+        models.User.username == username).first()
+    user.admin = True
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+    db.refresh(user)
+    return user.admin
+
+
+def remove_admin_role(db: Session, username):
+    user = db.query(models.User).filter(
+        models.User.username == username).first()
+    user.admin = False
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+    db.refresh(user)
+    return user.admin
 
 
 def remove_all_admin_roles(db: Session, username):
