@@ -35,6 +35,8 @@ from joeseln_backend.services.comment import comment_schemas, comment_service
 
 from joeseln_backend.services.relation import relation_schemas
 
+from joeseln_backend.services.role.basic_roles_creator import create_basic_roles
+
 from joeseln_backend.services.user.user_schema import User
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
@@ -76,6 +78,7 @@ jaeger_tracer = jaeger_tracer()
 from joeseln_backend.models.table_creator import table_creator
 
 table_creator()
+create_basic_roles()
 
 
 def get_db():
@@ -503,7 +506,8 @@ def delete_note_relation(
         relation_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    note_service.delete_note_relation(db=db, note_pk=note_pk, relation_pk=relation_pk)
+    note_service.delete_note_relation(db=db, note_pk=note_pk,
+                                      relation_pk=relation_pk)
     return ['ok']
 
 
