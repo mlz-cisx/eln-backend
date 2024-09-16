@@ -162,27 +162,37 @@ def check_for_admin_role(db: Session, username):
 
 
 def add_admin_role(db: Session, username):
+    success = False
     user = db.query(models.User).filter(
         models.User.username == username).first()
-    user.admin = True
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-    db.refresh(user)
-    return user.admin
+    if user:
+        user.admin = True
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            return success
+        db.refresh(user)
+        success = True
+        return success
+    return success
 
 
 def remove_admin_role(db: Session, username):
+    success = False
     user = db.query(models.User).filter(
         models.User.username == username).first()
-    user.admin = False
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-    db.refresh(user)
-    return user.admin
+    if user:
+        user.admin = False
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            return success
+        db.refresh(user)
+        success = True
+        return success
+    return success
 
 
 def remove_all_admin_roles(db: Session, username):
