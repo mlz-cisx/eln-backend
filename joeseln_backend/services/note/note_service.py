@@ -27,9 +27,18 @@ def get_note(db: Session, note_pk):
 
 
 def get_note_relations(db: Session, note_pk, params):
-    relations = db.query(models.Relation).filter_by(
-        right_object_id=note_pk, deleted=False).order_by(
-        models.Relation.created_at).all()
+    if not params:
+        relations = db.query(models.Relation).filter_by(
+            right_object_id=note_pk, deleted=False).order_by(
+            models.Relation.created_at).all()
+    else:
+        order_params = db_ordering.get_order_params(
+            ordering=params.get('ordering'))
+
+        relations = db.query(models.Relation).filter_by(
+            right_object_id=note_pk, deleted=False).order_by(
+            text(order_params)).offset(params.get('offset')).limit(
+            params.get('limit')).all()
 
     for rel in relations:
         if rel.left_content_type == 70:

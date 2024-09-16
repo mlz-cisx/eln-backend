@@ -14,6 +14,13 @@ from joeseln_backend.services.file import file_service
 from joeseln_backend.services.note.note_service import get_note_relations, \
     get_note_related_comments_count
 
+from joeseln_backend.services.file.file_service import get_file_relations, \
+    get_file_related_comments_count
+
+from joeseln_backend.services.picture.picture_service import \
+    get_picture_relations, \
+    get_picture_related_comments_count
+
 from joeseln_backend.auth import security
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
@@ -41,16 +48,24 @@ def get_lb_childelements_for_export(db: Session, labbook_pk, access_token,
             elem.relations = get_note_relations(db=db,
                                                 note_pk=elem.child_object_id,
                                                 params='')
-            db.close()
+
         if elem.child_object_content_type == 40:
             elem.child_object = picture_service.get_picture_in_lb_init(db=db,
                                                                        picture_pk=elem.child_object_id,
                                                                        access_token=access_token,
                                                                        as_export=as_export)
 
+            elem.relations = get_picture_relations(db=db,
+                                                   picture_pk=elem.child_object_id,
+                                                   params='')
+
         if elem.child_object_content_type == 50:
             elem.child_object = file_service.get_file(db=db,
                                                       file_pk=elem.child_object_id)
+
+            elem.relations = get_file_relations(db=db,
+                                                file_pk=elem.child_object_id,
+                                                params='')
 
     return query
 
@@ -92,12 +107,15 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
                                                                        picture_pk=elem.child_object_id,
                                                                        access_token=access_token,
                                                                        as_export=as_export)
-            elem.num_related_comments = 0
+            elem.num_related_comments = get_picture_related_comments_count(
+                db=db, picture_pk=elem.child_object_id)
 
         if elem.child_object_content_type == 50:
             elem.child_object = file_service.get_file(db=db,
                                                       file_pk=elem.child_object_id)
-            elem.num_related_comments = 0
+            elem.num_related_comments = get_file_related_comments_count(
+                db=db,
+                file_pk=elem.child_object_id)
 
     return query
 
@@ -133,12 +151,15 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
     if db_labbook_elem.child_object_content_type == 40:
         db_labbook_elem.child_object = picture_service.get_picture(db=db,
                                                                    picture_pk=db_labbook_elem.child_object_id)
-        db_labbook_elem.num_related_comments = 0
+        db_labbook_elem.num_related_comments = get_picture_related_comments_count(
+            db=db, picture_pk=db_labbook_elem.child_object_id)
 
     if db_labbook_elem.child_object_content_type == 50:
         db_labbook_elem.child_object = file_service.get_file(db=db,
                                                              file_pk=db_labbook_elem.child_object_id)
-        db_labbook_elem.num_related_comments = 0
+        db_labbook_elem.num_related_comments = get_file_related_comments_count(
+            db=db,
+            file_pk=db_labbook_elem.child_object_id)
 
     try:
         transmit({'model_name': 'labbook_patch', 'model_pk': str(labbook_pk)})
@@ -193,12 +214,15 @@ def create_lb_childelement(db: Session, labbook_pk,
     if db_labbook_elem.child_object_content_type == 40:
         db_labbook_elem.child_object = picture_service.get_picture(db=db,
                                                                    picture_pk=db_labbook_elem.child_object_id)
-        db_labbook_elem.num_related_comments = 0
+        db_labbook_elem.num_related_comments = get_picture_related_comments_count(
+            db=db, picture_pk=db_labbook_elem.child_object_id)
 
     if db_labbook_elem.child_object_content_type == 50:
         db_labbook_elem.child_object = file_service.get_file(db=db,
                                                              file_pk=db_labbook_elem.child_object_id)
-        db_labbook_elem.num_related_comments = 0
+        db_labbook_elem.num_related_comments = get_file_related_comments_count(
+            db=db,
+            file_pk=db_labbook_elem.child_object_id)
 
     try:
         transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})

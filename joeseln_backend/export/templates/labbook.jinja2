@@ -57,7 +57,7 @@
                                 </h3>
                                 <div class="info_created_by">
                                     Created
-                                    by {{ relation.left_content_object.created_by.username}}
+                                    by {{ relation.left_content_object.created_by.username }}
                                     at {{ relation.left_content_object.created_at }}
                                 </div>
                                 <div>
@@ -84,6 +84,25 @@
                     <img src="file://{{ child_element.child_object.rendered_image }}"
                          style="max-height: 900px; max-width: 600px; height: auto">
                 {% endif %}
+                <div>
+                    {% for relation in child_element.relations %}
+                        <div style="margin-bottom: 20px">
+                            {% if relation.left_content_type == 70 %}
+                                <h3 class="object_title">
+                                    Comment
+                                </h3>
+                                <div class="info_created_by">
+                                    Created
+                                    by {{ relation.left_content_object.created_by.username }}
+                                    at {{ relation.left_content_object.created_at }}
+                                </div>
+                                <div>
+                                    {{ relation.left_content_object.content }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
 
                 <p>Metadata
                 </p>
@@ -109,6 +128,26 @@
 
                 <div>
                     {{ child_element.child_object.description }}
+                </div>
+
+                <div>
+                    {% for relation in child_element.relations %}
+                        <div style="margin-bottom: 20px">
+                            {% if relation.left_content_type == 70 %}
+                                <h3 class="object_title">
+                                    Comment
+                                </h3>
+                                <div class="info_created_by">
+                                    Created
+                                    by {{ relation.left_content_object.created_by.username }}
+                                    at {{ relation.left_content_object.created_at }}
+                                </div>
+                                <div>
+                                    {{ relation.left_content_object.content }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
                 </div>
 
                 <p>Metadata:

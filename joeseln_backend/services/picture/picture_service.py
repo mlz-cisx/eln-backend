@@ -15,6 +15,7 @@ from joeseln_backend.services.entry_path.entry_path_service import create_path, 
 from joeseln_backend.services.picture.picture_schemas import *
 from joeseln_backend.conf.base_conf import PICTURES_BASE_PATH, URL_BASE_PATH
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
+from joeseln_backend.services.comment.comment_schemas import Comment
 
 from joeseln_backend.mylogging.root_logger import logger
 
@@ -35,6 +36,49 @@ def get_picture(db: Session, picture_pk):
         picture=deepcopy(db_picture), user='foo')
 
     return pic
+
+
+def get_picture_relations(db: Session, picture_pk, params):
+    if not params:
+        relations = db.query(models.Relation).filter_by(
+            right_object_id=picture_pk, deleted=False).order_by(
+            models.Relation.created_at).all()
+    else:
+        order_params = db_ordering.get_order_params(
+            ordering=params.get('ordering'))
+
+        relations = db.query(models.Relation).filter_by(
+            right_object_id=picture_pk, deleted=False).order_by(
+            text(order_params)).offset(params.get('offset')).limit(
+            params.get('limit')).all()
+
+    for rel in relations:
+        if rel.left_content_type == 70:
+            rel.left_content_object = Comment.parse_obj(
+                db.query(models.Comment).get(rel.left_object_id))
+        else:
+            rel.left_content_object = None
+        rel.right_content_object = db.query(models.Picture).get(picture_pk)
+    return relations
+
+
+def delete_picture_relation(db: Session, picture_pk, relation_pk):
+    db_relation = db.query(models.Relation).get(relation_pk)
+    db_relation.deleted = True
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+    db.refresh(db_relation)
+
+    return get_picture_relations(db=db, picture_pk=picture_pk, params='')
+
+
+def get_picture_related_comments_count(db: Session, picture_pk):
+    relations_count = db.query(models.Relation).filter_by(
+        right_object_id=picture_pk, deleted=False, left_content_type=70).count()
+
+    return relations_count
 
 
 def get_picture_for_export(db: Session, picture_pk):
@@ -242,7 +286,7 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
 
 def build_download_url_with_token(picture, user):
     user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                      'secret')
+                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
@@ -295,7 +339,7 @@ def get_picture_export_link(db: Session, picture_pk):
 
 def build_picture_download_url_with_token(picture_to_process, user):
     user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                      'secret')
+                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(

@@ -14,6 +14,7 @@ from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.base_conf import FILES_BASE_PATH, URL_BASE_PATH
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
+from joeseln_backend.services.comment.comment_schemas import Comment
 
 from joeseln_backend.mylogging.root_logger import logger
 
@@ -34,6 +35,49 @@ def get_file(db: Session, file_pk):
                                             user='foo')
 
     return db_file
+
+
+def get_file_relations(db: Session, file_pk, params):
+    if not params:
+        relations = db.query(models.Relation).filter_by(
+            right_object_id=file_pk, deleted=False).order_by(
+            models.Relation.created_at).all()
+    else:
+        order_params = db_ordering.get_order_params(
+            ordering=params.get('ordering'))
+
+        relations = db.query(models.Relation).filter_by(
+            right_object_id=file_pk, deleted=False).order_by(
+            text(order_params)).offset(params.get('offset')).limit(
+            params.get('limit')).all()
+
+    for rel in relations:
+        if rel.left_content_type == 70:
+            rel.left_content_object = Comment.parse_obj(
+                db.query(models.Comment).get(rel.left_object_id))
+        else:
+            rel.left_content_object = None
+        rel.right_content_object = db.query(models.File).get(file_pk)
+    return relations
+
+
+def delete_file_relation(db: Session, file_pk, relation_pk):
+    db_relation = db.query(models.Relation).get(relation_pk)
+    db_relation.deleted = True
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+    db.refresh(db_relation)
+
+    return get_file_relations(db=db, file_pk=file_pk, params='')
+
+
+def get_file_related_comments_count(db: Session, file_pk):
+    relations_count = db.query(models.Relation).filter_by(
+        right_object_id=file_pk, deleted=False, left_content_type=70).count()
+
+    return relations_count
 
 
 def get_lb_pk_from_file(db: Session, file_pk):
@@ -131,7 +175,7 @@ def process_file_upload_form(form, db, contents):
 
 def build_download_url_with_token(file_to_process, user):
     user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                      'secret')
+                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
@@ -165,7 +209,7 @@ def get_file_export_link(db: Session, file_pk):
 
 def build_file_download_url_with_token(file_to_process, user):
     user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                      'secret')
+                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(

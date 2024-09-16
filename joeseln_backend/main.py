@@ -35,7 +35,8 @@ from joeseln_backend.services.comment import comment_schemas, comment_service
 
 from joeseln_backend.services.relation import relation_schemas
 
-from joeseln_backend.services.role.basic_roles_creator import create_basic_roles
+from joeseln_backend.services.role.basic_roles_creator import \
+    create_basic_roles, create_inital_admin
 
 from joeseln_backend.services.user.user_schema import User
 from joeseln_backend.database.database import SessionLocal
@@ -79,6 +80,7 @@ from joeseln_backend.models.table_creator import table_creator
 
 table_creator()
 create_basic_roles()
+create_inital_admin()
 
 
 def get_db():
@@ -732,6 +734,29 @@ def preview_picture_version(
                                                                 version_pk=version_pk)
 
 
+@app.get("/pictures/{picture_pk}/relations/",
+         response_model=list[relation_schemas.Relation])
+def get_picture_relations(
+        request: Request,
+        picture_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return picture_service.get_picture_relations(db=db, picture_pk=picture_pk,
+                                                 params=request.query_params._dict)
+
+
+@app.delete("/pictures/{picture_pk}/relations/{relation_pk}/")
+def delete_picture_relation(
+        request: Request,
+        picture_pk: UUID,
+        relation_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    picture_service.delete_picture_relation(db=db, picture_pk=picture_pk,
+                                            relation_pk=relation_pk)
+    return ['ok']
+
+
 @app.post("/files/", response_model=file_schemas.File)
 async def UploadFile(request: Request,
                      db: Session = Depends(get_db),
@@ -897,6 +922,29 @@ def preview_file_version(
     # logger.info(user)
     return file_version_service.get_file_version_metadata(db=db,
                                                           version_pk=version_pk)
+
+
+@app.get("/files/{file_pk}/relations/",
+         response_model=list[relation_schemas.Relation])
+def get_file_relations(
+        request: Request,
+        file_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return file_service.get_file_relations(db=db, file_pk=file_pk,
+                                           params=request.query_params._dict)
+
+
+@app.delete("/files/{file_pk}/relations/{relation_pk}/")
+def delete_file_relation(
+        request: Request,
+        file_pk: UUID,
+        relation_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    file_service.delete_file_relation(db=db, file_pk=file_pk,
+                                      relation_pk=relation_pk)
+    return ['ok']
 
 
 @app.post("/comments/")

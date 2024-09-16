@@ -18,4 +18,25 @@
              style="max-height: 900px; max-width: 600px; height: auto">
     {% endif %}
 
+    <div>
+        {% for relation in picture_relations %}
+            <div style="margin-bottom: 20px">
+                {% if relation.left_content_type == 70 %}
+                    <h3 class="object_title">
+                        Comment
+                    </h3>
+                    <div class="info_created_by">
+                        Created
+                        by {{ relation.left_content_object.created_by.username }}
+                        at {{ relation.left_content_object.created_at }}
+                    </div>
+
+                    <div>
+                        {{ relation.left_content_object.content }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
 {% endblock %}
