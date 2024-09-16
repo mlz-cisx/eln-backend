@@ -1,4 +1,4 @@
-from joeseln_backend.conf.mocks.mock_role import ROLE_USER, ROLE_ADMIN, ROLE_GROUPADMIN
+from joeseln_backend.conf.mocks.mock_role import ROLE_USER, ROLE_GROUPADMIN
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.services.role.role_service import create_role, \
     get_role_by_rolename
