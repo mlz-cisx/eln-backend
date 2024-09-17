@@ -55,6 +55,7 @@ def delete_user_to_group(db: Session, user_to_group: UserToGroup_Create):
         logger.error(e)
         return
     logger.info(result)
+    return result
 
 
 def get_user_with_groups_by_uname(db: Session, username):
@@ -144,17 +145,6 @@ def update_oidc_user_groups(db: Session, user):
     logger.info(user_groups)
 
 
-def deprecated_check_for_admin_role(db: Session, username):
-    result = db.query(models.Role).join(models.UserToGroupRole,
-                                        models.Role.id == models.UserToGroupRole.user_group_role).join(
-        models.User, models.UserToGroupRole.user_id == models.User.id).join(
-        models.Group,
-        models.Group.id == models.UserToGroupRole.group_id).filter(
-        models.User.username == username).filter(
-        models.Role.rolename == 'admin').all()
-    return bool(int(len(result)))
-
-
 def check_for_admin_role(db: Session, username):
     user = db.query(models.User).filter(
         models.User.username == username).first()
@@ -195,22 +185,6 @@ def remove_admin_role(db: Session, username):
     return success
 
 
-def remove_all_admin_roles(db: Session, username):
-    try:
-        role = db.query(models.Role).filter(
-            models.Role.rolename == 'admin').first()
-        user = db.query(models.User).filter(
-            models.User.username == username).first()
-        result = db.query(models.UserToGroupRole).filter(
-            models.UserToGroupRole.user_group_role == role.id,
-            models.UserToGroupRole.user_id == user.id).delete()
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        return
-    logger.info(result)
-
-
 def remove_all_group_roles(db: Session, username, groupname):
     try:
         groups = db.query(models.Group).filter(
@@ -228,49 +202,82 @@ def remove_all_group_roles(db: Session, username, groupname):
 
 
 def add_as_user_to_group(db: Session, username, groupname):
-    user_role_group = {
-        'user_id': get_user_by_uname(db=db, username=username).id,
-        'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
-        'user_group_role': get_role_by_rolename(db=db, rolename='user').id
-    }
-    db_user_to_group = create_user_to_group(db=db,
-                                            user_to_group=UserToGroup_Create.parse_obj(
-                                                user_role_group))
+    user = get_user_by_uname(db=db, username=username)
+    group = get_group_by_groupname(db=db, groupname=groupname)
+    role = get_role_by_rolename(db=db, rolename='user')
 
-    logger.info(db_user_to_group)
+    if user is not None and group is not None and role is not None:
+        user_role_group = {
+            'user_id': get_user_by_uname(db=db, username=username).id,
+            'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
+            'user_group_role': get_role_by_rolename(db=db, rolename='user').id
+        }
+        db_user_to_group = create_user_to_group(db=db,
+                                                user_to_group=UserToGroup_Create.parse_obj(
+                                                    user_role_group))
+
+        logger.info(db_user_to_group)
+        return db_user_to_group
+
+    return
 
 
 def remove_as_user_from_group(db: Session, username, groupname):
-    user_role_group = {
-        'user_id': get_user_by_uname(db=db, username=username).id,
-        'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
-        'user_group_role': get_role_by_rolename(db=db, rolename='user').id
-    }
-    delete_user_to_group(db=db, user_to_group=UserToGroup_Create.parse_obj(
-        user_role_group))
+    user = get_user_by_uname(db=db, username=username)
+    group = get_group_by_groupname(db=db, groupname=groupname)
+    role = get_role_by_rolename(db=db, rolename='user')
+
+    if user is not None and group is not None and role is not None:
+        user_role_group = {
+            'user_id': get_user_by_uname(db=db, username=username).id,
+            'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
+            'user_group_role': get_role_by_rolename(db=db, rolename='user').id
+        }
+        return delete_user_to_group(db=db,
+                                    user_to_group=UserToGroup_Create.parse_obj(
+                                        user_role_group))
+    return
 
 
 def add_as_groupadmin_to_group(db: Session, username, groupname):
-    user_role_group = {
-        'user_id': get_user_by_uname(db=db, username=username).id,
-        'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
-        'user_group_role': get_role_by_rolename(db=db, rolename='groupadmin').id
-    }
-    db_user_to_group = create_user_to_group(db=db,
-                                            user_to_group=UserToGroup_Create.parse_obj(
-                                                user_role_group))
+    user = get_user_by_uname(db=db, username=username)
+    group = get_group_by_groupname(db=db, groupname=groupname)
+    role = get_role_by_rolename(db=db, rolename='groupadmin')
 
-    logger.info(db_user_to_group)
+    if user is not None and group is not None and role is not None:
+        user_role_group = {
+            'user_id': get_user_by_uname(db=db, username=username).id,
+            'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
+            'user_group_role': get_role_by_rolename(db=db,
+                                                    rolename='groupadmin').id
+        }
+        db_user_to_group = create_user_to_group(db=db,
+                                                user_to_group=UserToGroup_Create.parse_obj(
+                                                    user_role_group))
+
+        logger.info(db_user_to_group)
+        return db_user_to_group
+
+    return False
 
 
 def remove_as_groupadmin_from_group(db: Session, username, groupname):
-    user_role_group = {
-        'user_id': get_user_by_uname(db=db, username=username).id,
-        'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
-        'user_group_role': get_role_by_rolename(db=db, rolename='groupadmin').id
-    }
-    delete_user_to_group(db=db, user_to_group=UserToGroup_Create.parse_obj(
-        user_role_group))
+    user = get_user_by_uname(db=db, username=username)
+    group = get_group_by_groupname(db=db, groupname=groupname)
+    role = get_role_by_rolename(db=db, rolename='groupadmin')
+
+    if user is not None and group is not None and role is not None:
+        user_role_group = {
+            'user_id': get_user_by_uname(db=db, username=username).id,
+            'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
+            'user_group_role': get_role_by_rolename(db=db,
+                                                    rolename='groupadmin').id
+        }
+        return delete_user_to_group(db=db,
+                                    user_to_group=UserToGroup_Create.parse_obj(
+                                        user_role_group))
+
+    return
 
 
 def add_as_admin_to_group(db: Session, username, groupname):

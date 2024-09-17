@@ -10,7 +10,7 @@ def admin_remover():
     if remove_admin_role(db=my_session, username=username):
         print(f'admin role removed from {username}')
     else:
-        print(f'admin role could not be removed from user with name {username}')
+        print(f'admin role could not be removed from {username}')
 
 
 if __name__ == "__main__":
