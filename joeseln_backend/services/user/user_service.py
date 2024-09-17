@@ -9,7 +9,6 @@ def get_user_by_uname(db: Session, username):
     return db.query(models.User).filter_by(username=username).first()
 
 
-
 def update_oidc_user(db: Session, oidc_user: OIDC_User_Create):
     db_user = get_user_by_uname(db=db, username=oidc_user.preferred_username)
     if not db_user:
@@ -65,3 +64,17 @@ def create_user(db: Session, user: User_Create):
         return
     db.refresh(db_user)
     return db_user
+
+
+def change_user_password(db: Session, username, hashed_password):
+    db_user = db.query(models.User).filter_by(username=username).first()
+    if db_user:
+        db_user.password = hashed_password
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            return
+        db.refresh(db_user)
+        return db_user
+    return
