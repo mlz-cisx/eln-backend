@@ -973,14 +973,16 @@ async def websocket_endpoint(*, websocket: WebSocket):
                 # handling keycloak
                 token = json.loads(json.dumps(data['auth']))[
                     '__zone_symbol__value']
+                await manager.broadcast_json(message=data)
             else:
                 # handling jwt auth
                 token = data['auth']
-            if token and token != STATIC_WS_TOKEN:
-                # TODO do ws authentication here
-                pass
-            else:
-                WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+                await manager.broadcast_json(message=data)
+            # if token and token != STATIC_WS_TOKEN:
+            #     # TODO do ws authentication here
+            #     await manager.broadcast_json(message=data)
+            # else:
+            #     WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
