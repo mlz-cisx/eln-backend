@@ -126,6 +126,7 @@ def read_labbooks(request: Request,
                                                       params=request.query_params._dict,
                                                       user=user)
     return labbooks
+    # DONE
 
 
 @app.patch("/labbooks/{labbook_pk}", response_model=labbook_schemas.Labbook)
@@ -137,6 +138,7 @@ def patch_labbook(labbook: labbook_schemas.LabbookPatch,
     # only for admins and groupadmins
     return labbook_service.patch_labbook(db=db, labbook_pk=labbook_pk,
                                          labbook=labbook, user=user)
+    # DONE
 
 
 @app.get("/labbooks/{labbook_pk}",
@@ -151,6 +153,7 @@ def read_labbook(labbook_pk: UUID,
     if labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return labbook
+    # DONE
 
 
 @app.get("/labbooks/{labbook_pk}/export/", response_class=FileResponse)
@@ -164,6 +167,7 @@ def export_labbook_content(request: Request, labbook_pk: UUID,
     if dwldable_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_labbook
+    # DONE
 
 
 @app.get("/labbooks/{labbook_pk}/get_export_link/")
@@ -176,6 +180,7 @@ def export_link_labbook(labbook_pk: UUID,
     if export_link is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return export_link
+    # DONE
 
 
 @app.post("/labbooks/", response_model=labbook_schemas.Labbook)
@@ -189,6 +194,7 @@ def create_labbook(labbook: labbook_schemas.LabbookCreate,
         return new_lb
     else:
         raise HTTPException(status_code=404, detail="Labbook not found")
+    # DONE
 
 
 @app.get("/labbooks/{labbook_pk}/elements/",
@@ -204,6 +210,7 @@ def read_labbook_elems(labbook_pk: UUID,
     if lb_elements is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_elements
+    # DONE
 
 
 @app.post("/labbooks/{labbook_pk}/elements/",
@@ -217,8 +224,11 @@ async def create_labbook_elem(
     # all groupmembers
     lb_element = labbookchildelement_service. \
         create_lb_childelement(db=db, labbook_pk=labbook_pk,
-                               labbook_childelem=elem)
+                               labbook_childelem=elem, user=user)
+    if lb_element is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_element
+    # DONE but has to be integrated with post note, file, picture,
 
 
 @app.patch("/labbooks/{labbook_pk}/elements/{element_pk}/",
@@ -230,13 +240,16 @@ async def patch_labbook_elem(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    # elements created by admin can't be touched
     lb_element = labbookchildelement_service. \
         patch_lb_childelement(db=db,
                               labbook_pk=labbook_pk,
                               element_pk=element_pk,
-                              labbook_childelem=elem)
+                              labbook_childelem=elem,
+                              user=user)
+    if lb_element is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_element
+    # DONE but it is not used actually
 
 
 @app.put("/labbooks/{labbook_pk}/elements/update_all/")
@@ -247,11 +260,15 @@ async def update_labbook_elements(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # all groupmembers
-    labbookchildelement_service. \
-        update_all_lb_childelements(db=db,
-                                    labbook_childelems=elems,
-                                    labbook_pk=labbook_pk)
-    return ['ok']
+    if labbookchildelement_service. \
+            update_all_lb_childelements(db=db,
+                                        labbook_childelems=elems,
+                                        labbook_pk=labbook_pk,
+                                        user=user):
+        return ['ok']
+    else:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    # DONE
 
 
 @app.get("/labbooks/{labbook_pk}/history/")
@@ -275,8 +292,13 @@ def get_labbook_versions(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # for all users
-    return labbook_version_service.get_all_labbook_versions(db=db,
-                                                            labbook_pk=labbook_pk)
+    versions = labbook_version_service.get_all_labbook_versions(db=db,
+                                                                labbook_pk=labbook_pk,
+                                                                user=user)
+    if versions is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return versions
+    # DONE
 
 
 @app.post("/labbooks/{labbook_pk}/versions/",

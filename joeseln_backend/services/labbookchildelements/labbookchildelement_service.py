@@ -11,6 +11,9 @@ from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.services.picture import picture_service
 from joeseln_backend.services.file import file_service
 
+from joeseln_backend.services.labbook.labbook_service import \
+    check_for_labbook_access
+
 from joeseln_backend.services.note.note_service import get_note_relations, \
     get_note_related_comments_count
 
@@ -71,20 +74,8 @@ def get_lb_childelements_for_export(db: Session, labbook_pk, access_token,
 
 
 def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
-    if not check_for_admin_role(db=db, username=user.username):
-        user_groups = get_user_groups(db=db, username=user.username)
-        if LABBOOK_QUERY_MODE == 'match':
-            db_lb = db.query(models.Labbook).filter(
-                or_(*[models.Labbook.title.contains(name) for name in
-                      user_groups])).filter(
-                models.Labbook.id == labbook_pk).first()
-        else:
-            db_lb = db.query(models.Labbook).filter(
-                models.Labbook.title.in_(user_groups),
-                models.Labbook.id == labbook_pk).first()
-
-        if not db_lb:
-            return None
+    if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
+        return None
 
     query = db.query(models.Labbookchildelement).filter_by(
         labbook_id=labbook_pk, deleted=False).order_by(
@@ -121,8 +112,10 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
 
 
 def patch_lb_childelement(db: Session, labbook_pk, element_pk,
-                          labbook_childelem,
-                          ):
+                          labbook_childelem, user):
+    if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
+        return None
+
     db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
     db_labbook_elem.position_x = labbook_childelem.position_x
     db_labbook_elem.position_y = labbook_childelem.position_y
@@ -170,7 +163,10 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
 
 
 def create_lb_childelement(db: Session, labbook_pk,
-                           labbook_childelem: Labbookchildelement_Create):
+                           labbook_childelem: Labbookchildelement_Create, user):
+    if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
+        return None
+
     db_labbook_elem = models.Labbookchildelement(
         labbook_id=labbook_pk,
         position_x=labbook_childelem.position_x,
@@ -233,7 +229,10 @@ def create_lb_childelement(db: Session, labbook_pk,
 
 
 def update_all_lb_childelements(db: Session,
-                                labbook_childelems, labbook_pk):
+                                labbook_childelems, labbook_pk, user):
+    if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
+        return
+
     for lb_childelem in labbook_childelems:
         elem = db.query(models.Labbookchildelement).get(lb_childelem.id)
         elem.position_x = lb_childelem.position_x
@@ -258,6 +257,8 @@ def update_all_lb_childelements(db: Session,
         transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
     except RuntimeError as e:
         logger.error(e)
+
+    return True
 
 
 def update_child_element(db_labbook_elem, child_object_content_type,

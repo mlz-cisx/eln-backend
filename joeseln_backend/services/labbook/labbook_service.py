@@ -30,6 +30,24 @@ def get_labbooks(db: Session, params):
         params.get('limit')).all()
 
 
+def check_for_labbook_access(db: Session, labbook_pk, user):
+    if not check_for_admin_role(db=db, username=user.username):
+        user_groups = get_user_groups(db=db, username=user.username)
+        if LABBOOK_QUERY_MODE == 'match':
+            db_lb = db.query(models.Labbook).filter(
+                or_(*[models.Labbook.title.contains(name) for name in
+                      user_groups])).filter(
+                models.Labbook.id == labbook_pk).first()
+        else:
+            db_lb = db.query(models.Labbook).filter(
+                models.Labbook.title.in_(user_groups),
+                models.Labbook.id == labbook_pk).first()
+
+        if not db_lb:
+            return False
+    return True
+
+
 def get_labbooks_from_user(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     if check_for_admin_role(db=db, username=user.username):
@@ -71,7 +89,7 @@ def get_labbooks_from_user(db: Session, params, user):
 
 
 def create_labbook(db: Session, labbook: LabbookCreate, user):
-    db_labbook= None
+    db_labbook = None
     if check_for_admin_role(db=db, username=user.username):
         db_labbook = models.Labbook(version_number=0,
                                     title=labbook.title,

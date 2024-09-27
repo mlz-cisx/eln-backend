@@ -9,12 +9,15 @@ from joeseln_backend.services.note import note_version_service
 from joeseln_backend.services.file import file_version_service
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
+from joeseln_backend.services.labbook.labbook_service import \
+    check_for_labbook_access
+
 from joeseln_backend.mylogging.root_logger import logger
 
 
-
-
-def get_all_labbook_versions(db: Session, labbook_pk):
+def get_all_labbook_versions(db: Session, labbook_pk, user):
+    if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
+        return None
     db_labbook_versions = db.query(models.Version).filter_by(
         object_id=labbook_pk).order_by(models.Version.number.desc()).all()
     # renaming and json.dumps for schema
