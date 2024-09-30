@@ -180,7 +180,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         if token == STATIC_ADMIN_TOKEN:
             # logger.info('you can do everything')
-            user = get_user_by_uname(db=SessionLocal(), username='admin')
+            user = get_user_with_groups_by_uname(db=SessionLocal(),
+                                                 username='admin')
             return user
         else:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
