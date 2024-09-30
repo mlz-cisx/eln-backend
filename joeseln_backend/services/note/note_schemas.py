@@ -5,6 +5,7 @@ from uuid import UUID
 
 from joeseln_backend.conf.content_types import *
 from joeseln_backend.conf.mocks.mock_user import MockUser
+from joeseln_backend.services.user.user_schema import User
 
 
 class Note(BaseModel):
@@ -20,8 +21,8 @@ class Note(BaseModel):
 
     content_type: int = note_content_type
     content_type_model: str = note_content_type_model
-    last_modified_by: Json[Any] = MockUser
-    created_by: Json[Any] = MockUser
+    last_modified_by: User | Json[Any] = MockUser
+    created_by: User | Json[Any] = MockUser
     display: str = ''
     fake_metadata: List[str] = []
     is_favourite: bool = False

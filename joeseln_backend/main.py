@@ -365,7 +365,7 @@ def create_note(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_note = note_service.create_note(db=db, note=elem)
+    db_note = note_service.create_note(db=db, note=elem, user=user)
     return db_note
 
 

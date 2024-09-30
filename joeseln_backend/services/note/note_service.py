@@ -23,7 +23,10 @@ def get_all_notes(db: Session, params):
 
 
 def get_note(db: Session, note_pk):
-    return db.query(models.Note).get(note_pk)
+    db_note = db.query(models.Note).get(note_pk)
+    db_user = db.query(models.User).get(db_note.created_by_id)
+    db_note.created_by = db_user.username
+    return db_note
 
 
 def get_note_relations(db: Session, note_pk, params):
@@ -71,14 +74,14 @@ def get_note_related_comments_count(db: Session, note_pk):
     return relations_count
 
 
-def create_note(db: Session, note: NoteCreate):
+def create_note(db: Session, note: NoteCreate, user):
     db_note = models.Note(version_number=0,
                           subject=note.subject,
                           content=note.content,
                           created_at=datetime.datetime.now(),
-                          created_by_id=FAKE_USER_ID,
+                          created_by_id=user.id,
                           last_modified_at=datetime.datetime.now(),
-                          last_modified_by_id=FAKE_USER_ID)
+                          last_modified_by_id=user.id)
 
     db.add(db_note)
     try:
@@ -88,6 +91,10 @@ def create_note(db: Session, note: NoteCreate):
         db.close()
         return db_note
     db.refresh(db_note)
+    db.close()
+    db_note.last_modified_by = user
+    db_note.created_by = user
+
     return db_note
 
 
