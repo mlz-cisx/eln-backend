@@ -142,7 +142,7 @@ class File(Base):
 
 class User(Base):
     __tablename__ = 'user'
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id = Column(BigInteger, primary_key=True)
     username = Column(Text, unique=True)
     email = Column(Text, unique=True)
     oidc_user = Column(Boolean, default=False)
@@ -177,7 +177,7 @@ class UserToGroupRole(Base):
     __table_args__ = (UniqueConstraint('user_id', 'group_id', 'user_group_role',
                                        name='_user_to_group_role'),)
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey(User.id))
+    user_id = Column(BigInteger, ForeignKey(User.id))
     group_id = Column(UUID(as_uuid=True), ForeignKey(Group.id))
     user_group_role = Column(UUID(as_uuid=True), ForeignKey(Role.id))
     created_at = Column(DateTime)
@@ -296,7 +296,6 @@ class Comment(Base):
     created_by_id = Column(Integer)
     last_modified_at = Column(DateTime)
     last_modified_by_id = Column(Integer)
-
 
 
 @event.listens_for(Note, "after_insert")
