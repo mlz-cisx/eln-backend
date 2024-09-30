@@ -129,7 +129,10 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
 
 
 def get_labbook_for_export(db: Session, labbook_pk):
-    return db.query(models.Labbook).get(labbook_pk)
+    db_labbook = db.query(models.Labbook).get(labbook_pk)
+    db_user = db.query(models.User).get(db_labbook.created_by_id)
+    db_labbook.created_by = db_user.username
+    return db_labbook
 
 
 def get_labbook_with_privileges(db: Session, labbook_pk, user):
