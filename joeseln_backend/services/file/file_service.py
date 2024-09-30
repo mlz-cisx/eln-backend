@@ -68,6 +68,8 @@ def delete_file_relation(db: Session, file_pk, relation_pk):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return
     db.refresh(db_relation)
 
     return get_file_relations(db=db, file_pk=file_pk, params='')
@@ -116,6 +118,8 @@ def create_file(db: Session, title: str,
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return
     db.refresh(db_file)
     db.close()
 
@@ -140,6 +144,8 @@ def update_file(file_pk, db: Session, elem: FilePatch):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return db_file
     db.refresh(db_file)
     transmit({'model_name': 'file', 'model_pk': str(file_pk)})
     return db_file
@@ -238,6 +244,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return file_to_update
     db.refresh(file_to_update)
     query = db.query(models.Labbookchildelement).filter_by(
@@ -269,6 +276,7 @@ def restore_file(db: Session, file_pk):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return file_to_update
     db.refresh(file_to_update)
     return file_to_update

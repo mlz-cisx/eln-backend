@@ -8,7 +8,7 @@ from joeseln_backend.models import models
 from joeseln_backend.services.labbook.labbook_schemas import *
 from joeseln_backend.services.user_to_group.user_to_group_service import \
     get_user_group_roles, get_user_group_roles_with_match, check_for_admin_role, \
-    get_user_groups
+    get_user_groups, get_user_groups_role_groupadmin
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
 from joeseln_backend.services.privileges.privileges_service import \
@@ -33,6 +33,25 @@ def get_labbooks(db: Session, params):
 def check_for_labbook_access(db: Session, labbook_pk, user):
     if not check_for_admin_role(db=db, username=user.username):
         user_groups = get_user_groups(db=db, username=user.username)
+        if LABBOOK_QUERY_MODE == 'match':
+            db_lb = db.query(models.Labbook).filter(
+                or_(*[models.Labbook.title.contains(name) for name in
+                      user_groups])).filter(
+                models.Labbook.id == labbook_pk).first()
+        else:
+            db_lb = db.query(models.Labbook).filter(
+                models.Labbook.title.in_(user_groups),
+                models.Labbook.id == labbook_pk).first()
+
+        if not db_lb:
+            return False
+    return True
+
+
+def check_for_labbook_admin_access(db: Session, labbook_pk, user):
+    if not check_for_admin_role(db=db, username=user.username):
+        user_groups = get_user_groups_role_groupadmin(db=db,
+                                                      username=user.username)
         if LABBOOK_QUERY_MODE == 'match':
             db_lb = db.query(models.Labbook).filter(
                 or_(*[models.Labbook.title.contains(name) for name in
@@ -103,6 +122,8 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
+            return None
         db.refresh(db_labbook)
     return db_labbook
 
@@ -172,6 +193,8 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
+            return db_labbook
         db.refresh(db_labbook)
     # TODO use ws?
     # try:

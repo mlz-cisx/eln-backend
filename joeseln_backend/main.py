@@ -310,9 +310,14 @@ def add_labbook_version(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # only for admins and groupadmins
-    return labbook_version_service.add_labbook_version(db=db,
-                                                       labbook_pk=labbook_pk,
-                                                       summary=summary.summary)
+    lb_added = labbook_version_service.add_labbook_version(db=db,
+                                                           labbook_pk=labbook_pk,
+                                                           summary=summary.summary,
+                                                           user=user)
+    if lb_added is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return lb_added
+    # DONE
 
 
 @app.post("/labbooks/{labbook_pk}/versions/{version_pk}/restore/")
@@ -323,9 +328,14 @@ def restore_labbook_version(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # only for admins and groupadmins
-    return labbook_version_service.restore_labbook_version(db=db,
-                                                           labbook_pk=labbook_pk,
-                                                           version_pk=version_pk)
+    lb_restored = labbook_version_service.restore_labbook_version(db=db,
+                                                                  labbook_pk=labbook_pk,
+                                                                  version_pk=version_pk,
+                                                                  user=user)
+    if lb_restored is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return lb_restored
+    # DONE
 
 
 @app.get("/labbooks/{labbook_pk}/versions/{version_pk}/preview/",
@@ -337,8 +347,15 @@ def preview_labbook_version(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # only for admins and groupadmins
-    return labbook_version_service.get_labbook_version_metadata(db=db,
-                                                                version_pk=version_pk)
+    lb_metadata = labbook_version_service.get_labbook_version_metadata(
+        db=db,
+        version_pk=version_pk,
+        labbook_pk=labbook_pk,
+        user=user)
+    if lb_metadata is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return lb_metadata
+    # DONE
 
 
 @app.post("/notes/",

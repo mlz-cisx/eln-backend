@@ -21,6 +21,7 @@ def create_role(db: Session, role: Role_Create):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return
     db.refresh(db_role)
     return db_role

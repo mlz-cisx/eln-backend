@@ -132,6 +132,9 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return db_labbook_elem
+
 
     db.refresh(db_labbook_elem)
 
@@ -193,6 +196,8 @@ def create_lb_childelement(db: Session, labbook_pk,
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return db_labbook_elem
 
     update_child_element(db_labbook_elem=db_labbook_elem,
                          child_object_content_type=db_labbook_elem.child_object_content_type,
@@ -245,12 +250,15 @@ def update_all_lb_childelements(db: Session,
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
+            return
     # event listener not working with bulk
     # db.bulk_update_mappings(models.Labbookchildelement(), labbook_childelems)
     try:
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return
 
     try:
@@ -270,6 +278,7 @@ def update_child_element(db_labbook_elem, child_object_content_type,
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
 
     if child_object_content_type == 40:
         picture = db.query(models.Picture).get(child_object_id)
@@ -278,6 +287,7 @@ def update_child_element(db_labbook_elem, child_object_content_type,
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
 
     if child_object_content_type == 50:
         file = db.query(models.File).get(child_object_id)
@@ -286,3 +296,4 @@ def update_child_element(db_labbook_elem, child_object_content_type,
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()

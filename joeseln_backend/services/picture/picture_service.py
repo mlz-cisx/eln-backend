@@ -69,6 +69,8 @@ def delete_picture_relation(db: Session, picture_pk, relation_pk):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return
     db.refresh(db_relation)
 
     return get_picture_relations(db=db, picture_pk=picture_pk, params='')
@@ -138,6 +140,7 @@ def copy_and_update_picture(db: Session, picture_pk, restored_ri=None,
         db.refresh(db_picture)
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
 
     return [old_ri_img_path,
             old_shapes_path]
@@ -172,6 +175,8 @@ def create_picture(db: Session, title: str, display: str,
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return db_picture
     db.refresh(db_picture)
     db.close()
 
@@ -260,6 +265,8 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return
 
     db.refresh(db_picture)
 
@@ -368,6 +375,7 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return pic_to_update
     db.refresh(pic_to_update)
     query = db.query(models.Labbookchildelement).filter_by(
@@ -400,6 +408,7 @@ def restore_picture(db: Session, picture_pk):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return pic_to_update
     db.refresh(pic_to_update)
     return pic_to_update

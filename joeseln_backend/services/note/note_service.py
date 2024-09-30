@@ -57,6 +57,8 @@ def delete_note_relation(db: Session, note_pk, relation_pk):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return
     db.refresh(db_relation)
 
     return get_note_relations(db=db, note_pk=note_pk, params='')
@@ -83,6 +85,8 @@ def create_note(db: Session, note: NoteCreate):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return db_note
     db.refresh(db_note)
     return db_note
 
@@ -105,6 +109,8 @@ def update_note(db: Session, note_pk, note: NoteCreate):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
+        return note_to_update
     db.refresh(note_to_update)
     return note_to_update
 
@@ -127,6 +133,7 @@ def soft_delete_note(db: Session, note_pk, labbook_data):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return note_to_update
     db.refresh(note_to_update)
     query = db.query(models.Labbookchildelement).filter_by(
@@ -159,6 +166,7 @@ def restore_note(db: Session, note_pk):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return note_to_update
     db.refresh(note_to_update)
     return note_to_update

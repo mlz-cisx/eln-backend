@@ -10,7 +10,7 @@ from joeseln_backend.services.file import file_version_service
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
 from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access
+    check_for_labbook_access, check_for_labbook_admin_access
 
 from joeseln_backend.mylogging.root_logger import logger
 
@@ -27,13 +27,20 @@ def get_all_labbook_versions(db: Session, labbook_pk, user):
     return db_labbook_versions
 
 
-def get_labbook_version_metadata(db: Session, version_pk):
+def get_labbook_version_metadata(db: Session, labbook_pk, version_pk, user):
+    if not check_for_labbook_admin_access(db=db, labbook_pk=labbook_pk,
+                                          user=user):
+        return None
     db_labbook_version = db.query(models.Version).get(version_pk)
     # renaming and json.dumps for schema
     return db_labbook_version.version_metadata
 
 
-def restore_labbook_version(db: Session, labbook_pk, version_pk):
+def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
+    if not check_for_labbook_admin_access(db=db, labbook_pk=labbook_pk,
+                                          user=user):
+        return None
+
     db_labbook_version = db.query(models.Version).get(version_pk)
     version_metadata = db_labbook_version.version_metadata
 
@@ -88,7 +95,8 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk):
     title = version_metadata['title']
     db_labbook = add_labbook_version(db=db, labbook_pk=labbook_pk,
                                      summary=summary,
-                                     restored_title=title)
+                                     restored_title=title,
+                                     user=user)
 
     return db_labbook
 
@@ -108,8 +116,11 @@ def update_all_lb_childelements_from_version(db: Session,
             logger.error(e)
 
 
-def add_labbook_version(db: Session, labbook_pk, summary,
+def add_labbook_version(db: Session, labbook_pk, summary, user,
                         restored_title=None, restored_description=None):
+    if not check_for_labbook_admin_access(db=db, labbook_pk=labbook_pk,
+                                          user=user):
+        return None
     db_labbook = db.query(models.Labbook).get(labbook_pk)
     number = 1
     last_db_labbook_version = db.query(models.Version).filter_by(
@@ -123,6 +134,8 @@ def add_labbook_version(db: Session, labbook_pk, summary,
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
+            return db_labbook
         db.refresh(db_labbook)
 
     query = db.query(models.Labbookchildelement).filter_by(
@@ -234,6 +247,11 @@ def add_labbook_version(db: Session, labbook_pk, summary,
     )
 
     db.add(db_labbook_version)
-    db.commit()
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return db_labbook
     db.refresh(db_labbook_version)
     return db_labbook

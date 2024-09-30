@@ -22,8 +22,10 @@ def create_group(db: Session, groupname):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return
     db.refresh(db_group)
+    db.close()
     return db_group
 
 
@@ -39,8 +41,10 @@ def create_user_to_group(db: Session, user_to_group: UserToGroup_Create):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return
     db.refresh(db_group)
+    db.close()
     return db_group
 
 
@@ -53,8 +57,10 @@ def delete_user_to_group(db: Session, user_to_group: UserToGroup_Create):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return
     logger.info(result)
+    db.close()
     return result
 
 
@@ -161,8 +167,10 @@ def add_admin_role(db: Session, username):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
             return success
         db.refresh(user)
+        db.close()
         success = True
         return success
     return success
@@ -178,8 +186,10 @@ def remove_admin_role(db: Session, username):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
             return success
         db.refresh(user)
+        db.close()
         success = True
         return success
     return success
@@ -197,7 +207,9 @@ def remove_all_group_roles(db: Session, username, groupname):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return
+    db.close()
     logger.info(result)
 
 

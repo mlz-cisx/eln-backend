@@ -26,6 +26,7 @@ def update_oidc_user(db: Session, oidc_user: OIDC_User_Create):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
             return
         db.refresh(db_user)
         db_user.groups = oidc_user.realm_access['roles']
@@ -36,6 +37,8 @@ def update_oidc_user(db: Session, oidc_user: OIDC_User_Create):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
+            return db_user
 
         db.refresh(db_user)
         db_user.groups = oidc_user.realm_access['roles']
@@ -61,6 +64,7 @@ def create_user(db: Session, user: User_Create):
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
+        db.close()
         return
     db.refresh(db_user)
     return db_user
@@ -74,6 +78,7 @@ def change_user_password(db: Session, username, hashed_password):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+            db.close()
             return
         db.refresh(db_user)
         return db_user
