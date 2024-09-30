@@ -10,7 +10,7 @@
     </h2>
     <div class="info_created_by">
         Created by {{ instance.created_by }}
-        at {{ instance.created_at }}
+        at {{ instance.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
     </div>
 
     <div>
@@ -25,7 +25,7 @@
                     </h3>
                     <div class="info_created_by">
                         Created by {{ relation.left_content_object.created_by.username}}
-                        at {{ relation.left_content_object.created_at }}
+                        at {{ relation.left_content_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                     </div>
 
                     <div>

@@ -21,7 +21,7 @@
     </h2>
     <div class="info_created_by">
         Created by {{ instance.created_by }}
-        at{{ instance.created_at }}
+        at {{ instance.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
     </div>
 
     <p>Description:
@@ -42,7 +42,7 @@
                 </h2>
                 <div class="info_created_by">
                     Created by {{ child_element.child_object.created_by }}
-                    at {{ child_element.child_object.created_at }}
+                    at {{ child_element.child_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                 </div>
 
                 <div>
@@ -58,7 +58,7 @@
                                 <div class="info_created_by">
                                     Created
                                     by {{ relation.left_content_object.created_by.username }}
-                                    at {{ relation.left_content_object.created_at }}
+                                    at {{ relation.left_content_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                                 </div>
                                 <div>
                                     {{ relation.left_content_object.content }}
@@ -77,7 +77,7 @@
                 </h2>
                 <div class="info_created_by">
                     Created by {{ child_element.child_object.created_by }}
-                    at {{ child_element.child_object.created_at }}
+                    at {{ child_element.child_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                 </div>
 
                 {% if child_element.child_object.rendered_image %}
@@ -94,7 +94,7 @@
                                 <div class="info_created_by">
                                     Created
                                     by {{ relation.left_content_object.created_by.username }}
-                                    at {{ relation.left_content_object.created_at }}
+                                    at {{ relation.left_content_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                                 </div>
                                 <div>
                                     {{ relation.left_content_object.content }}
@@ -118,7 +118,7 @@
                 </h2>
                 <div class="info_created_by">
                     Created by {{ child_element.child_object.created_by }}
-                    at {{ child_element.child_object.created_at }}
+                    at {{ child_element.child_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                 </div>
 
                 <div>
@@ -140,7 +140,7 @@
                                 <div class="info_created_by">
                                     Created
                                     by {{ relation.left_content_object.created_by.username }}
-                                    at {{ relation.left_content_object.created_at }}
+                                    at {{ relation.left_content_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                                 </div>
                                 <div>
                                     {{ relation.left_content_object.content }}
