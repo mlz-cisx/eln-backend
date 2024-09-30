@@ -68,6 +68,15 @@ def get_user_with_groups_by_uname(db: Session, username):
     user = db.query(models.User).filter_by(username=username).first()
     groups = get_user_groups(db=db, username=username)
     user.groups = groups
+    try:
+        del user.password
+        del user.admin
+        del user.created_at
+        del user.last_modified_at
+        del user.oidc_user
+    except KeyError as e:
+        print(e)
+
     return user
 
 
@@ -131,9 +140,7 @@ def get_user_groups_role_groupadmin(db: Session, username):
 
 def update_oidc_user_groups(db: Session, user):
     oidc_groups = user.groups
-    logger.info(oidc_groups)
     user_groups = get_user_groups_role_user(db=db, username=user.username)
-    logger.info(user_groups)
 
     for oidc_group in oidc_groups:
         if not get_group_by_groupname(db=db, groupname=oidc_group):
