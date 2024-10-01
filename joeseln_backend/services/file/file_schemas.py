@@ -5,6 +5,7 @@ from uuid import UUID
 
 from joeseln_backend.conf.content_types import *
 from joeseln_backend.conf.mocks.mock_user import MockUser
+from joeseln_backend.services.user.user_schema import User
 
 
 class File(BaseModel):
@@ -36,8 +37,8 @@ class File(BaseModel):
     location: str = ''
     content_type: int = file_content_type
     content_type_model: str = file_content_type_model
-    last_modified_by: Json[Any] = MockUser
-    created_by: Json[Any] = MockUser
+    last_modified_by: User | Json[Any] = MockUser
+    created_by: User | Json[Any] = MockUser
     fake_metadata: List[str] = []
     is_favourite: bool = False
     is_dss_file: bool = False

@@ -2,11 +2,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 
-from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 from joeseln_backend.models import models
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import *
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_groups, check_for_admin_role
+
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.services.picture import picture_service
 from joeseln_backend.services.file import file_service
@@ -15,7 +13,7 @@ from joeseln_backend.services.labbook.labbook_service import \
     check_for_labbook_access
 
 from joeseln_backend.services.note.note_service import get_note_relations, \
-    get_note_related_comments_count
+    get_note_related_comments_count, get_note
 
 from joeseln_backend.services.file.file_service import get_file_relations, \
     get_file_related_comments_count
@@ -25,7 +23,7 @@ from joeseln_backend.services.picture.picture_service import \
     get_picture_related_comments_count
 
 from joeseln_backend.auth import security
-from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
+
 
 from joeseln_backend.mylogging.root_logger import logger
 
@@ -47,7 +45,7 @@ def get_lb_childelements_for_export(db: Session, labbook_pk, access_token,
 
     for elem in query:
         if elem.child_object_content_type == 30:
-            elem.child_object = db.query(models.Note).get(elem.child_object_id)
+            elem.child_object = get_note(db=db, note_pk=elem.child_object_id)
             elem.relations = get_note_relations(db=db,
                                                 note_pk=elem.child_object_id,
                                                 params='')
@@ -89,10 +87,10 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
 
     for elem in query:
         if elem.child_object_content_type == 30:
-            elem.child_object = db.query(models.Note).get(elem.child_object_id)
+            elem.child_object = get_note(db=db, note_pk=elem.child_object_id)
             elem.num_related_comments = get_note_related_comments_count(db=db,
                                                                         note_pk=elem.child_object_id)
-            db.close()
+
         if elem.child_object_content_type == 40:
             elem.child_object = picture_service.get_picture_in_lb_init(db=db,
                                                                        picture_pk=elem.child_object_id,
@@ -122,11 +120,11 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
     db_labbook_elem.width = labbook_childelem.width
     db_labbook_elem.height = labbook_childelem.height
     db_labbook_elem.last_modified_at = datetime.datetime.now()
-    db_labbook_elem.last_modified_by_id = FAKE_USER_ID
+    db_labbook_elem.last_modified_by_id = user.id
 
     lb_to_update = db.query(models.Labbook).get(db_labbook_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = FAKE_USER_ID
+    lb_to_update.last_modified_by_id = user.id
 
     try:
         db.commit()
@@ -135,12 +133,11 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
         db.close()
         return db_labbook_elem
 
-
     db.refresh(db_labbook_elem)
 
     if db_labbook_elem.child_object_content_type == 30:
-        db_labbook_elem.child_object = db.query(models.Note).get(
-            db_labbook_elem.child_object_id)
+        db_labbook_elem.child_object = get_note(db=db,
+                                                note_pk=db_labbook_elem.child_object_id)
         db_labbook_elem.num_related_comments = get_note_related_comments_count(
             db=db,
             note_pk=db_labbook_elem.child_object_id)
@@ -182,15 +179,15 @@ def create_lb_childelement(db: Session, labbook_pk,
             child_object_content_type=labbook_childelem.child_object_content_type),
         version_number=0,
         created_at=datetime.datetime.now(),
-        created_by_id=FAKE_USER_ID,
+        created_by_id=user.id,
         last_modified_at=datetime.datetime.now(),
-        last_modified_by_id=FAKE_USER_ID
+        last_modified_by_id=user.id
     )
     db.add(db_labbook_elem)
 
     lb_to_update = db.query(models.Labbook).get(labbook_pk)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = FAKE_USER_ID
+    lb_to_update.last_modified_by_id = user.id
 
     try:
         db.commit()
@@ -207,8 +204,8 @@ def create_lb_childelement(db: Session, labbook_pk,
     db.refresh(db_labbook_elem)
 
     if db_labbook_elem.child_object_content_type == 30:
-        db_labbook_elem.child_object = db.query(models.Note).get(
-            db_labbook_elem.child_object_id)
+        db_labbook_elem.child_object = get_note(db=db,
+                                                note_pk=db_labbook_elem.child_object_id)
         db_labbook_elem.num_related_comments = get_note_related_comments_count(
             db=db,
             note_pk=db_labbook_elem.child_object_id)
@@ -245,7 +242,7 @@ def update_all_lb_childelements(db: Session,
         elem.width = lb_childelem.width
         elem.height = lb_childelem.height
         elem.last_modified_at = datetime.datetime.now()
-        elem.last_modified_by_id = FAKE_USER_ID
+        elem.last_modified_by_id = user.id
         try:
             db.commit()
         except SQLAlchemyError as e:

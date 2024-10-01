@@ -56,8 +56,8 @@ class NoteVersion(BaseModel):
     content_type_model: str = version_content_type_model
     content_type: int = version_content_type
 
-    created_by: Json[Any] = MockUser
-    last_modified_by: Json[Any] = MockUser
+    last_modified_by: User | Json[Any] = MockUser
+    created_by: User | Json[Any] = MockUser
 
     class Config:
         populate_by_name = True

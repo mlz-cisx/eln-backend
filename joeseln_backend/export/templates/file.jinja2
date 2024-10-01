@@ -9,8 +9,8 @@
         {{ instance.title }}
     </h2>
     <div class="info_created_by">
-        Created by {{ instance.created_by }}
-        at {{ instance.created_at.strftime("%Y-%m-%d %H:%M:%S")}}
+        Created by {{ instance.created_by.username }}
+        at {{ instance.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
     </div>
 
     <div>

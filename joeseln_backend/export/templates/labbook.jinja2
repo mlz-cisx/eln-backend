@@ -20,7 +20,7 @@
         {{ instance.title }}
     </h2>
     <div class="info_created_by">
-        Created by {{ instance.created_by }}
+        Created by {{ instance.created_by.username }}
         at {{ instance.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
     </div>
 
@@ -41,7 +41,8 @@
                     {{ child_element.child_object.subject }}
                 </h2>
                 <div class="info_created_by">
-                    Created by {{ child_element.child_object.created_by }}
+                    Created
+                    by {{ child_element.child_object.created_by.username }}
                     at {{ child_element.child_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                 </div>
 
@@ -76,7 +77,8 @@
                     {{ child_element.child_object.title }}
                 </h2>
                 <div class="info_created_by">
-                    Created by {{ child_element.child_object.created_by }}
+                    Created
+                    by {{ child_element.child_object.created_by.username }}
                     at {{ child_element.child_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                 </div>
 
@@ -117,7 +119,8 @@
                     {{ child_element.child_object.title }}
                 </h2>
                 <div class="info_created_by">
-                    Created by {{ child_element.child_object.created_by }}
+                    Created
+                    by {{ child_element.child_object.created_by.username }}
                     at {{ child_element.child_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                 </div>
 

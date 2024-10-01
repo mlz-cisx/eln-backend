@@ -104,6 +104,13 @@ def get_labbooks_from_user(db: Session, params, user):
             text(order_text)).offset(params.get('offset')).limit(
             params.get('limit')).all()
 
+    for lb in labbooks:
+        db_user_created = db.query(models.User).get(lb.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            lb.last_modified_by_id)
+        lb.created_by = db_user_created
+        lb.last_modified_by = db_user_modified
+
     return labbooks
 
 
@@ -131,7 +138,7 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
 def get_labbook_for_export(db: Session, labbook_pk):
     db_labbook = db.query(models.Labbook).get(labbook_pk)
     db_user = db.query(models.User).get(db_labbook.created_by_id)
-    db_labbook.created_by = db_user.username
+    db_labbook.created_by = db_user
     return db_labbook
 
 

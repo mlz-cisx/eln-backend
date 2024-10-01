@@ -24,8 +24,10 @@ def get_all_notes(db: Session, params):
 
 def get_note(db: Session, note_pk):
     db_note = db.query(models.Note).get(note_pk)
-    db_user = db.query(models.User).get(db_note.created_by_id)
-    db_note.created_by = db_user.username
+    db_user_created = db.query(models.User).get(db_note.created_by_id)
+    db_user_modified = db.query(models.User).get(db_note.last_modified_by_id)
+    db_note.created_by = db_user_created
+    db_note.last_modified_by= db_user_modified
     return db_note
 
 

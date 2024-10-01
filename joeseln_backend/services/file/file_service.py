@@ -30,6 +30,10 @@ def get_all_files(db: Session, params):
 
 def get_file(db: Session, file_pk):
     db_file = db.query(models.File).get(file_pk)
+    db_user_created = db.query(models.User).get(db_file.created_by_id)
+    db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
+    db_file.created_by = db_user_created
+    db_file.last_modified_by = db_user_modified
 
     db_file = build_download_url_with_token(file_to_process=deepcopy(db_file),
                                             user='foo')

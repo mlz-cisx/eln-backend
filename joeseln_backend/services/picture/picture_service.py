@@ -31,6 +31,10 @@ def get_all_pictures(db: Session, params):
 
 def get_picture(db: Session, picture_pk):
     db_picture = db.query(models.Picture).get(picture_pk)
+    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+    db_picture.created_by = db_user_created
+    db_picture.last_modified_by = db_user_modified
 
     pic = build_download_url_with_token(
         picture=deepcopy(db_picture), user='foo')
@@ -85,6 +89,10 @@ def get_picture_related_comments_count(db: Session, picture_pk):
 
 def get_picture_for_export(db: Session, picture_pk):
     db_picture = db.query(models.Picture).get(picture_pk)
+    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+    db_picture.created_by = db_user_created
+    db_picture.last_modified_by = db_user_modified
     db_picture.rendered_image = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
     return db_picture
 
@@ -96,6 +104,11 @@ def get_picture_filename(db: Session, picture_pk):
 
 def get_picture_in_lb_init(db: Session, picture_pk, access_token, as_export):
     db_picture = db.query(models.Picture).get(picture_pk)
+
+    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+    db_picture.created_by = db_user_created
+    db_picture.last_modified_by= db_user_modified
 
     picture = deepcopy(db_picture)
 

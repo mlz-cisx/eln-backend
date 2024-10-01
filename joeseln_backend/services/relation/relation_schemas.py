@@ -12,6 +12,7 @@ from joeseln_backend.services.file.file_schemas import File
 from joeseln_backend.services.comment.comment_schemas import Comment
 
 from joeseln_backend.conf.mocks.mock_user import MockUser
+from joeseln_backend.services.user.user_schema import User
 
 
 class Relation(BaseModel):
@@ -28,18 +29,19 @@ class Relation(BaseModel):
     private: bool
     deleted: bool
 
-    right_content_object: Picture | Note | File | Comment |None
+    right_content_object: Picture | Note | File | Comment | None
     right_content_type: int
     right_content_type_model: str
     right_object_id: int | str | UUID
 
     created_at: datetime.datetime
     created_by_id: int
-    created_by: Json[Any] = MockUser
 
     last_modified_at: datetime.datetime
     last_modified_by_id: int
-    last_modified_by: Json[Any] = MockUser
+
+    last_modified_by: User | Json[Any] = MockUser
+    created_by: User | Json[Any] = MockUser
 
     display: str = 'Left object id ?, right object id ?'
 

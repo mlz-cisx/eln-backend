@@ -698,6 +698,7 @@ async def patch_picture(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # for all users
     async with request.form() as form:
         bi_img_contents = await form['background_image'].read()
         ri_img_contents = await form['rendered_image'].read()
