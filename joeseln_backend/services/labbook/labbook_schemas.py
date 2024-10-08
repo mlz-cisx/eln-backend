@@ -87,6 +87,6 @@ class LabbookPreviewVersion(BaseModel):
         from_attributes = True
 
 
-class labbook_with_privileges(BaseModel):
+class LabbookWithPrivileges(BaseModel):
     labbook: Labbook | None
     privileges: Privileges | None
