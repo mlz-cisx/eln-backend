@@ -3,6 +3,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import text
 
 from joeseln_backend.auth import security
+from joeseln_backend.services.privileges.privileges_service import \
+    create_note_privileges
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.models import models
 from joeseln_backend.services.note.note_schemas import *
@@ -12,6 +14,18 @@ from joeseln_backend.conf.base_conf import URL_BASE_PATH
 
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.comment.comment_schemas import Comment
+
+from joeseln_backend.services.user_to_group.user_to_group_service import \
+    get_user_group_roles, get_user_group_roles_with_match, check_for_admin_role, \
+    get_user_groups, get_user_groups_role_groupadmin
+
+from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
+    ADMIN
+
+from joeseln_backend.services.labbook.labbook_service import \
+    check_for_labbook_access, check_for_labbook_admin_access
+
+from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 
 
 def get_all_notes(db: Session, params):
@@ -27,8 +41,46 @@ def get_note(db: Session, note_pk):
     db_user_created = db.query(models.User).get(db_note.created_by_id)
     db_user_modified = db.query(models.User).get(db_note.last_modified_by_id)
     db_note.created_by = db_user_created
-    db_note.last_modified_by= db_user_modified
+    db_note.last_modified_by = db_user_modified
     return db_note
+
+
+def get_note_with_privileges(db: Session, note_pk, user):
+    db_note = db.query(models.Note).get(note_pk)
+    if check_for_admin_role(db=db, username=user.username):
+        return {'privileges': ADMIN,
+                'note': db_note}
+
+    lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+    if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                    user=user):
+        return None
+
+    db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+    db_note_creator = db.query(models.User).get(db_note.created_by_id)
+
+    note_created_by = 'USER'
+    if db_note_creator.admin:
+        note_created_by = 'ADMIN'
+
+    if db_lb:
+        if LABBOOK_QUERY_MODE == 'match':
+            user_roles = get_user_group_roles_with_match(db=db,
+                                                         username=user.username,
+                                                         groupname=db_lb.title)
+            privileges = create_note_privileges(created_by=note_created_by,
+                                                user_roles=user_roles)
+
+        else:
+            user_roles = get_user_group_roles(db=db,
+                                              username=user.username,
+                                              groupname=db_lb.title)
+            privileges = create_note_privileges(created_by=note_created_by,
+                                                user_roles=user_roles)
+
+        return {'privileges': privileges, 'note': db_note}
+
+    return None
 
 
 def get_note_relations(db: Session, note_pk, params):

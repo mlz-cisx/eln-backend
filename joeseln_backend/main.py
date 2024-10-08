@@ -142,7 +142,7 @@ def patch_labbook(labbook: labbook_schemas.LabbookPatch,
 
 
 @app.get("/labbooks/{labbook_pk}",
-         response_model=labbook_schemas.labbook_with_privileges)
+         response_model=labbook_schemas.LabbookWithPrivileges)
 def read_labbook(labbook_pk: UUID,
                  db: Session = Depends(get_db),
                  user: User = Depends(get_current_user)):
@@ -417,14 +417,14 @@ def restore_note(
     return db_note
 
 
-@app.get("/notes/{note_pk}/",
-         response_model=note_schemas.Note)
+@app.get("/notes/{note_pk}/", response_model=note_schemas.NoteWithPrivileges)
 def get_note(
         note_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_note = note_service.get_note(db=db, note_pk=note_pk)
+    db_note = note_service.get_note_with_privileges(db=db, note_pk=note_pk,
+                                                    user=user)
     return db_note
 
 
@@ -563,13 +563,15 @@ async def UploadImage(request: Request,
             contents = await form['background_image'].read()
             ret_vals = picture_service.process_picture_upload_form(form=form,
                                                                    db=db,
-                                                                   contents=contents)
+                                                                   contents=contents,
+                                                                   user=user)
         # sketch upload
         elif 'rendered_image' in form.keys():
             contents = await form['rendered_image'].read()
             ret_vals = picture_service.process_sketch_upload_form(form=form,
                                                                   db=db,
-                                                                  contents=contents)
+                                                                  contents=contents,
+                                                                  user=user)
 
         return ret_vals
 
@@ -610,6 +612,8 @@ def get_bi_picture(
         db=db,
         jwt=request.query_params._dict)
     return bi_picture
+
+
 
 
 # TODO check if this is secure: user auth will be done with request.query_params._dict

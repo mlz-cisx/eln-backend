@@ -5,6 +5,7 @@ from uuid import UUID
 
 from joeseln_backend.conf.content_types import *
 from joeseln_backend.conf.mocks.mock_user import MockUser
+from joeseln_backend.services.privileges.privileges_schema import Privileges
 from joeseln_backend.services.user.user_schema import User
 
 
@@ -70,3 +71,8 @@ class NotePreviewVersion(BaseModel):
     metadata: List[Any]
     projects: List[Any]
     metadata_version: int
+
+
+class NoteWithPrivileges(BaseModel):
+    note: Note | None
+    privileges: Privileges | None
