@@ -6,6 +6,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
+from joeseln_backend.services.labbook.labbook_service import \
+    check_for_labbook_access
+from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
+    ADMIN
+from joeseln_backend.services.privileges.privileges_service import \
+    create_pic_privileges
+from joeseln_backend.services.user_to_group.user_to_group_service import \
+    check_for_admin_role, get_user_group_roles_with_match, get_user_group_roles
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.auth import security
 from joeseln_backend.models import models
@@ -13,7 +21,8 @@ from joeseln_backend.helper import db_ordering
 from joeseln_backend.services.entry_path.entry_path_service import create_path, \
     create_entry
 from joeseln_backend.services.picture.picture_schemas import *
-from joeseln_backend.conf.base_conf import PICTURES_BASE_PATH, URL_BASE_PATH
+from joeseln_backend.conf.base_conf import PICTURES_BASE_PATH, URL_BASE_PATH, \
+    LABBOOK_QUERY_MODE
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 from joeseln_backend.services.comment.comment_schemas import Comment
 
@@ -40,6 +49,52 @@ def get_picture(db: Session, picture_pk):
         picture=deepcopy(db_picture), user='foo')
 
     return pic
+
+
+def get_picture_with_privileges(db: Session, picture_pk, user):
+    db_picture = db.query(models.Picture).get(picture_pk)
+    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+    db_picture.created_by = db_user_created
+    db_picture.last_modified_by = db_user_modified
+
+    pic = build_download_url_with_token(
+        picture=deepcopy(db_picture), user='foo')
+
+    if check_for_admin_role(db=db, username=user.username):
+        return {'privileges': ADMIN,
+                'picture': pic}
+
+    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+    if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                    user=user):
+        return None
+
+    db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+    db_pic_creator = db.query(models.User).get(db_picture.created_by_id)
+
+    picture_created_by = 'USER'
+    if db_pic_creator.admin:
+        picture_created_by = 'ADMIN'
+
+    if db_lb:
+        if LABBOOK_QUERY_MODE == 'match':
+            user_roles = get_user_group_roles_with_match(db=db,
+                                                         username=user.username,
+                                                         groupname=db_lb.title)
+            privileges = create_pic_privileges(created_by=picture_created_by,
+                                               user_roles=user_roles)
+
+        else:
+            user_roles = get_user_group_roles(db=db,
+                                              username=user.username,
+                                              groupname=db_lb.title)
+            privileges = create_pic_privileges(created_by=picture_created_by,
+                                               user_roles=user_roles)
+
+        return {'privileges': privileges, 'picture': pic}
+
+    return None
 
 
 def get_picture_relations(db: Session, picture_pk, params):
@@ -108,7 +163,7 @@ def get_picture_in_lb_init(db: Session, picture_pk, access_token, as_export):
     db_user_created = db.query(models.User).get(db_picture.created_by_id)
     db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
     db_picture.created_by = db_user_created
-    db_picture.last_modified_by= db_user_modified
+    db_picture.last_modified_by = db_user_modified
 
     picture = deepcopy(db_picture)
 
@@ -160,7 +215,7 @@ def copy_and_update_picture(db: Session, picture_pk, restored_ri=None,
 
 
 def create_picture(db: Session, title: str, display: str,
-                   width: int, height: int, size: int):
+                   width: int, height: int, size: int, user):
     bi_file_path = f'{create_path(db=db)}'
     ri_file_path = f'{create_path(db=db)}'
     shapes_path = f'{create_path(db=db)}.json'
@@ -179,9 +234,9 @@ def create_picture(db: Session, title: str, display: str,
                                 shapes_image=shapes_path,
                                 shapes_image_size=0,
                                 created_at=datetime.datetime.now(),
-                                created_by_id=FAKE_USER_ID,
+                                created_by_id=user.id,
                                 last_modified_at=datetime.datetime.now(),
-                                last_modified_by_id=FAKE_USER_ID)
+                                last_modified_by_id=user.id)
 
     db.add(db_picture)
     try:
@@ -196,11 +251,11 @@ def create_picture(db: Session, title: str, display: str,
     return db_picture
 
 
-def process_picture_upload_form(form, db, contents):
+def process_picture_upload_form(form, db, contents, user):
     db_picture = create_picture(db=db, title=form['title'],
                                 display=form['background_image'].filename,
                                 width=form['width'], height=form['height'],
-                                size=form['background_image'].size)
+                                size=form['background_image'].size, user=user)
 
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
     ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
@@ -225,7 +280,7 @@ def process_picture_upload_form(form, db, contents):
     return pic
 
 
-def process_sketch_upload_form(form, db, contents):
+def process_sketch_upload_form(form, db, contents, user):
     # print(form['title'])
     # print(form['rendered_image'].filename)
     # print(form['width'])
@@ -236,7 +291,7 @@ def process_sketch_upload_form(form, db, contents):
     db_picture = create_picture(db=db, title=form['title'],
                                 display=form['title'],
                                 width=form['width'], height=form['height'],
-                                size=form['rendered_image'].size)
+                                size=form['rendered_image'].size, user=user)
 
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
     ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'

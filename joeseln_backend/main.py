@@ -588,14 +588,15 @@ def read_pictures(
 
 
 @app.get("/pictures/{picture_pk}/",
-         response_model=picture_schemas.Picture)
+         response_model=picture_schemas.PictureWithPrivileges)
 def get_picture(
         picture_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_picture = picture_service.get_picture(db=db, picture_pk=picture_pk)
-
+    db_picture = picture_service.get_picture_with_privileges(db=db,
+                                                             picture_pk=picture_pk,
+                                                             user=user)
     return db_picture
 
 
@@ -612,8 +613,6 @@ def get_bi_picture(
         db=db,
         jwt=request.query_params._dict)
     return bi_picture
-
-
 
 
 # TODO check if this is secure: user auth will be done with request.query_params._dict

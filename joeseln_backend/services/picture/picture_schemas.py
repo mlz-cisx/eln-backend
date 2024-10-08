@@ -5,6 +5,7 @@ from uuid import UUID
 
 from joeseln_backend.conf.content_types import *
 from joeseln_backend.conf.mocks.mock_user import MockUser
+from joeseln_backend.services.privileges.privileges_schema import Privileges
 from joeseln_backend.services.user.user_schema import User
 
 
@@ -25,7 +26,7 @@ class Picture(BaseModel):
     shapes_image: str = Field(..., alias='download_shapes')
     height: int
     width: int
-    title : str
+    title: str
 
     content_type: int = picture_content_type
     content_type_model: str = picture_content_type_model
@@ -44,7 +45,6 @@ class Picture(BaseModel):
 
 class PictureVersionSummary(BaseModel):
     summary: str
-
 
 
 class PictureVersion(BaseModel):
@@ -80,3 +80,8 @@ class PicturePreviewVersion(BaseModel):
     class Config:
         populate_by_name = True
         from_attributes = True
+
+
+class PictureWithPrivileges(BaseModel):
+    picture: Picture | None
+    privileges: Privileges | None
