@@ -1007,22 +1007,21 @@ async def websocket_endpoint(*, websocket: WebSocket):
                 token = data['auth']
                 # we don't want to transmit any token from backend !
                 del data['auth']
+                # TODO no authentication needed
                 await manager.broadcast_json(message=data)
             elif data['auth'] and '__zone_symbol__value' in json.loads(
                     json.dumps(data['auth'])):
                 # handling keycloak
                 token = json.loads(json.dumps(data['auth']))[
                     '__zone_symbol__value']
+                # TODO do ws authentication here
                 await manager.broadcast_json(message=data)
             else:
                 # handling jwt auth
                 token = data['auth']
+                # TODO do ws authentication here
                 await manager.broadcast_json(message=data)
-            # if token and token != STATIC_WS_TOKEN:
-            #     # TODO do ws authentication here
-            #     await manager.broadcast_json(message=data)
-            # else:
-            #     WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
