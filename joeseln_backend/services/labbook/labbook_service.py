@@ -16,7 +16,6 @@ from joeseln_backend.services.privileges.privileges_service import \
 from joeseln_backend.auth import security
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.base_conf import URL_BASE_PATH
-from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
@@ -65,6 +64,29 @@ def check_for_labbook_admin_access(db: Session, labbook_pk, user):
         if not db_lb:
             return False
     return True
+
+
+def get_all_labbook_ids_from_non_admin_user(db: Session, user):
+    labbooks = []
+    if LABBOOK_QUERY_MODE == 'match':
+        labbooks = db.query(models.Labbook).join(models.Group,
+                                                 models.Labbook.title.contains(
+                                                     models.Group.groupname)).join(
+            models.UserToGroupRole,
+            models.Group.id == models.UserToGroupRole.group_id).join(
+            models.User,
+            models.UserToGroupRole.user_id == models.User.id).filter(
+            models.User.username == user.username).all()
+    elif LABBOOK_QUERY_MODE == 'equal':
+        labbooks = db.query(models.Labbook).join(models.Group,
+                                                 models.Group.groupname == models.Labbook.title).join(
+            models.UserToGroupRole,
+            models.Group.id == models.UserToGroupRole.group_id).join(
+            models.User,
+            models.UserToGroupRole.user_id == models.User.id).filter(
+            models.User.username == user.username).all()
+
+    return [x.id for x in labbooks]
 
 
 def get_labbooks_from_user(db: Session, params, user):
@@ -121,9 +143,9 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
                                     title=labbook.title,
                                     description=labbook.description,
                                     created_at=datetime.datetime.now(),
-                                    created_by_id=FAKE_USER_ID,
+                                    created_by_id=user.id,
                                     last_modified_at=datetime.datetime.now(),
-                                    last_modified_by_id=FAKE_USER_ID)
+                                    last_modified_by_id=user.id)
         db.add(db_labbook)
         try:
             db.commit()
@@ -198,7 +220,7 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
     if lb_privileges['edit']:
         db_labbook.title = labbook.title
         db_labbook.last_modified_at = datetime.datetime.now()
-        db_labbook.last_modified_by_id = FAKE_USER_ID
+        db_labbook.last_modified_by_id = user.id
         try:
             db.commit()
         except SQLAlchemyError as e:

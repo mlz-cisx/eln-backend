@@ -7,7 +7,6 @@ from joeseln_backend.services.note.note_schemas import *
 from joeseln_backend.services.picture import picture_version_service
 from joeseln_backend.services.note import note_version_service
 from joeseln_backend.services.file import file_version_service
-from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
 from joeseln_backend.services.labbook.labbook_service import \
     check_for_labbook_access, check_for_labbook_admin_access
@@ -73,7 +72,8 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
                                                         summary=summary,
                                                         restored_title=title,
                                                         restored_ri_img=ri_img,
-                                                        restored_shapes=shapes)
+                                                        restored_shapes=shapes,
+                                                        user=user)
         if elem['type'] == 'File':
             version = db.query(models.Version).get(
                 elem['child_object_version_id'])
@@ -175,7 +175,8 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
             child_object_version = \
                 picture_version_service.add_picture_version(db=db,
                                                             picture_pk=elem.child_object_id,
-                                                            summary=elem_summary)[
+                                                            summary=elem_summary,
+                                                            user=user)[
                     1]
             picture = db.query(models.Picture).get(elem.child_object_id)
             child_elements.append(
@@ -241,9 +242,9 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
         display=summary,
         content_type_pk=picture_content_type_version,
         created_at=datetime.datetime.now(),
-        created_by_id=FAKE_USER_ID,
+        created_by_id=user.id,
         last_modified_at=datetime.datetime.now(),
-        last_modified_by_id=FAKE_USER_ID
+        last_modified_by_id=user.id
     )
 
     db.add(db_labbook_version)

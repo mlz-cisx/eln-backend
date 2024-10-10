@@ -5,7 +5,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from joeseln_backend.services.picture import picture_service
 from joeseln_backend.models import models
 from joeseln_backend.services.note.note_schemas import *
-from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 
 from joeseln_backend.mylogging.root_logger import logger
 
@@ -26,7 +25,7 @@ def get_picture_version_metadata(db: Session, version_pk):
     return db_picture_version.version_metadata
 
 
-def restore_picture_version(db: Session, picture_pk, version_pk):
+def restore_picture_version(db: Session, picture_pk, version_pk, user):
     db_picture_version = db.query(models.Version).get(version_pk)
     summary = f'restored from v{db_picture_version.number}'
     version_metadata = db_picture_version.version_metadata
@@ -37,12 +36,13 @@ def restore_picture_version(db: Session, picture_pk, version_pk):
                                      summary=summary,
                                      restored_title=title,
                                      restored_ri_img=ri_img,
-                                     restored_shapes=shapes)[0]
+                                     restored_shapes=shapes,
+                                     user=user)[0]
 
     return db_picture
 
 
-def add_picture_version(db: Session, picture_pk, summary,
+def add_picture_version(db: Session, picture_pk, summary, user,
                         restored_title=None, restored_ri_img=None,
                         restored_shapes=None):
     if restored_title is None:
@@ -75,7 +75,7 @@ def add_picture_version(db: Session, picture_pk, summary,
         except SQLAlchemyError as e:
             logger.error(e)
         db.refresh(db_picture)
-        picture_service.restore_picture(db=db, picture_pk=picture_pk)
+        picture_service.restore_picture(db=db, picture_pk=picture_pk, user=user)
 
     version_metadata = {
         'title': db_picture.title,
@@ -94,9 +94,9 @@ def add_picture_version(db: Session, picture_pk, summary,
         display=summary,
         content_type_pk=picture_content_type_version,
         created_at=datetime.datetime.now(),
-        created_by_id=FAKE_USER_ID,
+        created_by_id=user.id,
         last_modified_at=datetime.datetime.now(),
-        last_modified_by_id=FAKE_USER_ID
+        last_modified_by_id=user.id
     )
 
     db.add(db_picture_version)

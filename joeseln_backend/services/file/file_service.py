@@ -10,9 +10,18 @@ from joeseln_backend.services.entry_path.entry_path_service import create_path, 
 from joeseln_backend.auth import security
 from joeseln_backend.models import models
 from joeseln_backend.services.file.file_schemas import *
+from joeseln_backend.services.labbook.labbook_service import \
+    check_for_labbook_access
+from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
+    ADMIN
+from joeseln_backend.services.privileges.privileges_service import \
+    create_file_privileges
+from joeseln_backend.services.user_to_group.user_to_group_service import \
+    check_for_admin_role, get_user_group_roles_with_match, get_user_group_roles
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.helper import db_ordering
-from joeseln_backend.conf.base_conf import FILES_BASE_PATH, URL_BASE_PATH
+from joeseln_backend.conf.base_conf import FILES_BASE_PATH, URL_BASE_PATH, \
+    LABBOOK_QUERY_MODE
 from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 from joeseln_backend.services.comment.comment_schemas import Comment
 
@@ -32,13 +41,61 @@ def get_file(db: Session, file_pk):
     db_file = db.query(models.File).get(file_pk)
     db_user_created = db.query(models.User).get(db_file.created_by_id)
     db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
-    db_file.created_by = db_user_created
-    db_file.last_modified_by = db_user_modified
 
-    db_file = build_download_url_with_token(file_to_process=deepcopy(db_file),
-                                            user='foo')
+    file_content = build_download_url_with_token(
+        file_to_process=deepcopy(db_file),
+        user='foo')
+    file_content.created_by = db_user_created
+    file_content.last_modified_by = db_user_modified
 
-    return db_file
+    return file_content
+
+
+def get_file_with_privileges(db: Session, file_pk, user):
+    db_file = db.query(models.File).get(file_pk)
+    db_user_created = db.query(models.User).get(db_file.created_by_id)
+    db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
+
+    file_content = build_download_url_with_token(
+        file_to_process=deepcopy(db_file),
+        user='foo')
+    file_content.created_by = db_user_created
+    file_content.last_modified_by = db_user_modified
+
+    if check_for_admin_role(db=db, username=user.username):
+        return {'privileges': ADMIN,
+                'file': file_content}
+
+    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+    if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                    user=user):
+        return None
+
+    db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+    db_user = db.query(models.User).get(db_file.created_by_id)
+
+    file_created_by = 'USER'
+    if db_user.admin:
+        file_created_by = 'ADMIN'
+
+    if db_lb:
+        if LABBOOK_QUERY_MODE == 'match':
+            user_roles = get_user_group_roles_with_match(db=db,
+                                                         username=user.username,
+                                                         groupname=db_lb.title)
+            privileges = create_file_privileges(created_by=file_created_by,
+                                                user_roles=user_roles)
+
+        else:
+            user_roles = get_user_group_roles(db=db,
+                                              username=user.username,
+                                              groupname=db_lb.title)
+            privileges = create_file_privileges(created_by=file_created_by,
+                                                user_roles=user_roles)
+
+        return {'privileges': privileges, 'file': file_content}
+
+    return None
 
 
 def get_file_relations(db: Session, file_pk, params):
@@ -57,8 +114,14 @@ def get_file_relations(db: Session, file_pk, params):
 
     for rel in relations:
         if rel.left_content_type == 70:
-            rel.left_content_object = Comment.parse_obj(
-                db.query(models.Comment).get(rel.left_object_id))
+            db_comment = db.query(models.Comment).get(rel.left_object_id)
+
+            db_user_created = db.query(models.User).get(db_comment.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                db_comment.last_modified_by_id)
+            db_comment.created_by = db_user_created
+            db_comment.last_modified_by = db_user_modified
+            rel.left_content_object = Comment.parse_obj(db_comment)
         else:
             rel.left_content_object = None
         rel.right_content_object = db.query(models.File).get(file_pk)

@@ -365,8 +365,10 @@ def create_note(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # for all users
     db_note = note_service.create_note(db=db, note=elem, user=user)
     return db_note
+    # DONE
 
 
 @app.get("/notes/",
@@ -376,9 +378,12 @@ def read_notes(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
+    # for all users with corresponding labbook access
     db_notes = note_service.get_all_notes(db=db,
-                                          params=request.query_params._dict)
+                                          params=request.query_params._dict,
+                                          user=user)
     return db_notes
+    # DONE
 
 
 @app.patch("/notes/{note_pk}/",
@@ -389,8 +394,14 @@ def patch_note(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_note = note_service.update_note(db=db, note_pk=note_pk, note=elem)
+    # admin notes can only be patched by admins
+    db_note = note_service.update_note(db=db, note_pk=note_pk, note=elem,
+                                       user=user)
+
+    if db_note is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
+    # DONE
 
 
 @app.patch("/notes/{note_pk}/soft_delete/",
@@ -598,6 +609,7 @@ def get_picture(
                                                              picture_pk=picture_pk,
                                                              user=user)
     return db_picture
+    # DONE
 
 
 # TODO check if this is secure: user auth will be done with request.query_params._dict
@@ -678,7 +690,8 @@ def soft_delete_picture(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     db_pic = picture_service.soft_delete_picture(db=db, picture_pk=picture_pk,
-                                                 labbook_data=labbook_data)
+                                                 labbook_data=labbook_data,
+                                                 user=user)
     return db_pic
 
 
@@ -689,7 +702,8 @@ def restore_picture(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_pic = picture_service.restore_picture(db=db, picture_pk=picture_pk)
+    db_pic = picture_service.restore_picture(db=db, picture_pk=picture_pk,
+                                             user=user)
     return db_pic
 
 
@@ -711,7 +725,8 @@ async def patch_picture(
                                                     form=form,
                                                     bi_img_contents=bi_img_contents,
                                                     ri_img_contents=ri_img_contents,
-                                                    shapes_contents=shapes_contents)
+                                                    shapes_contents=shapes_contents,
+                                                    user=user)
         return db_picture
 
 
@@ -747,7 +762,8 @@ def add_picture_version(
     # logger.info(user)
     return picture_version_service.add_picture_version(db=db,
                                                        picture_pk=picture_pk,
-                                                       summary=summary.summary)[
+                                                       summary=summary.summary,
+                                                       user=user)[
         0]
 
 
@@ -761,7 +777,8 @@ def restore_picture_version(
     # logger.info(user)
     db_picture = picture_version_service.restore_picture_version(db=db,
                                                                  picture_pk=picture_pk,
-                                                                 version_pk=version_pk)
+                                                                 version_pk=version_pk,
+                                                                 user=user)
     return db_picture
 
 
@@ -995,8 +1012,7 @@ def create_comment(
         comment: comment_schemas.CreateComment,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    logger.info(user)
-    return comment_service.create_comment(db=db, comment=comment)
+    return comment_service.create_comment(db=db, comment=comment, user=user)
 
 
 @app.websocket("/ws/elements/")

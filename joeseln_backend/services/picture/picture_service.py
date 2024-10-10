@@ -23,7 +23,6 @@ from joeseln_backend.services.entry_path.entry_path_service import create_path, 
 from joeseln_backend.services.picture.picture_schemas import *
 from joeseln_backend.conf.base_conf import PICTURES_BASE_PATH, URL_BASE_PATH, \
     LABBOOK_QUERY_MODE
-from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 from joeseln_backend.services.comment.comment_schemas import Comment
 
 from joeseln_backend.mylogging.root_logger import logger
@@ -38,7 +37,7 @@ def get_all_pictures(db: Session, params):
         params.get('limit')).all()
 
 
-def get_picture(db: Session, picture_pk):
+def get_picture(db: Session, picture_pk, user):
     db_picture = db.query(models.Picture).get(picture_pk)
     db_user_created = db.query(models.User).get(db_picture.created_by_id)
     db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
@@ -46,7 +45,7 @@ def get_picture(db: Session, picture_pk):
     db_picture.last_modified_by = db_user_modified
 
     pic = build_download_url_with_token(
-        picture=deepcopy(db_picture), user='foo')
+        picture=deepcopy(db_picture), user=user)
 
     return pic
 
@@ -59,7 +58,7 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
     db_picture.last_modified_by = db_user_modified
 
     pic = build_download_url_with_token(
-        picture=deepcopy(db_picture), user='foo')
+        picture=deepcopy(db_picture), user=user)
 
     if check_for_admin_role(db=db, username=user.username):
         return {'privileges': ADMIN,
@@ -113,8 +112,14 @@ def get_picture_relations(db: Session, picture_pk, params):
 
     for rel in relations:
         if rel.left_content_type == 70:
-            rel.left_content_object = Comment.parse_obj(
-                db.query(models.Comment).get(rel.left_object_id))
+            db_comment = db.query(models.Comment).get(rel.left_object_id)
+
+            db_user_created = db.query(models.User).get(db_comment.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                db_comment.last_modified_by_id)
+            db_comment.created_by = db_user_created
+            db_comment.last_modified_by = db_user_modified
+            rel.left_content_object = Comment.parse_obj(db_comment)
         else:
             rel.left_content_object = None
         rel.right_content_object = db.query(models.Picture).get(picture_pk)
@@ -275,7 +280,7 @@ def process_picture_upload_form(form, db, contents, user):
         shapes.close()
 
     pic = build_download_url_with_token(
-        picture=deepcopy(db_picture), user='foo')
+        picture=deepcopy(db_picture), user=user)
 
     return pic
 
@@ -309,26 +314,26 @@ def process_sketch_upload_form(form, db, contents, user):
         shapes.close()
 
     pic = build_download_url_with_token(
-        picture=deepcopy(db_picture), user='foo')
+        picture=deepcopy(db_picture), user=user)
 
     return pic
 
 
 def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
-                   shapes_contents):
+                   shapes_contents, user):
     db_picture = db.query(models.Picture).get(pk)
     db_picture.width = form['width']
     db_picture.height = form['height']
     db_picture.last_modified_at = datetime.datetime.now()
-    db_picture.last_modified_by_id = FAKE_USER_ID
+    db_picture.last_modified_by_id = user.id
 
     lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
     lb_elem.last_modified_at = datetime.datetime.now()
-    lb_elem.last_modified_by_id = FAKE_USER_ID
+    lb_elem.last_modified_by_id = user.id
 
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = FAKE_USER_ID
+    lb_to_update.last_modified_by_id = user.id
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -354,14 +359,12 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
 
     transmit({'model_name': 'picture', 'model_pk': str(pk)})
     pic = build_download_url_with_token(
-        picture=deepcopy(db_picture), user='foo')
+        picture=deepcopy(db_picture), user=user)
 
     return pic
 
 
 def build_download_url_with_token(picture, user):
-    user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
@@ -425,20 +428,20 @@ def build_picture_download_url_with_token(picture_to_process, user):
     return picture_to_process
 
 
-def soft_delete_picture(db: Session, picture_pk, labbook_data):
+def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
     pic_to_update = db.query(models.Picture).get(picture_pk)
     pic_to_update.deleted = True
     pic_to_update.last_modified_at = datetime.datetime.now()
-    pic_to_update.last_modified_by_id = FAKE_USER_ID
+    pic_to_update.last_modified_by_id = user.id
 
     lb_elem = db.query(models.Labbookchildelement).get(pic_to_update.elem_id)
     lb_elem.deleted = True
     lb_elem.last_modified_at = datetime.datetime.now()
-    lb_elem.last_modified_by_id = FAKE_USER_ID
+    lb_elem.last_modified_by_id = user.id
 
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = FAKE_USER_ID
+    lb_to_update.last_modified_by_id = user.id
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -458,20 +461,20 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data):
     return pic_to_update
 
 
-def restore_picture(db: Session, picture_pk):
+def restore_picture(db: Session, picture_pk, user):
     pic_to_update = db.query(models.Picture).get(picture_pk)
     pic_to_update.deleted = False
     pic_to_update.last_modified_at = datetime.datetime.now()
-    pic_to_update.last_modified_by_id = FAKE_USER_ID
+    pic_to_update.last_modified_by_id = user.id
 
     lb_elem = db.query(models.Labbookchildelement).get(pic_to_update.elem_id)
     lb_elem.deleted = False
     lb_elem.last_modified_at = datetime.datetime.now()
-    lb_elem.last_modified_by_id = FAKE_USER_ID
+    lb_elem.last_modified_by_id = user.id
 
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = FAKE_USER_ID
+    lb_to_update.last_modified_by_id = user.id
     try:
         db.commit()
     except SQLAlchemyError as e:

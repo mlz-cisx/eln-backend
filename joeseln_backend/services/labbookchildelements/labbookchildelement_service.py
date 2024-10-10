@@ -24,7 +24,6 @@ from joeseln_backend.services.picture.picture_service import \
 
 from joeseln_backend.auth import security
 
-
 from joeseln_backend.mylogging.root_logger import logger
 
 
@@ -143,7 +142,8 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
             note_pk=db_labbook_elem.child_object_id)
     if db_labbook_elem.child_object_content_type == 40:
         db_labbook_elem.child_object = picture_service.get_picture(db=db,
-                                                                   picture_pk=db_labbook_elem.child_object_id)
+                                                                   picture_pk=db_labbook_elem.child_object_id,
+                                                                   user=user)
         db_labbook_elem.num_related_comments = get_picture_related_comments_count(
             db=db, picture_pk=db_labbook_elem.child_object_id)
 
@@ -211,7 +211,8 @@ def create_lb_childelement(db: Session, labbook_pk,
             note_pk=db_labbook_elem.child_object_id)
     if db_labbook_elem.child_object_content_type == 40:
         db_labbook_elem.child_object = picture_service.get_picture(db=db,
-                                                                   picture_pk=db_labbook_elem.child_object_id)
+                                                                   picture_pk=db_labbook_elem.child_object_id,
+                                                                   user=user)
         db_labbook_elem.num_related_comments = get_picture_related_comments_count(
             db=db, picture_pk=db_labbook_elem.child_object_id)
 

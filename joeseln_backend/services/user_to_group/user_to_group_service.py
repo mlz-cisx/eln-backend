@@ -164,6 +164,11 @@ def check_for_admin_role(db: Session, username):
     return user.admin
 
 
+def check_for_admin_role_with_user_id(db: Session, user_id):
+    user = db.query(models.User).get(user_id)
+    return user.admin
+
+
 def add_admin_role(db: Session, username):
     success = False
     user = db.query(models.User).filter(

@@ -6,6 +6,7 @@ from uuid import UUID
 
 from joeseln_backend.conf.content_types import *
 from joeseln_backend.conf.mocks.mock_user import MockUser
+from joeseln_backend.services.user.user_schema import User
 
 
 class Comment(BaseModel):
@@ -16,11 +17,11 @@ class Comment(BaseModel):
 
     created_at: datetime.datetime
     created_by_id: int
-    created_by: Json[Any] = json.loads(MockUser)
+    created_by: User | Json[Any] = MockUser
 
     last_modified_at: datetime.datetime
     last_modified_by_id: int
-    last_modified_by: Json[Any] = json.loads(MockUser)
+    last_modified_by: User | Json[Any] = MockUser
 
     deleted: bool
 
