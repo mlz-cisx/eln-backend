@@ -13,6 +13,7 @@ ADMIN_NOTES_GROUPADMIN = {
     'edit': False,
     'delete': True,
     # to trash and restore elements from instrument
+    # in case some data from instrument are not needed
     'trash': True,
     'restore': True,
 }

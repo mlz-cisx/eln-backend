@@ -1,3 +1,6 @@
+import sys
+
+sys.path.insert(0, '../../../..')
 from joeseln_backend.auth.security import get_password_hash
 from joeseln_backend.services.user.user_schema import User_Create
 from joeseln_backend.services.user.user_service import \

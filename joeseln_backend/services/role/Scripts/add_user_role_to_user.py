@@ -1,3 +1,6 @@
+import sys
+
+sys.path.insert(0, '../../../..')
 from joeseln_backend.services.user_to_group.user_to_group_service import \
     add_as_user_to_group
 from joeseln_backend.database.database import SessionLocal
