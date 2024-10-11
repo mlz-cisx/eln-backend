@@ -411,8 +411,7 @@ def soft_delete_note(
         labbook_data: labbookchildelement_schemas.Labbookchildelement_Delete,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    # admin notes can only be deleted  by admins
-    # all other notes can be deleted by admins, groupadmins
+    # admin notes can only be deleted  by admins or groupadmins
     db_note = note_service.soft_delete_note(db=db, note_pk=note_pk,
                                             labbook_data=labbook_data,
                                             user=user)
@@ -428,7 +427,10 @@ def restore_note(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_note = note_service.restore_note(db=db, note_pk=note_pk)
+    # admin notes can only be restored  by admins or groupadmins
+    db_note = note_service.restore_note(db=db, note_pk=note_pk, user=user)
+    if db_note is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
 
 

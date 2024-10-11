@@ -289,6 +289,7 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
         else:
             return None
 
+    # Third possibility: it's a note created by user
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
     if lb_elem.labbook_id in labbook_ids:
@@ -314,28 +315,65 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
     return None
 
 
-def restore_note(db: Session, note_pk):
+def restore_note(db: Session, note_pk, user):
     note_to_update = db.query(models.Note).get(note_pk)
     note_to_update.deleted = False
     note_to_update.last_modified_at = datetime.datetime.now()
-    note_to_update.last_modified_by_id = FAKE_USER_ID
+    note_to_update.last_modified_by_id = user.id
 
     lb_elem = db.query(models.Labbookchildelement).get(note_to_update.elem_id)
     lb_elem.deleted = False
     lb_elem.last_modified_at = datetime.datetime.now()
-    lb_elem.last_modified_by_id = FAKE_USER_ID
+    lb_elem.last_modified_by_id = user.id
 
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = FAKE_USER_ID
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
+    lb_to_update.last_modified_by_id = user.id
+
+    # First possibility
+    if check_for_admin_role(db=db, username=user.username):
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return note_to_update
+        db.refresh(note_to_update)
         return note_to_update
-    db.refresh(note_to_update)
-    return note_to_update
+
+    # Second possibility: it's a note created by admin
+    if check_for_admin_role_with_user_id(db=db,
+                                         user_id=note_to_update.created_by_id):
+        logger.info('created by')
+
+        # allowed only for groupadmins
+        if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                          user=user):
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return note_to_update
+            db.refresh(note_to_update)
+            return note_to_update
+        else:
+            return None
+
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    if lb_elem.labbook_id in labbook_ids:
+        logger.info('in labbook ids')
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return note_to_update
+        db.refresh(note_to_update)
+        return note_to_update
+
+    return None
 
 
 def get_note_export_link(db: Session, note_pk):
