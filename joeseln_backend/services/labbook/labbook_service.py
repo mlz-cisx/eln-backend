@@ -32,6 +32,9 @@ def get_labbooks(db: Session, params):
 def check_for_labbook_access(db: Session, labbook_pk, user):
     if not check_for_admin_role(db=db, username=user.username):
         user_groups = get_user_groups(db=db, username=user.username)
+
+        if len(user_groups) == 0:
+            return False
         if LABBOOK_QUERY_MODE == 'match':
             db_lb = db.query(models.Labbook).filter(
                 or_(*[models.Labbook.title.contains(name) for name in
@@ -51,6 +54,9 @@ def check_for_labbook_admin_access(db: Session, labbook_pk, user):
     if not check_for_admin_role(db=db, username=user.username):
         user_groups = get_user_groups_role_groupadmin(db=db,
                                                       username=user.username)
+        if len(user_groups) == 0:
+            return False
+
         if LABBOOK_QUERY_MODE == 'match':
             db_lb = db.query(models.Labbook).filter(
                 or_(*[models.Labbook.title.contains(name) for name in
@@ -170,6 +176,8 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
                 'labbook': db.query(models.Labbook).get(labbook_pk)}
 
     user_groups = get_user_groups(db=db, username=user.username)
+    if len(user_groups) == 0:
+        return None
     db_lb = None
     if LABBOOK_QUERY_MODE == 'match':
         db_lb = db.query(models.Labbook).filter(
@@ -240,6 +248,8 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
 def get_labbook_export_link(db: Session, labbook_pk, user):
     if not check_for_admin_role(db=db, username=user.username):
         user_groups = get_user_groups(db=db, username=user.username)
+        if len(user_groups) == 0:
+            return None
         db_lb = db.query(models.Labbook).filter(
             or_(*[models.Labbook.title.contains(name) for name in
                   user_groups])).filter(
