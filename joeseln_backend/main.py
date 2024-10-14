@@ -418,6 +418,7 @@ def soft_delete_note(
     if db_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
+    # DONE
 
 
 @app.patch("/notes/{note_pk}/restore/",
@@ -432,6 +433,7 @@ def restore_note(
     if db_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
+    # DONE
 
 
 @app.get("/notes/{note_pk}/", response_model=note_schemas.NoteWithPrivileges)
@@ -443,6 +445,7 @@ def get_note(
     db_note = note_service.get_note_with_privileges(db=db, note_pk=note_pk,
                                                     user=user)
     return db_note
+    # DONE
 
 
 @app.get("/notes/{note_pk}/export/",
@@ -454,8 +457,12 @@ def export_note_content(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     dwldable_note = export_note.get_export_data(db=db, note_pk=note_pk,
-                                                jwt=request.query_params._dict)
+                                                jwt=request.query_params._dict
+                                                ['jwt'])
+    if dwldable_note is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_note
+    # DONE
 
 
 @app.get("/notes/{note_pk}/get_export_link/")
@@ -464,8 +471,12 @@ def export_link__note(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    export_link = note_service.get_note_export_link(db=db, note_pk=note_pk)
+    export_link = note_service.get_note_export_link(db=db, note_pk=note_pk,
+                                                    user=user)
+    if export_link is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return export_link
+    # DONE
 
 
 @app.get("/notes/{note_pk}/history/")
@@ -670,8 +681,12 @@ def export_picture_content(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     dwldable_pic = export_picture.get_export_data(db=db, picture_pk=picture_pk,
-                                                  jwt=request.query_params._dict)
+                                                  jwt=request.query_params._dict
+                                                  ['jwt'])
+    if dwldable_pic is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_pic
+    # DONE
 
 
 @app.get("/pictures/{picture_pk}/get_export_link/")
@@ -682,9 +697,14 @@ def export_link_picture(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     export_link = picture_service.get_picture_export_link(db=db,
-                                                          picture_pk=picture_pk)
+                                                          picture_pk=picture_pk,
+                                                          user=user)
+    if export_link is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
 
     return export_link
+    # DONE
+
 
 
 @app.patch("/pictures/{picture_pk}/soft_delete/",
@@ -894,9 +914,14 @@ def export_file_content(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     dwldable_file = export_file.get_export_data(db=db, file_pk=file_pk,
-                                                jwt=request.query_params._dict)
+                                                jwt=request.query_params._dict
+                                                ['jwt'])
+    if dwldable_file is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
 
     return dwldable_file
+    # DONE
+
 
 
 @app.get("/files/{file_pk}/get_export_link/")
@@ -906,8 +931,13 @@ def export_link_file(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    export_link = file_service.get_file_export_link(db=db, file_pk=file_pk)
+    export_link = file_service.get_file_export_link(db=db, file_pk=file_pk,
+                                                    user=user)
+    if export_link is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return export_link
+    # DONE
+
 
 
 @app.patch("/files/{file_pk}/soft_delete/",

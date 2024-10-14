@@ -4,12 +4,15 @@ from weasyprint import HTML
 import io
 from fastapi.responses import Response
 
+from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.services.picture.picture_service import \
     get_picture_for_export, get_picture_relations
 
 
 def get_export_data(db, picture_pk, jwt):
-    # print(jwt)
+    user = get_user_from_jwt(token=jwt)
+    if user is None:
+        return
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, '', 'templates')
     env = Environment(loader=FileSystemLoader(templates_dir))

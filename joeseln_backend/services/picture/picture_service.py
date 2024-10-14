@@ -114,7 +114,8 @@ def get_picture_relations(db: Session, picture_pk, params):
         if rel.left_content_type == 70:
             db_comment = db.query(models.Comment).get(rel.left_object_id)
 
-            db_user_created = db.query(models.User).get(db_comment.created_by_id)
+            db_user_created = db.query(models.User).get(
+                db_comment.created_by_id)
             db_user_modified = db.query(models.User).get(
                 db_comment.last_modified_by_id)
             db_comment.created_by = db_user_created
@@ -402,22 +403,28 @@ def build_shapes_response(picture_pk, db, jwt):
     return value
 
 
-def get_picture_export_link(db: Session, picture_pk):
+def get_picture_export_link(db: Session, picture_pk, user):
     db_picture = db.query(models.Picture).get(picture_pk)
     db_picture = build_picture_download_url_with_token(
         picture_to_process=db_picture,
-        user='foo')
+        user=user)
+    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+
     export_link = {
         'url': db_picture.path,
         'filename': f'{db_picture.title}.pdf'
     }
 
-    return export_link
+    if check_for_admin_role(db=db,
+                            username=user.username) or check_for_labbook_access(
+        db=db, labbook_pk=lb_elem.labbook_id,
+        user=user):
+        return export_link
+
+    return None
 
 
 def build_picture_download_url_with_token(picture_to_process, user):
-    user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(

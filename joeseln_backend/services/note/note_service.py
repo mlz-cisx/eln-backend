@@ -376,21 +376,26 @@ def restore_note(db: Session, note_pk, user):
     return None
 
 
-def get_note_export_link(db: Session, note_pk):
+def get_note_export_link(db: Session, note_pk, user):
     db_note = db.query(models.Note).get(note_pk)
     db_note = build_note_download_url_with_token(note_to_process=db_note,
-                                                 user='foo')
+                                                 user=user)
+    lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
     export_link = {
         'url': db_note.path,
         'filename': f'{db_note.subject}.pdf'
     }
 
-    return export_link
+    if check_for_admin_role(db=db,
+                            username=user.username) or check_for_labbook_access(
+        db=db, labbook_pk=lb_elem.labbook_id,
+        user=user):
+        return export_link
+
+    return None
 
 
 def build_note_download_url_with_token(note_to_process, user):
-    user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(

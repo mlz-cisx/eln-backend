@@ -1,6 +1,7 @@
 LABBOOK_GROUPADMIN = {
     'fullAccess': False,
     'view': True,
+     # edit right includes versioning
     'edit': True,
     'delete': False,
     'trash': False,

@@ -116,7 +116,8 @@ def get_file_relations(db: Session, file_pk, params):
         if rel.left_content_type == 70:
             db_comment = db.query(models.Comment).get(rel.left_object_id)
 
-            db_user_created = db.query(models.User).get(db_comment.created_by_id)
+            db_user_created = db.query(models.User).get(
+                db_comment.created_by_id)
             db_user_modified = db.query(models.User).get(
                 db_comment.last_modified_by_id)
             db_comment.created_by = db_user_created
@@ -267,22 +268,28 @@ def build_file_download_response(file_pk, db, jwt):
     return value
 
 
-def get_file_export_link(db: Session, file_pk):
+def get_file_export_link(db: Session, file_pk, user):
     db_file = db.query(models.File).get(file_pk)
     db_file = build_file_download_url_with_token(
         file_to_process=db_file,
-        user='foo')
+        user=user)
     export_link = {
         'url': db_file.path,
         'filename': f'{db_file.title}.pdf'
     }
 
-    return export_link
+    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+
+    if check_for_admin_role(db=db,
+                            username=user.username) or check_for_labbook_access(
+        db=db, labbook_pk=lb_elem.labbook_id,
+        user=user):
+        return export_link
+
+    return None
 
 
 def build_file_download_url_with_token(file_to_process, user):
-    user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
