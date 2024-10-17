@@ -37,6 +37,6 @@ def get_order_params(ordering):
         case '-file_size':
             return 'file_size desc'
         case None:
-            return ''
+            return 'id desc'
         case _:
-            return ''
+            return 'id desc'

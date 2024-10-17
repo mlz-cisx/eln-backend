@@ -21,7 +21,8 @@ def get_export_data(db, lb_pk, jwt):
     template = env.get_template('labbook.jinja2')
     lb = get_labbook_for_export(db=db, labbook_pk=lb_pk)
     elems = get_lb_childelements_for_export(db=db, labbook_pk=lb_pk,
-                                            access_token=jwt, as_export=True)
+                                            access_token=jwt, user=user,
+                                            as_export=True)
     data = {'instance': lb, 'labbook_child_elements': elems}
     buf = io.StringIO()
     buf.write(template.render(data))

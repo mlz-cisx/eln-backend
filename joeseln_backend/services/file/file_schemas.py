@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, Json
 from uuid import UUID
 
 from joeseln_backend.conf.content_types import *
-from joeseln_backend.conf.mocks.mock_user import MockUser
+from joeseln_backend.services.privileges.privileges_schema import Privileges
 from joeseln_backend.services.user.user_schema import User
 
 
@@ -37,8 +37,8 @@ class File(BaseModel):
     location: str = ''
     content_type: int = file_content_type
     content_type_model: str = file_content_type_model
-    last_modified_by: User | Json[Any] = MockUser
-    created_by: User | Json[Any] = MockUser
+    last_modified_by: User
+    created_by: User
     fake_metadata: List[str] = []
     is_favourite: bool = False
     is_dss_file: bool = False
@@ -73,8 +73,8 @@ class FileVersion(BaseModel):
     content_type_model: str = version_content_type_model
     content_type: int = version_content_type
 
-    created_by: Json[Any] = MockUser
-    last_modified_by: Json[Any] = MockUser
+    created_by: User
+    last_modified_by: User
 
     class Config:
         populate_by_name = True
@@ -95,3 +95,7 @@ class FilePreviewVersion(BaseModel):
     class Config:
         populate_by_name = True
         from_attributes = True
+
+class FileWithPrivileges(BaseModel):
+    file: File | None
+    privileges: Privileges | None

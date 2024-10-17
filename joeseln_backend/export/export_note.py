@@ -19,7 +19,9 @@ def get_export_data(db, note_pk, jwt):
     template = env.get_template('note.jinja2')
 
     db_note = get_note(db=db, note_pk=note_pk)
-    db_note_relations = get_note_relations(db=db, note_pk=note_pk, params=None)
+    db_note_relations = get_note_relations(db=db, note_pk=note_pk,
+                                           params=None,
+                                           user=user)
     data = {'instance': db_note, 'note_relations': db_note_relations}
     buf = io.StringIO()
     buf.write(template.render(data))

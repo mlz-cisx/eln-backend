@@ -228,7 +228,7 @@ async def create_labbook_elem(
     if lb_element is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_element
-    # DONE but has to be integrated with post note, file, picture,
+    # DONE has to be integrated with post note, file, picture,
 
 
 @app.patch("/labbooks/{labbook_pk}/elements/{element_pk}/",
@@ -444,6 +444,8 @@ def get_note(
     # logger.info(user)
     db_note = note_service.get_note_with_privileges(db=db, note_pk=note_pk,
                                                     user=user)
+    if db_note is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
     # DONE
 
@@ -487,17 +489,23 @@ def get_note_history(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     return ['ok']
+    # DONE not in use
 
 
 @app.get("/notes/{note_pk}/versions/",
          response_model=list[note_schemas.NoteVersion])
 async def get_note_versions(
-        request: Request,
         note_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return note_version_service.get_all_note_versions(db=db, note_pk=note_pk)
+    note_versions = note_version_service.get_all_note_versions(db=db,
+                                                               note_pk=note_pk,
+                                                               user=user)
+    if note_versions is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return note_versions
+    # DONE
 
 
 @app.post("/notes/{note_pk}/versions/", response_model=note_schemas.Note)
@@ -509,8 +517,12 @@ def add_note_version(
     # logger.info(user)
     db_note = note_version_service.add_note_version(db=db,
                                                     note_pk=note_pk,
-                                                    summary=summary.summary)[0]
+                                                    summary=summary.summary,
+                                                    user=user)[0]
+    if db_note is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
+    # DONE
 
 
 @app.post("/notes/{note_pk}/versions/{version_pk}/restore/")
@@ -521,19 +533,31 @@ async def restore_note_version(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     db_note = note_version_service.restore_note_version(db=db, note_pk=note_pk,
-                                                        version_pk=version_pk)
+                                                        version_pk=version_pk,
+                                                        user=user)
+    if db_note is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
+    # DONE
 
 
 @app.get("/notes/{note_pk}/versions/{version_pk}/preview/",
          response_model=note_schemas.NotePreviewVersion)
 async def preview_note_version(
+        note_pk: UUID,
         version_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return note_version_service.get_note_version_metadata(db=db,
-                                                          version_pk=version_pk)
+    version_metadata = note_version_service.get_note_version_metadata(db=db,
+                                                                      note_pk=note_pk,
+                                                                      version_pk=version_pk,
+                                                                      user=user)
+
+    if version_metadata is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return version_metadata
+    # DONE
 
 
 @app.get("/notes/{note_pk}/relations/",
@@ -544,7 +568,9 @@ def get_note_relations(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     return note_service.get_note_relations(db=db, note_pk=note_pk,
-                                           params=request.query_params._dict)
+                                           params=request.query_params._dict,
+                                           user=user)
+    # DONE
 
 
 @app.post("/notes/{note_pk}/relations/")
@@ -555,6 +581,7 @@ def add_note_relation(
         user: User = Depends(get_current_user)):
     logger.info(request.query_params._dict)
     return ['ok']
+    # DONE not in use
 
 
 @app.put("/notes/{note_pk}/relations/{relation_pk}/")
@@ -566,6 +593,7 @@ def put_note_relation(
         user: User = Depends(get_current_user)):
     logger.info(request.query_params._dict)
     return ['ok']
+    # DONE not in use
 
 
 @app.delete("/notes/{note_pk}/relations/{relation_pk}/")
@@ -575,9 +603,14 @@ def delete_note_relation(
         relation_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    note_service.delete_note_relation(db=db, note_pk=note_pk,
-                                      relation_pk=relation_pk)
-    return ['ok']
+    note_rel = note_service.delete_note_relation(db=db, note_pk=note_pk,
+                                                 relation_pk=relation_pk,
+                                                 user=user)
+
+    if note_rel is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return note_rel
+    # DONE
 
 
 @app.post("/pictures/", response_model=picture_schemas.Picture)
@@ -611,8 +644,10 @@ def read_pictures(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     db_pictures = picture_service.get_all_pictures(db=db,
-                                                   params=request.query_params._dict)
+                                                   params=request.query_params._dict,
+                                                   user=user)
     return db_pictures
+    # DONE
 
 
 @app.get("/pictures/{picture_pk}/",
@@ -706,7 +741,6 @@ def export_link_picture(
     # DONE
 
 
-
 @app.patch("/pictures/{picture_pk}/soft_delete/",
            response_model=picture_schemas.Picture)
 def soft_delete_picture(
@@ -769,13 +803,17 @@ def get_picture_history(
 @app.get("/pictures/{picture_pk}/versions/",
          response_model=list[picture_schemas.PictureVersion])
 def get_picture_versions(
-        request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return picture_version_service.get_all_picture_versions(db=db,
-                                                            picture_pk=picture_pk)
+    picture_versions = picture_version_service.get_all_picture_versions(db=db,
+                                                                        picture_pk=picture_pk,
+                                                                        user=user)
+    if picture_versions is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return picture_versions
+    # DONE
 
 
 @app.post("/pictures/{picture_pk}/versions/",
@@ -786,11 +824,16 @@ def add_picture_version(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return picture_version_service.add_picture_version(db=db,
-                                                       picture_pk=picture_pk,
-                                                       summary=summary.summary,
-                                                       user=user)[
+    picture_version = picture_version_service.add_picture_version(db=db,
+                                                                  picture_pk=picture_pk,
+                                                                  summary=summary.summary,
+                                                                  user=user)[
         0]
+
+    if picture_version is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return picture_version
+    # DONE
 
 
 @app.post("/pictures/{picture_pk}/versions/{version_pk}/restore/")
@@ -805,7 +848,10 @@ def restore_picture_version(
                                                                  picture_pk=picture_pk,
                                                                  version_pk=version_pk,
                                                                  user=user)
+    if db_picture is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_picture
+    # DONE
 
 
 @app.get("/pictures/{picture_pk}/versions/{version_pk}/preview/",
@@ -816,8 +862,16 @@ def preview_picture_version(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return picture_version_service.get_picture_version_metadata(db=db,
-                                                                version_pk=version_pk)
+    version_metadata = picture_version_service.get_picture_version_metadata(
+        db=db,
+        picture_pk=picture_pk,
+        version_pk=version_pk,
+        user=user)
+
+    if version_metadata is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return version_metadata
+    # DONE
 
 
 @app.get("/pictures/{picture_pk}/relations/",
@@ -851,9 +905,11 @@ async def UploadFile(request: Request,
     async with request.form() as form:
         contents = await form['path'].read()
         ret_vals = file_service.process_file_upload_form(form=form, db=db,
-                                                         contents=contents)
+                                                         contents=contents,
+                                                         user=user)
 
         return ret_vals
+    # DONE
 
 
 @app.get("/files/",
@@ -864,9 +920,11 @@ def read_files(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     db_files = file_service.get_all_files(db=db,
-                                          params=request.query_params._dict)
+                                          params=request.query_params._dict,
+                                          user=user)
 
     return db_files
+    # DONE
 
 
 @app.patch("/files/{file_pk}", response_model=file_schemas.File)
@@ -876,18 +934,25 @@ def patch_file(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    file_reponse = file_service.update_file(file_pk=file_pk, db=db, elem=elem)
+    file_reponse = file_service.update_file(file_pk=file_pk, db=db, elem=elem,
+                                            user=user)
+    if file_reponse is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return file_reponse
+    # DONE
 
 
-@app.get("/files/{file_pk}", response_model=file_schemas.File)
+@app.get("/files/{file_pk}", response_model=file_schemas.FileWithPrivileges)
 def get_file(
         file_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    file_reponse = file_service.get_file(db=db, file_pk=file_pk)
-    return file_reponse
+    file_response = file_service.get_file_with_privileges(db=db,
+                                                          file_pk=file_pk,
+                                                          user=user)
+    return file_response
+    # DONE
 
 
 @app.get("/files/{file_pk}/download",
@@ -900,9 +965,14 @@ def download_file(
     # logger.info(user)
     dwldable_file = file_service.build_file_download_response(file_pk=file_pk,
                                                               db=db,
-                                                              jwt=request.query_params._dict)
+                                                              jwt=
+                                                              request.query_params._dict[
+                                                                  'jwt'])
 
+    if dwldable_file is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_file
+    # DONE
 
 
 @app.get("/files/{file_pk}/export",
@@ -923,7 +993,6 @@ def export_file_content(
     # DONE
 
 
-
 @app.get("/files/{file_pk}/get_export_link/")
 def export_link_file(
         request: Request,
@@ -939,7 +1008,6 @@ def export_link_file(
     # DONE
 
 
-
 @app.patch("/files/{file_pk}/soft_delete/",
            response_model=file_schemas.File)
 def soft_delete_file(
@@ -949,8 +1017,13 @@ def soft_delete_file(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     db_file = file_service.soft_delete_file(db=db, file_pk=file_pk,
-                                            labbook_data=labbook_data)
+                                            labbook_data=labbook_data,
+                                            user=user)
+    if db_file is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_file
+    # DONE
+
 
 
 @app.patch("/files/{file_pk}/restore/",
@@ -960,7 +1033,7 @@ def restore_file(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_file = file_service.restore_file(db=db, file_pk=file_pk)
+    db_file = file_service.restore_file(db=db, file_pk=file_pk, user=user)
     return db_file
 
 
@@ -972,6 +1045,7 @@ def get_file_history(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     return ['ok']
+    # DONE not implemented
 
 
 @app.get("/files/{file_pk}/versions/",
@@ -982,7 +1056,13 @@ def get_file_versions(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return file_version_service.get_all_file_versions(db=db, file_pk=file_pk)
+    file_versions = file_version_service.get_all_file_versions(db=db,
+                                                               file_pk=file_pk,
+                                                               user=user)
+    if file_versions is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return file_versions
+    # DONE
 
 
 @app.post("/files/{file_pk}/versions/", response_model=file_schemas.File)
@@ -992,8 +1072,13 @@ def add_file_version(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return file_version_service.add_file_version(db=db, file_pk=file_pk,
-                                                 summary=summary.summary)[0]
+    file_version = file_version_service.add_file_version(db=db, file_pk=file_pk,
+                                                         summary=summary.summary,
+                                                         user=user)[0]
+    if file_version is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return file_version
+    # DONE
 
 
 @app.post("/files/{file_pk}/versions/{version_pk}/restore/")
@@ -1004,8 +1089,13 @@ def restore_file_version(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     db_file = file_version_service.restore_file_version(db=db, file_pk=file_pk,
-                                                        version_pk=version_pk)
+                                                        version_pk=version_pk,
+                                                        user=user)
+    if db_file is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_file
+    # DONE
+
 
 
 @app.get("/files/{file_pk}/versions/{version_pk}/preview/",
@@ -1016,8 +1106,16 @@ def preview_file_version(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return file_version_service.get_file_version_metadata(db=db,
-                                                          version_pk=version_pk)
+    version_metadata = file_version_service.get_file_version_metadata \
+        (db=db,
+         file_pk=file_pk,
+         version_pk=version_pk,
+         user=user)
+
+    if version_metadata is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return version_metadata
+    # DONE
 
 
 @app.get("/files/{file_pk}/relations/",

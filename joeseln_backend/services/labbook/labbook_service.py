@@ -21,12 +21,6 @@ from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 
 
-def get_labbooks(db: Session, params):
-    order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
-    return db.query(models.Labbook).filter_by(
-        deleted=bool(params.get('deleted'))).order_by(
-        text(order_params)).offset(params.get('offset')).limit(
-        params.get('limit')).all()
 
 
 def check_for_labbook_access(db: Session, labbook_pk, user):
@@ -98,10 +92,19 @@ def get_all_labbook_ids_from_non_admin_user(db: Session, user):
 def get_labbooks_from_user(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     if check_for_admin_role(db=db, username=user.username):
-        return db.query(models.Labbook).filter_by(
+        lbs = db.query(models.Labbook).filter_by(
             deleted=bool(params.get('deleted'))).order_by(
             text(order_params)).offset(params.get('offset')).limit(
             params.get('limit')).all()
+        for lb in lbs:
+            db_user_created = db.query(models.User).get(lb.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                lb.last_modified_by_id)
+            lb.created_by = db_user_created
+            lb.last_modified_by = db_user_modified
+
+        return lbs
+
     if order_params:
         order_text = f'labbook.{order_params}'
     else:
@@ -160,6 +163,12 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
             db.close()
             return None
         db.refresh(db_labbook)
+        db_user_created = db.query(models.User).get(db_labbook.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            db_labbook.last_modified_by_id)
+        db_labbook.created_by = db_user_created
+        db_labbook.last_modified_by = db_user_modified
+
     return db_labbook
 
 
@@ -172,8 +181,15 @@ def get_labbook_for_export(db: Session, labbook_pk):
 
 def get_labbook_with_privileges(db: Session, labbook_pk, user):
     if check_for_admin_role(db=db, username=user.username):
+        lb = db.query(models.Labbook).get(labbook_pk)
+        db_user_created = db.query(models.User).get(lb.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            lb.last_modified_by_id)
+        lb.created_by = db_user_created
+        lb.last_modified_by = db_user_modified
+
         return {'privileges': ADMIN,
-                'labbook': db.query(models.Labbook).get(labbook_pk)}
+                'labbook': lb}
 
     user_groups = get_user_groups(db=db, username=user.username)
     if len(user_groups) == 0:
@@ -201,6 +217,12 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
                                               groupname=db_lb.title)
 
             privileges = create_labbook_privileges(user_roles=user_roles)
+
+        db_user_created = db.query(models.User).get(db_lb.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            db_lb.last_modified_by_id)
+        db_lb.created_by = db_user_created
+        db_lb.last_modified_by = db_user_modified
 
         return {'privileges': privileges, 'labbook': db_lb}
 
@@ -241,6 +263,12 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
     #     transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
     # except RuntimeError as e:
     #     print(e)
+    db_user_created = db.query(models.User).get(db_labbook.created_by_id)
+    db_user_modified = db.query(models.User).get(
+        db_labbook.last_modified_by_id)
+    db_labbook.created_by = db_user_created
+    db_labbook.last_modified_by = db_user_modified
+
 
     return db_labbook
 

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
 from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access
+    check_for_labbook_access, get_all_labbook_ids_from_non_admin_user
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
 from joeseln_backend.services.privileges.privileges_service import \
@@ -28,13 +28,43 @@ from joeseln_backend.services.comment.comment_schemas import Comment
 from joeseln_backend.mylogging.root_logger import logger
 
 
-def get_all_pictures(db: Session, params):
+def get_all_pictures(db: Session, params, user):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
-    return db.query(models.Picture).filter_by(
-        deleted=bool(params.get('deleted'))).order_by(
-        text(order_params)).offset(params.get('offset')).limit(
+    if check_for_admin_role(db=db, username=user.username):
+        pics =  db.query(models.Picture).filter_by(
+            deleted=bool(params.get('deleted'))).order_by(
+            text(order_params)).offset(params.get('offset')).limit(
+            params.get('limit')).all()
+        for pic in pics:
+            db_user_created = db.query(models.User).get(pic.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                pic.last_modified_by_id)
+            pic.created_by = db_user_created
+            pic.last_modified_by = db_user_modified
+
+        return pics
+
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    pics = db.query(models.Picture).filter_by(
+        deleted=bool(params.get('deleted'))). \
+        join(models.Labbookchildelement,
+             models.Picture.elem_id ==
+             models.Labbookchildelement.id).filter(
+        models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+        text('picture.' + order_params)).offset(
+        params.get('offset')).limit(
         params.get('limit')).all()
+
+    for pic in pics:
+        db_user_created = db.query(models.User).get(pic.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            pic.last_modified_by_id)
+        pic.created_by = db_user_created
+        pic.last_modified_by = db_user_modified
+
+    return pics
 
 
 def get_picture(db: Session, picture_pk, user):
@@ -118,12 +148,21 @@ def get_picture_relations(db: Session, picture_pk, params):
                 db_comment.created_by_id)
             db_user_modified = db.query(models.User).get(
                 db_comment.last_modified_by_id)
+            rel.created_by = db_user_created
+            rel.last_modified_by = db_user_modified
             db_comment.created_by = db_user_created
             db_comment.last_modified_by = db_user_modified
             rel.left_content_object = Comment.parse_obj(db_comment)
         else:
             rel.left_content_object = None
-        rel.right_content_object = db.query(models.Picture).get(picture_pk)
+        db_picture = db.query(models.Picture).get(picture_pk)
+        db_user_created = db.query(models.User).get(db_picture.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            db_picture.last_modified_by_id)
+        db_picture.created_by = db_user_created
+        db_picture.last_modified_by = db_user_modified
+        rel.right_content_object = db_picture
+
     return relations
 
 
@@ -141,7 +180,7 @@ def delete_picture_relation(db: Session, picture_pk, relation_pk):
     return get_picture_relations(db=db, picture_pk=picture_pk, params='')
 
 
-def get_picture_related_comments_count(db: Session, picture_pk):
+def get_picture_related_comments_count(db: Session, picture_pk, user):
     relations_count = db.query(models.Relation).filter_by(
         right_object_id=picture_pk, deleted=False, left_content_type=70).count()
 
@@ -283,6 +322,9 @@ def process_picture_upload_form(form, db, contents, user):
     pic = build_download_url_with_token(
         picture=deepcopy(db_picture), user=user)
 
+    pic.created_by = user
+    pic.last_modified_by = user
+
     return pic
 
 
@@ -328,6 +370,9 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
     db_picture.last_modified_at = datetime.datetime.now()
     db_picture.last_modified_by_id = user.id
 
+    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+
+
     lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
@@ -361,6 +406,9 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
     transmit({'model_name': 'picture', 'model_pk': str(pk)})
     pic = build_download_url_with_token(
         picture=deepcopy(db_picture), user=user)
+
+    pic.created_by = db_user_created
+    pic.last_modified_by = user
 
     return pic
 

@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field, Json
 from uuid import UUID
 
 from joeseln_backend.conf.content_types import *
-from joeseln_backend.conf.mocks.mock_user import MockUser
 from joeseln_backend.services.user.user_schema import User
 
 
@@ -17,11 +16,11 @@ class Comment(BaseModel):
 
     created_at: datetime.datetime
     created_by_id: int
-    created_by: User | Json[Any] = MockUser
+    created_by: User
 
     last_modified_at: datetime.datetime
     last_modified_by_id: int
-    last_modified_by: User | Json[Any] = MockUser
+    last_modified_by: User
 
     deleted: bool
 

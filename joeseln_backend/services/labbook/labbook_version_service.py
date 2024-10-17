@@ -23,6 +23,14 @@ def get_all_labbook_versions(db: Session, labbook_pk, user):
     for db_labbook_version in db_labbook_versions:
         db_labbook_version.metadata = json.dumps(
             json.loads(json.dumps(db_labbook_version.version_metadata)))
+
+        db_user_created = db.query(models.User).get(
+            db_labbook_version.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            db_labbook_version.last_modified_by_id)
+        db_labbook_version.created_by = db_user_created
+        db_labbook_version.last_modified_by = db_user_modified
+
     return db_labbook_versions
 
 
@@ -57,6 +65,7 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
                                                   note_pk=elem[
                                                       'child_object_id'],
                                                   summary=summary,
+                                                  user=user,
                                                   restored_content=content,
                                                   restored_subject=subject)
 
@@ -84,7 +93,8 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
                                                       'child_object_id'],
                                                   summary=summary,
                                                   restored_title=title,
-                                                  restored_description=description)
+                                                  restored_description=description,
+                                                  user=user)
 
     # 2. restore child elements position
     update_all_lb_childelements_from_version(db=db, labbook_childelems=
@@ -147,10 +157,13 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
     elem_summary = f'v{number} of labbook {db_labbook.title}'
     for elem in query:
         if elem.child_object_content_type == 30:
-            child_object_version = note_version_service.add_note_version(db=db,
-                                                                         note_pk=elem.child_object_id,
-                                                                         summary=elem_summary)[
-                1]
+            child_object_version = \
+                note_version_service.add_note_version(db=db,
+                                                      note_pk=elem.child_object_id,
+                                                      summary=elem_summary,
+                                                      user=user
+                                                      )[
+                    1]
             note = db.query(models.Note).get(elem.child_object_id)
             child_elements.append(
                 {"width": elem.width,
@@ -201,7 +214,8 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
         if elem.child_object_content_type == 50:
             child_object_version = file_version_service.add_file_version(db=db,
                                                                          file_pk=elem.child_object_id,
-                                                                         summary=elem_summary)[
+                                                                         summary=elem_summary,
+                                                                         user=user)[
                 1]
             file = db.query(models.File).get(elem.child_object_id)
             child_elements.append(

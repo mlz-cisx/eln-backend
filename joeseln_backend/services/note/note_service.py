@@ -9,7 +9,6 @@ from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.models import models
 from joeseln_backend.services.note.note_schemas import *
 from joeseln_backend.helper import db_ordering
-from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 from joeseln_backend.conf.base_conf import URL_BASE_PATH
 
 from joeseln_backend.mylogging.root_logger import logger
@@ -33,10 +32,18 @@ def get_all_notes(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
 
     if check_for_admin_role(db=db, username=user.username):
-        return db.query(models.Note).filter_by(
+        notes=  db.query(models.Note).filter_by(
             deleted=bool(params.get('deleted'))).order_by(
             text(order_params)).offset(params.get('offset')).limit(
             params.get('limit')).all()
+        for note in notes:
+            db_user_created = db.query(models.User).get(note.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                note.last_modified_by_id)
+            note.created_by = db_user_created
+            note.last_modified_by = db_user_modified
+
+        return notes
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
@@ -49,6 +56,14 @@ def get_all_notes(db: Session, params, user):
         text('note.' + order_params)).offset(
         params.get('offset')).limit(
         params.get('limit')).all()
+
+    for note in notes:
+        db_user_created = db.query(models.User).get(note.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            note.last_modified_by_id)
+        note.created_by = db_user_created
+        note.last_modified_by = db_user_modified
+
 
     return notes
 
@@ -64,6 +79,11 @@ def get_note(db: Session, note_pk):
 
 def get_note_with_privileges(db: Session, note_pk, user):
     db_note = db.query(models.Note).get(note_pk)
+    db_user_created = db.query(models.User).get(db_note.created_by_id)
+    db_user_modified = db.query(models.User).get(
+        db_note.last_modified_by_id)
+    db_note.created_by = db_user_created
+    db_note.last_modified_by = db_user_modified
     if check_for_admin_role(db=db, username=user.username):
         return {'privileges': ADMIN,
                 'note': db_note}
@@ -100,56 +120,86 @@ def get_note_with_privileges(db: Session, note_pk, user):
     return None
 
 
-def get_note_relations(db: Session, note_pk, params):
-    if not params:
-        relations = db.query(models.Relation).filter_by(
-            right_object_id=note_pk, deleted=False).order_by(
-            models.Relation.created_at).all()
-    else:
-        order_params = db_ordering.get_order_params(
-            ordering=params.get('ordering'))
-
-        relations = db.query(models.Relation).filter_by(
-            right_object_id=note_pk, deleted=False).order_by(
-            text(order_params)).offset(params.get('offset')).limit(
-            params.get('limit')).all()
-
-    for rel in relations:
-        if rel.left_content_type == 70:
-            db_comment = db.query(models.Comment).get(rel.left_object_id)
-
-            db_user_created = db.query(models.User).get(
-                db_comment.created_by_id)
-            db_user_modified = db.query(models.User).get(
-                db_comment.last_modified_by_id)
-            db_comment.created_by = db_user_created
-            db_comment.last_modified_by = db_user_modified
-            rel.left_content_object = Comment.parse_obj(db_comment)
-
+def get_note_relations(db: Session, note_pk, params, user):
+    db_note = db.query(models.Note).get(note_pk)
+    lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                user=user):
+        if not params:
+            relations = db.query(models.Relation).filter_by(
+                right_object_id=note_pk, deleted=False).order_by(
+                models.Relation.created_at).all()
         else:
-            rel.left_content_object = None
-        rel.right_content_object = db.query(models.Note).get(note_pk)
-    return relations
+            order_params = db_ordering.get_order_params(
+                ordering=params.get('ordering'))
+
+            relations = db.query(models.Relation).filter_by(
+                right_object_id=note_pk, deleted=False).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+
+        for rel in relations:
+            if rel.left_content_type == 70:
+                db_comment = db.query(models.Comment).get(rel.left_object_id)
+
+                db_user_created = db.query(models.User).get(
+                    db_comment.created_by_id)
+                db_user_modified = db.query(models.User).get(
+                    db_comment.last_modified_by_id)
+                rel.created_by = db_user_created
+                rel.last_modified_by = db_user_modified
+                db_comment.created_by = db_user_created
+                db_comment.last_modified_by = db_user_modified
+                rel.left_content_object = Comment.parse_obj(db_comment)
+
+            else:
+                rel.left_content_object = None
 
 
-def delete_note_relation(db: Session, note_pk, relation_pk):
-    db_relation = db.query(models.Relation).get(relation_pk)
-    db_relation.deleted = True
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
-        return
-    db.refresh(db_relation)
+            db_user_created = db.query(models.User).get(db_note.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                db_note.last_modified_by_id)
+            db_note.created_by = db_user_created
+            db_note.last_modified_by = db_user_modified
+            rel.right_content_object = db_note
 
-    return get_note_relations(db=db, note_pk=note_pk, params='')
+        return relations
+    return []
 
 
-def get_note_related_comments_count(db: Session, note_pk):
+def delete_note_relation(db: Session, note_pk, relation_pk, user):
+    db_note = db.query(models.Note).get(note_pk)
+    lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                user=user):
+        db_relation = db.query(models.Relation).get(relation_pk)
+        db_relation.deleted = True
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        db.refresh(db_relation)
+
+        return get_note_relations(db=db, note_pk=note_pk, params='', user=user)
+    return None
+
+
+def get_note_related_comments_count(db: Session, note_pk, user):
+    # TODO should we do this?
+    # db_note = db.query(models.Note).get(note_pk)
+    # lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+    # if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+    #                             user=user):
+    #     relations_count = db.query(models.Relation).filter_by(
+    #         right_object_id=note_pk, deleted=False,
+    #         left_content_type=70).count()
+    #     return relations_count
+    # return 0
     relations_count = db.query(models.Relation).filter_by(
-        right_object_id=note_pk, deleted=False, left_content_type=70).count()
-
+        right_object_id=note_pk, deleted=False,
+        left_content_type=70).count()
     return relations_count
 
 
@@ -184,6 +234,8 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
     note_to_update.last_modified_at = datetime.datetime.now()
     note_to_update.last_modified_by_id = user.id
 
+    db_user_created = db.query(models.User).get(note_to_update.created_by_id)
+
     lb_elem = db.query(models.Labbookchildelement).get(note_to_update.elem_id)
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
@@ -199,8 +251,13 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
         except SQLAlchemyError as e:
             logger.error(e)
             db.close()
+            note_to_update.created_by = db_user_created
+            note_to_update.last_modified_by = user
             return note_to_update
         db.refresh(note_to_update)
+        # ws transmit via event
+        note_to_update.created_by = db_user_created
+        note_to_update.last_modified_by = user
         return note_to_update
 
     # Second possibility: note is created by admin und user is now not admin
@@ -217,8 +274,13 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
         except SQLAlchemyError as e:
             logger.error(e)
             db.close()
+            note_to_update.created_by = db_user_created
+            note_to_update.last_modified_by = user
             return note_to_update
         db.refresh(note_to_update)
+        # ws transmit via event
+        note_to_update.created_by = db_user_created
+        note_to_update.last_modified_by = user
         return note_to_update
 
     return None
@@ -230,6 +292,9 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
     note_to_update.deleted = True
     note_to_update.last_modified_at = datetime.datetime.now()
     note_to_update.last_modified_by_id = user.id
+
+    db_user_created = db.query(models.User).get(note_to_update.created_by_id)
+
 
     lb_elem = db.query(models.Labbookchildelement).get(note_to_update.elem_id)
     lb_elem.deleted = True
@@ -247,6 +312,9 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
         except SQLAlchemyError as e:
             logger.error(e)
             db.close()
+
+            note_to_update.created_by = db_user_created
+            note_to_update.last_modified_by = user
             return note_to_update
         db.refresh(note_to_update)
         query = db.query(models.Labbookchildelement).filter_by(
@@ -259,6 +327,9 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
                      'model_pk': labbook_data.labbook_pk})
             except RuntimeError as e:
                 logger.error(e)
+
+        note_to_update.created_by = db_user_created
+        note_to_update.last_modified_by = user
         return note_to_update
 
     # Second possibility: it's a note created by admin
@@ -285,6 +356,9 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
                          'model_pk': labbook_data.labbook_pk})
                 except RuntimeError as e:
                     logger.error(e)
+
+            note_to_update.created_by = db_user_created
+            note_to_update.last_modified_by = user
             return note_to_update
         else:
             return None
@@ -310,6 +384,9 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
                      'model_pk': labbook_data.labbook_pk})
             except RuntimeError as e:
                 logger.error(e)
+
+        note_to_update.created_by = db_user_created
+        note_to_update.last_modified_by = user
         return note_to_update
 
     return None
@@ -320,6 +397,9 @@ def restore_note(db: Session, note_pk, user):
     note_to_update.deleted = False
     note_to_update.last_modified_at = datetime.datetime.now()
     note_to_update.last_modified_by_id = user.id
+
+    db_user_created = db.query(models.User).get(note_to_update.created_by_id)
+
 
     lb_elem = db.query(models.Labbookchildelement).get(note_to_update.elem_id)
     lb_elem.deleted = False
@@ -339,6 +419,9 @@ def restore_note(db: Session, note_pk, user):
             db.close()
             return note_to_update
         db.refresh(note_to_update)
+
+        note_to_update.created_by = db_user_created
+        note_to_update.last_modified_by = user
         return note_to_update
 
     # Second possibility: it's a note created by admin
@@ -356,6 +439,8 @@ def restore_note(db: Session, note_pk, user):
                 db.close()
                 return note_to_update
             db.refresh(note_to_update)
+            note_to_update.created_by = db_user_created
+            note_to_update.last_modified_by = user
             return note_to_update
         else:
             return None
@@ -371,6 +456,10 @@ def restore_note(db: Session, note_pk, user):
             db.close()
             return note_to_update
         db.refresh(note_to_update)
+
+        note_to_update.created_by = db_user_created
+        note_to_update.last_modified_by = user
+
         return note_to_update
 
     return None

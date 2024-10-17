@@ -13,9 +13,11 @@ def search_with_model(db, model, search_text):
 
         for result in results:
             lb_elem = db.query(models.Labbookchildelement).get(result.elem_id)
+            created_by = db.query(models.User).get(
+                lb_elem.created_by_id)
             res_dic = {'content_type_model': 'shared_elements.note',
                        'display': result.subject,
-                       'created_by': mock_user.MockUser,
+                       'created_by': created_by,
                        'pk': str(lb_elem.labbook_id),
                        'labbook_pos_y': lb_elem.position_y,
                        'element_pk': str(result.id)}
@@ -27,9 +29,11 @@ def search_with_model(db, model, search_text):
                 models.File.description.like(f'%{search_text}%'))).all()
         for result in results:
             lb_elem = db.query(models.Labbookchildelement).get(result.elem_id)
+            created_by = db.query(models.User).get(
+                lb_elem.created_by_id)
             res_dic = {'content_type_model': 'shared_elements.file',
                        'display': result.title,
-                       'created_by': mock_user.MockUser,
+                       'created_by': created_by,
                        'pk': str(lb_elem.labbook_id),
                        'labbook_pos_y': lb_elem.position_y,
                        'element_pk': str(result.id)}
@@ -40,9 +44,11 @@ def search_with_model(db, model, search_text):
             or_(models.Picture.title.like(f'%{search_text}%'))).all()
         for result in results:
             lb_elem = db.query(models.Labbookchildelement).get(result.elem_id)
+            created_by = db.query(models.User).get(
+                lb_elem.created_by_id)
             res_dic = {'content_type_model': 'pictures.picture',
                        'display': result.title,
-                       'created_by': mock_user.MockUser,
+                       'created_by': created_by,
                        'pk': str(lb_elem.labbook_id),
                        'labbook_pos_y': lb_elem.position_y,
                        'element_pk': str(result.id)}
@@ -55,13 +61,14 @@ def search_with_model(db, model, search_text):
                 models.Labbook.description.like(f'%{search_text}%'))).all()
 
         for result in results:
+            created_by = db.query(models.User).get(
+                result.created_by_id)
             res_dic = {'content_type_model': 'labbooks.labbook',
                        'display': result.title,
-                       'created_by': mock_user.MockUser,
+                       'created_by': created_by,
                        'pk': str(result.id),
                        'labbook_pos_y': 0,
                        'element_pk': str(result.id)}
             result_array.append(res_dic)
-
 
     return result_array

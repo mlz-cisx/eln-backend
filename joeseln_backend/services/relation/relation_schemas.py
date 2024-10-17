@@ -10,8 +10,6 @@ from joeseln_backend.services.note.note_schemas import Note
 from joeseln_backend.services.picture.picture_schemas import Picture
 from joeseln_backend.services.file.file_schemas import File
 from joeseln_backend.services.comment.comment_schemas import Comment
-
-from joeseln_backend.conf.mocks.mock_user import MockUser
 from joeseln_backend.services.user.user_schema import User
 
 
@@ -40,8 +38,8 @@ class Relation(BaseModel):
     last_modified_at: datetime.datetime
     last_modified_by_id: int
 
-    last_modified_by: User | Json[Any] = MockUser
-    created_by: User | Json[Any] = MockUser
+    last_modified_by: User
+    created_by: User
 
     display: str = 'Left object id ?, right object id ?'
 

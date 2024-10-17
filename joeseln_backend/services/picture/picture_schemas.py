@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field, Json
 from uuid import UUID
 
 from joeseln_backend.conf.content_types import *
-from joeseln_backend.conf.mocks.mock_user import MockUser
 from joeseln_backend.services.privileges.privileges_schema import Privileges
 from joeseln_backend.services.user.user_schema import User
 
@@ -30,8 +29,8 @@ class Picture(BaseModel):
 
     content_type: int = picture_content_type
     content_type_model: str = picture_content_type_model
-    last_modified_by: User | Json[Any] = MockUser
-    created_by: User | Json[Any] = MockUser
+    last_modified_by: User
+    created_by: User
     # alt
     display: str
     fake_metadata: List[str] = []
@@ -61,8 +60,8 @@ class PictureVersion(BaseModel):
     content_type_model: str = version_content_type_model
     content_type: int = version_content_type
 
-    last_modified_by: User | Json[Any] = MockUser
-    created_by: User | Json[Any] = MockUser
+    last_modified_by: User
+    created_by: User
 
     class Config:
         populate_by_name = True

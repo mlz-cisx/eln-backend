@@ -5,46 +5,79 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
+from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.services.entry_path.entry_path_service import create_path, \
     create_entry
 from joeseln_backend.auth import security
 from joeseln_backend.models import models
 from joeseln_backend.services.file.file_schemas import *
 from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access
+    check_for_labbook_access, get_all_labbook_ids_from_non_admin_user, \
+    check_for_labbook_admin_access
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
 from joeseln_backend.services.privileges.privileges_service import \
     create_file_privileges
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    check_for_admin_role, get_user_group_roles_with_match, get_user_group_roles
+    check_for_admin_role, get_user_group_roles_with_match, get_user_group_roles, \
+    check_for_admin_role_with_user_id
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.base_conf import FILES_BASE_PATH, URL_BASE_PATH, \
     LABBOOK_QUERY_MODE
-from joeseln_backend.conf.mocks.mock_user import FAKE_USER_ID
 from joeseln_backend.services.comment.comment_schemas import Comment
 
 from joeseln_backend.mylogging.root_logger import logger
 
 
-def get_all_files(db: Session, params):
+def get_all_files(db: Session, params, user):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
-    return db.query(models.File).filter_by(
-        deleted=bool(params.get('deleted'))).order_by(
-        text(order_params)).offset(params.get('offset')).limit(
+
+    if check_for_admin_role(db=db, username=user.username):
+        files = db.query(models.File).filter_by(
+            deleted=bool(params.get('deleted'))).order_by(
+            text(order_params)).offset(params.get('offset')).limit(
+            params.get('limit')).all()
+        for file in files:
+            db_user_created = db.query(models.User).get(file.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                file.last_modified_by_id)
+            file.created_by = db_user_created
+            file.last_modified_by = db_user_modified
+
+        return files
+
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    files = db.query(models.File).filter_by(
+        deleted=bool(params.get('deleted'))). \
+        join(models.Labbookchildelement,
+             models.File.elem_id ==
+             models.Labbookchildelement.id).filter(
+        models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+        text('file.' + order_params)).offset(
+        params.get('offset')).limit(
         params.get('limit')).all()
 
+    for file in files:
+        db_user_created = db.query(models.User).get(file.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            file.last_modified_by_id)
+        file.created_by = db_user_created
+        file.last_modified_by = db_user_modified
 
-def get_file(db: Session, file_pk):
+    return files
+
+
+def get_file(db: Session, file_pk, user):
     db_file = db.query(models.File).get(file_pk)
     db_user_created = db.query(models.User).get(db_file.created_by_id)
     db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
 
     file_content = build_download_url_with_token(
         file_to_process=deepcopy(db_file),
-        user='foo')
+        user=user)
     file_content.created_by = db_user_created
     file_content.last_modified_by = db_user_modified
 
@@ -58,7 +91,7 @@ def get_file_with_privileges(db: Session, file_pk, user):
 
     file_content = build_download_url_with_token(
         file_to_process=deepcopy(db_file),
-        user='foo')
+        user=user)
     file_content.created_by = db_user_created
     file_content.last_modified_by = db_user_modified
 
@@ -120,12 +153,21 @@ def get_file_relations(db: Session, file_pk, params):
                 db_comment.created_by_id)
             db_user_modified = db.query(models.User).get(
                 db_comment.last_modified_by_id)
+            rel.created_by = db_user_created
+            rel.last_modified_by = db_user_modified
             db_comment.created_by = db_user_created
             db_comment.last_modified_by = db_user_modified
             rel.left_content_object = Comment.parse_obj(db_comment)
         else:
             rel.left_content_object = None
-        rel.right_content_object = db.query(models.File).get(file_pk)
+
+        db_file = db.query(models.File).get(file_pk)
+        db_user_created = db.query(models.User).get(db_file.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            db_file.last_modified_by_id)
+        db_file.created_by = db_user_created
+        db_file.last_modified_by = db_user_modified
+
     return relations
 
 
@@ -143,7 +185,7 @@ def delete_file_relation(db: Session, file_pk, relation_pk):
     return get_file_relations(db=db, file_pk=file_pk, params='')
 
 
-def get_file_related_comments_count(db: Session, file_pk):
+def get_file_related_comments_count(db: Session, file_pk, user):
     relations_count = db.query(models.Relation).filter_by(
         right_object_id=file_pk, deleted=False, left_content_type=70).count()
 
@@ -157,7 +199,8 @@ def get_lb_pk_from_file(db: Session, file_pk):
 
 
 def create_file(db: Session, title: str,
-                name: str, file_size: int, description: str, mime_type: str):
+                name: str, file_size: int, description: str, mime_type: str,
+                user):
     file_path = f'{create_path(db=db)}'
 
     upload_entry_id = create_entry(db=db)
@@ -177,9 +220,9 @@ def create_file(db: Session, title: str,
                           file_size=file_size,
                           mime_type=mime_type,
                           created_at=datetime.datetime.now(),
-                          created_by_id=FAKE_USER_ID,
+                          created_by_id=user.id,
                           last_modified_at=datetime.datetime.now(),
-                          last_modified_by_id=FAKE_USER_ID)
+                          last_modified_by_id=user.id)
 
     db.add(db_file)
     try:
@@ -194,32 +237,71 @@ def create_file(db: Session, title: str,
     return db_file
 
 
-def update_file(file_pk, db: Session, elem: FilePatch):
+def update_file(file_pk, db: Session, elem: FilePatch, user):
     db_file = db.query(models.File).get(file_pk)
     db_file.title = elem.title
     db_file.description = elem.description
     db_file.last_modified_at = datetime.datetime.now()
-    db_file.last_modified_by_id = FAKE_USER_ID
+    db_file.last_modified_by_id = user.id
+
+    db_user_created = db.query(models.User).get(db_file.created_by_id)
 
     lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
     lb_elem.last_modified_at = datetime.datetime.now()
-    lb_elem.last_modified_by_id = FAKE_USER_ID
+    lb_elem.last_modified_by_id = user.id
 
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = FAKE_USER_ID
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
+    lb_to_update.last_modified_by_id = user.id
+
+    # First possibility
+    if check_for_admin_role(db=db, username=user.username):
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+
+            db_file.created_by = db_user_created
+            db_file.last_modified_by = user
+            return db_file
+
+        db.refresh(db_file)
+        transmit({'model_name': 'file', 'model_pk': str(file_pk)})
+
+        db_file.created_by = db_user_created
+        db_file.last_modified_by = user
         return db_file
-    db.refresh(db_file)
-    transmit({'model_name': 'file', 'model_pk': str(file_pk)})
-    return db_file
+
+    # Second possibility: file is created by admin und user is now not admin
+    if check_for_admin_role_with_user_id(db=db,
+                                         user_id=db_file.created_by_id):
+        return None
+
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    # Third possibility: consider a note created by non admin
+    if lb_elem.labbook_id in labbook_ids:
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+
+            db_file.created_by = db_user_created
+            db_file.last_modified_by = user
+            return db_file
+        db.refresh(db_file)
+        transmit({'model_name': 'file', 'model_pk': str(file_pk)})
+
+        db_file.created_by = db_user_created
+        db_file.last_modified_by = user
+        return db_file
+
+    return None
 
 
-def process_file_upload_form(form, db, contents):
+def process_file_upload_form(form, db, contents, user):
     # print(form)
     # print(len(contents))
     # print(form['path'].size)
@@ -231,7 +313,8 @@ def process_file_upload_form(form, db, contents):
                           file_size=form['path'].size,
                           description=form[
                               'description'] if 'description' in form.keys() else None,
-                          mime_type=form['path'].content_type)
+                          mime_type=form['path'].content_type,
+                          user=user)
 
     file_path = f'{FILES_BASE_PATH}{db_file.path}'
 
@@ -242,14 +325,15 @@ def process_file_upload_form(form, db, contents):
     db.close()
 
     ret_file = build_download_url_with_token(file_to_process=deepcopy(db_file),
-                                             user='foo')
+                                             user=user)
+
+    ret_file.created_by = user
+    ret_file.last_modified_by = user
 
     return ret_file
 
 
 def build_download_url_with_token(file_to_process, user):
-    user = security._authenticate_user(security.fake_users_db, 'johndoe',
-                                       'secret')
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
@@ -261,6 +345,9 @@ def build_download_url_with_token(file_to_process, user):
 
 
 def build_file_download_response(file_pk, db, jwt):
+    user = get_user_from_jwt(token=jwt)
+    if user is None:
+        return
     db_file = db.query(models.File).get(file_pk)
     file_path = f'{FILES_BASE_PATH}{db_file.path}'
     value = FileResponse(file_path)
@@ -300,57 +387,135 @@ def build_file_download_url_with_token(file_to_process, user):
     return file_to_process
 
 
-def soft_delete_file(db: Session, file_pk, labbook_data):
+# needs to be heavily factorized
+def soft_delete_file(db: Session, file_pk, labbook_data, user):
     file_to_update = db.query(models.File).get(file_pk)
     file_to_update.deleted = True
     file_to_update.last_modified_at = datetime.datetime.now()
-    file_to_update.last_modified_by_id = FAKE_USER_ID
+    file_to_update.last_modified_by_id = user.id
+
+    db_user_created = db.query(models.User).get(file_to_update.created_by_id)
 
     lb_elem = db.query(models.Labbookchildelement).get(file_to_update.elem_id)
     lb_elem.deleted = True
     lb_elem.last_modified_at = datetime.datetime.now()
-    lb_elem.last_modified_by_id = FAKE_USER_ID
+    lb_elem.last_modified_by_id = user.id
 
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = FAKE_USER_ID
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
-        return file_to_update
-    db.refresh(file_to_update)
-    query = db.query(models.Labbookchildelement).filter_by(
-        labbook_id=labbook_data.labbook_pk, deleted=False).all()
-    if not query:
+    lb_to_update.last_modified_by_id = user.id
+
+    # First possibility
+    if check_for_admin_role(db=db, username=user.username):
         try:
-            transmit(
-                {'model_name': 'labbook', 'model_pk': labbook_data.labbook_pk})
-        except RuntimeError as e:
+            db.commit()
+        except SQLAlchemyError as e:
             logger.error(e)
-    return file_to_update
+            db.close()
+
+            file_to_update.created_by = db_user_created
+            file_to_update.last_modified_by = user
+            return file_to_update
+        db.refresh(file_to_update)
+        query = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=labbook_data.labbook_pk, deleted=False).all()
+        if not query:
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': labbook_data.labbook_pk})
+            except RuntimeError as e:
+                logger.error(e)
+
+        file_to_update.created_by = db_user_created
+        file_to_update.last_modified_by = user
+        return file_to_update
+
+    # Second possibility: it's a file created by admin
+    if check_for_admin_role_with_user_id(db=db,
+                                         user_id=file_to_update.created_by_id):
+
+        # allowed only for groupadmins
+        if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                          user=user):
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return file_to_update
+            db.refresh(file_to_update)
+            query = db.query(models.Labbookchildelement).filter_by(
+                labbook_id=labbook_data.labbook_pk, deleted=False).all()
+            if not query:
+                try:
+                    transmit(
+                        {'model_name': 'labbook',
+                         'model_pk': labbook_data.labbook_pk})
+                except RuntimeError as e:
+                    logger.error(e)
+
+            file_to_update.created_by = db_user_created
+            file_to_update.last_modified_by = user
+            return file_to_update
+        else:
+            return None
+
+    # Third possibility: it's a note created by user
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    if lb_elem.labbook_id in labbook_ids:
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return file_to_update
+        db.refresh(file_to_update)
+        query = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=labbook_data.labbook_pk, deleted=False).all()
+        if not query:
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': labbook_data.labbook_pk})
+            except RuntimeError as e:
+                logger.error(e)
+
+        file_to_update.created_by = db_user_created
+        file_to_update.last_modified_by = user
+        return file_to_update
+
+    return None
 
 
-def restore_file(db: Session, file_pk):
+def restore_file(db: Session, file_pk, user):
     file_to_update = db.query(models.File).get(file_pk)
     file_to_update.deleted = False
     file_to_update.last_modified_at = datetime.datetime.now()
-    file_to_update.last_modified_by_id = FAKE_USER_ID
+    file_to_update.last_modified_by_id = user.id
+
+    db_user_created = db.query(models.User).get(file_to_update.created_by_id)
 
     lb_elem = db.query(models.Labbookchildelement).get(file_to_update.elem_id)
     lb_elem.deleted = False
     lb_elem.last_modified_at = datetime.datetime.now()
-    lb_elem.last_modified_by_id = FAKE_USER_ID
+    lb_elem.last_modified_by_id = user.id
 
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = FAKE_USER_ID
+    lb_to_update.last_modified_by_id = user.id
     try:
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
         db.close()
+        file_to_update.created_by = db_user_created
+        file_to_update.last_modified_by = user
         return file_to_update
+
     db.refresh(file_to_update)
+
+    file_to_update.created_by = db_user_created
+    file_to_update.last_modified_by = user
     return file_to_update

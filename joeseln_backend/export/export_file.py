@@ -18,7 +18,7 @@ def get_export_data(db, file_pk, jwt):
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template('file.jinja2')
 
-    db_file = get_file(db=db, file_pk=file_pk)
+    db_file = get_file(db=db, file_pk=file_pk, user=user)
     db_file_relations = get_file_relations(db=db, file_pk=file_pk,
                                            params=None)
     # print(vars(db_picture))
