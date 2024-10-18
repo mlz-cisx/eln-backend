@@ -360,6 +360,9 @@ def process_sketch_upload_form(form, db, contents, user):
     pic = build_download_url_with_token(
         picture=deepcopy(db_picture), user=user)
 
+    pic.created_by = user
+    pic.last_modified_by = user
+
     return pic
 
 
