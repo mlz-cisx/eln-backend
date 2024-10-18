@@ -635,6 +635,7 @@ async def UploadImage(request: Request,
                                                                   user=user)
 
         return ret_vals
+    # DONE
 
 
 @app.get("/pictures/", response_model=list[picture_schemas.Picture])
@@ -675,8 +676,9 @@ def get_bi_picture(
     bi_picture = picture_service.build_bi_download_response(
         picture_pk=picture_pk,
         db=db,
-        jwt=request.query_params._dict)
+        jwt=request.query_params._dict['jwt'])
     return bi_picture
+    # DONE
 
 
 # TODO check if this is secure: user auth will be done with request.query_params._dict
@@ -690,8 +692,9 @@ def get_ri_picture(
     ri_picture = picture_service.build_ri_download_response(
         picture_pk=picture_pk,
         db=db,
-        jwt=request.query_params._dict)
+        jwt=request.query_params._dict['jwt'])
     return ri_picture
+    # DONE
 
 
 # TODO check if this is secure: user auth will be done with request.query_params._dict

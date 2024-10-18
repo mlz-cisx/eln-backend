@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
+from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.services.labbook.labbook_service import \
     check_for_labbook_access, get_all_labbook_ids_from_non_admin_user
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
@@ -370,7 +371,7 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
     db_picture.last_modified_at = datetime.datetime.now()
     db_picture.last_modified_by_id = user.id
 
-    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+
 
 
     lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
@@ -388,6 +389,11 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
         return
 
     db.refresh(db_picture)
+
+
+    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+    db_picture.created_by = db_user_created
+    db_picture.last_modified_by = user
 
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
     ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
@@ -407,9 +413,6 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
     pic = build_download_url_with_token(
         picture=deepcopy(db_picture), user=user)
 
-    pic.created_by = db_user_created
-    pic.last_modified_by = user
-
     return pic
 
 
@@ -428,6 +431,9 @@ def build_download_url_with_token(picture, user):
 
 
 def build_bi_download_response(picture_pk, db, jwt):
+    user = get_user_from_jwt(token=jwt)
+    if user is None:
+        return
     db_picture = db.query(models.Picture).get(picture_pk)
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
     value = FileResponse(bi_img_path)
@@ -436,6 +442,9 @@ def build_bi_download_response(picture_pk, db, jwt):
 
 
 def build_ri_download_response(picture_pk, db, jwt):
+    user = get_user_from_jwt(token=jwt)
+    if user is None:
+        return
     db_picture = db.query(models.Picture).get(picture_pk)
     ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
     value = FileResponse(ri_img_path)
@@ -504,6 +513,11 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
         db.close()
         return pic_to_update
     db.refresh(pic_to_update)
+
+    db_user_created = db.query(models.User).get(pic_to_update.created_by_id)
+    pic_to_update.created_by = db_user_created
+    pic_to_update.last_modified_by = user
+
     query = db.query(models.Labbookchildelement).filter_by(
         labbook_id=labbook_data.labbook_pk, deleted=False).all()
 
@@ -537,4 +551,9 @@ def restore_picture(db: Session, picture_pk, user):
         db.close()
         return pic_to_update
     db.refresh(pic_to_update)
+
+    db_user_created = db.query(models.User).get(pic_to_update.created_by_id)
+    pic_to_update.created_by = db_user_created
+    pic_to_update.last_modified_by = user
+
     return pic_to_update
