@@ -84,7 +84,7 @@ def add_file_version(db: Session, file_pk, summary, user,
             except SQLAlchemyError as e:
                 logger.error(e)
             db.refresh(db_file)
-            file_service.restore_file(db=db, file_pk=file_pk)
+            file_service.restore_file(db=db, file_pk=file_pk, user=user)
 
         version_metadata = {
             'name': db_file.name,

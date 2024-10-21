@@ -704,10 +704,12 @@ def get_shapes(
         request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db)):
-    logger.info(request.query_params._dict)
     shapes = picture_service.build_shapes_response(picture_pk=picture_pk, db=db,
-                                                   jwt=request.query_params._dict)
+                                                   jwt=
+                                                   request.query_params._dict[
+                                                       'jwt'])
     return shapes
+    # DONE
 
 
 @app.get("/pictures/{picture_pk}/export/",
@@ -755,7 +757,11 @@ def soft_delete_picture(
     db_pic = picture_service.soft_delete_picture(db=db, picture_pk=picture_pk,
                                                  labbook_data=labbook_data,
                                                  user=user)
+    if db_pic is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+
     return db_pic
+    # DONE
 
 
 @app.patch("/pictures/{picture_pk}/restore/",
@@ -767,7 +773,11 @@ def restore_picture(
     # logger.info(user)
     db_pic = picture_service.restore_picture(db=db, picture_pk=picture_pk,
                                              user=user)
+    if db_pic is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+
     return db_pic
+    # DONE
 
 
 @app.patch("/pictures/{picture_pk}/",
@@ -790,7 +800,12 @@ async def patch_picture(
                                                     ri_img_contents=ri_img_contents,
                                                     shapes_contents=shapes_contents,
                                                     user=user)
+
+        if db_picture is None:
+            raise HTTPException(status_code=404, detail="Labbook not found")
+
         return db_picture
+    # DONE
 
 
 @app.get("/pictures/{picture_pk}/history/")
@@ -801,6 +816,7 @@ def get_picture_history(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     return ['ok']
+    # DONE not implemented
 
 
 @app.get("/pictures/{picture_pk}/versions/",
@@ -885,7 +901,9 @@ def get_picture_relations(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     return picture_service.get_picture_relations(db=db, picture_pk=picture_pk,
-                                                 params=request.query_params._dict)
+                                                 params=request.query_params._dict,
+                                                 user=user)
+    # DONE
 
 
 @app.delete("/pictures/{picture_pk}/relations/{relation_pk}/")
@@ -896,8 +914,9 @@ def delete_picture_relation(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     picture_service.delete_picture_relation(db=db, picture_pk=picture_pk,
-                                            relation_pk=relation_pk)
+                                            relation_pk=relation_pk, user=user)
     return ['ok']
+    # DONE
 
 
 @app.post("/files/", response_model=file_schemas.File)
@@ -1028,7 +1047,6 @@ def soft_delete_file(
     # DONE
 
 
-
 @app.patch("/files/{file_pk}/restore/",
            response_model=file_schemas.File)
 def restore_file(
@@ -1037,7 +1055,10 @@ def restore_file(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     db_file = file_service.restore_file(db=db, file_pk=file_pk, user=user)
+    if db_file is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_file
+    # DONE
 
 
 @app.get("/files/{file_pk}/history/")
@@ -1100,7 +1121,6 @@ def restore_file_version(
     # DONE
 
 
-
 @app.get("/files/{file_pk}/versions/{version_pk}/preview/",
          response_model=file_schemas.FilePreviewVersion)
 def preview_file_version(
@@ -1129,7 +1149,9 @@ def get_file_relations(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     return file_service.get_file_relations(db=db, file_pk=file_pk,
-                                           params=request.query_params._dict)
+                                           params=request.query_params._dict,
+                                           user=user)
+    # DONE
 
 
 @app.delete("/files/{file_pk}/relations/{relation_pk}/")
@@ -1140,8 +1162,9 @@ def delete_file_relation(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     file_service.delete_file_relation(db=db, file_pk=file_pk,
-                                      relation_pk=relation_pk)
+                                      relation_pk=relation_pk, user=user)
     return ['ok']
+    # DONE
 
 
 @app.post("/comments/")
@@ -1149,7 +1172,12 @@ def create_comment(
         comment: comment_schemas.CreateComment,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return comment_service.create_comment(db=db, comment=comment, user=user)
+    db_comment = comment_service.create_comment(db=db, comment=comment,
+                                                user=user)
+    if db_comment is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_comment
+    # DONE
 
 
 @app.websocket("/ws/elements/")
@@ -1225,5 +1253,6 @@ def eln_search(request: Request,
                                                'model'],
                                            search_text=
                                            request.query_params._dict[
-                                               'search'])
+                                               'search'], user=user)
     return result
+    # DONE

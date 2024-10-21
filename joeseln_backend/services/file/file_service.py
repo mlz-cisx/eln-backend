@@ -131,61 +131,72 @@ def get_file_with_privileges(db: Session, file_pk, user):
     return None
 
 
-def get_file_relations(db: Session, file_pk, params):
-    if not params:
-        relations = db.query(models.Relation).filter_by(
-            right_object_id=file_pk, deleted=False).order_by(
-            models.Relation.created_at).all()
-    else:
-        order_params = db_ordering.get_order_params(
-            ordering=params.get('ordering'))
-
-        relations = db.query(models.Relation).filter_by(
-            right_object_id=file_pk, deleted=False).order_by(
-            text(order_params)).offset(params.get('offset')).limit(
-            params.get('limit')).all()
-
-    for rel in relations:
-        if rel.left_content_type == 70:
-            db_comment = db.query(models.Comment).get(rel.left_object_id)
-
-            db_user_created = db.query(models.User).get(
-                db_comment.created_by_id)
-            db_user_modified = db.query(models.User).get(
-                db_comment.last_modified_by_id)
-            rel.created_by = db_user_created
-            rel.last_modified_by = db_user_modified
-            db_comment.created_by = db_user_created
-            db_comment.last_modified_by = db_user_modified
-            rel.left_content_object = Comment.parse_obj(db_comment)
+def get_file_relations(db: Session, file_pk, params, user):
+    db_file = db.query(models.File).get(file_pk)
+    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                user=user):
+        if not params:
+            relations = db.query(models.Relation).filter_by(
+                right_object_id=file_pk, deleted=False).order_by(
+                models.Relation.created_at).all()
         else:
-            rel.left_content_object = None
+            order_params = db_ordering.get_order_params(
+                ordering=params.get('ordering'))
 
-        db_file = db.query(models.File).get(file_pk)
-        db_user_created = db.query(models.User).get(db_file.created_by_id)
-        db_user_modified = db.query(models.User).get(
-            db_file.last_modified_by_id)
-        db_file.created_by = db_user_created
-        db_file.last_modified_by = db_user_modified
+            relations = db.query(models.Relation).filter_by(
+                right_object_id=file_pk, deleted=False).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
 
-    return relations
+        for rel in relations:
+            if rel.left_content_type == 70:
+                db_comment = db.query(models.Comment).get(rel.left_object_id)
+
+                db_user_created = db.query(models.User).get(
+                    db_comment.created_by_id)
+                db_user_modified = db.query(models.User).get(
+                    db_comment.last_modified_by_id)
+                rel.created_by = db_user_created
+                rel.last_modified_by = db_user_modified
+                db_comment.created_by = db_user_created
+                db_comment.last_modified_by = db_user_modified
+                rel.left_content_object = Comment.parse_obj(db_comment)
+            else:
+                rel.left_content_object = None
+
+            db_file = db.query(models.File).get(file_pk)
+            db_user_created = db.query(models.User).get(db_file.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                db_file.last_modified_by_id)
+            db_file.created_by = db_user_created
+            db_file.last_modified_by = db_user_modified
+
+        return relations
+    return []
 
 
-def delete_file_relation(db: Session, file_pk, relation_pk):
-    db_relation = db.query(models.Relation).get(relation_pk)
-    db_relation.deleted = True
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
-        return
-    db.refresh(db_relation)
+def delete_file_relation(db: Session, file_pk, relation_pk, user):
+    db_file = db.query(models.File).get(file_pk)
+    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                user=user):
+        db_relation = db.query(models.Relation).get(relation_pk)
+        db_relation.deleted = True
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        db.refresh(db_relation)
 
-    return get_file_relations(db=db, file_pk=file_pk, params='')
+        return get_file_relations(db=db, file_pk=file_pk, params='', user=user)
+    return None
 
 
 def get_file_related_comments_count(db: Session, file_pk, user):
+    # user authorization is done in the elements
     relations_count = db.query(models.Relation).filter_by(
         right_object_id=file_pk, deleted=False, left_content_type=70).count()
 
@@ -243,8 +254,6 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
     db_file.description = elem.description
     db_file.last_modified_at = datetime.datetime.now()
     db_file.last_modified_by_id = user.id
-
-
 
     lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
     lb_elem.last_modified_at = datetime.datetime.now()
@@ -374,10 +383,9 @@ def get_file_export_link(db: Session, file_pk, user):
 
     lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
 
-    if check_for_admin_role(db=db,
-                            username=user.username) or check_for_labbook_access(
-        db=db, labbook_pk=lb_elem.labbook_id,
-        user=user):
+    if check_for_labbook_access(
+            db=db, labbook_pk=lb_elem.labbook_id,
+            user=user):
         return export_link
 
     return None
@@ -400,8 +408,6 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
     file_to_update.deleted = True
     file_to_update.last_modified_at = datetime.datetime.now()
     file_to_update.last_modified_by_id = user.id
-
-
 
     lb_elem = db.query(models.Labbookchildelement).get(file_to_update.elem_id)
     lb_elem.deleted = True
@@ -529,23 +535,105 @@ def restore_file(db: Session, file_pk, user):
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
+
+    # First possibility
+    if check_for_admin_role(db=db, username=user.username):
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db_user_created = db.query(models.User).get(
+                file_to_update.created_by_id)
+            file_to_update.created_by = db_user_created
+            file_to_update.last_modified_by = user
+
+            db.close()
+            return file_to_update
+        db.refresh(file_to_update)
+        query = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=lb_elem.labbook_id, deleted=False).all()
+        if not query:
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': lb_elem.labbook_id})
+            except RuntimeError as e:
+                logger.error(e)
+
         db_user_created = db.query(models.User).get(
             file_to_update.created_by_id)
         file_to_update.created_by = db_user_created
         file_to_update.last_modified_by = user
 
-        db.close()
         return file_to_update
 
-    db.refresh(file_to_update)
+    # Second possibility: it's a file created by admin
+    if check_for_admin_role_with_user_id(db=db,
+                                         user_id=file_to_update.created_by_id):
 
-    db_user_created = db.query(models.User).get(
-        file_to_update.created_by_id)
-    file_to_update.created_by = db_user_created
-    file_to_update.last_modified_by = user
+        # allowed only for groupadmins
+        if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                          user=user):
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db_user_created = db.query(models.User).get(
+                    file_to_update.created_by_id)
+                file_to_update.created_by = db_user_created
+                file_to_update.last_modified_by = user
+                db.close()
+                return file_to_update
+            db.refresh(file_to_update)
+            query = db.query(models.Labbookchildelement).filter_by(
+                labbook_id=lb_elem.labbook_id, deleted=False).all()
+            if not query:
+                try:
+                    transmit(
+                        {'model_name': 'labbook',
+                         'model_pk': lb_elem.labbook_id})
+                except RuntimeError as e:
+                    logger.error(e)
 
-    return file_to_update
+            db_user_created = db.query(models.User).get(
+                file_to_update.created_by_id)
+            file_to_update.created_by = db_user_created
+            file_to_update.last_modified_by = user
+
+            return file_to_update
+        else:
+            return None
+
+    # Third possibility: it's a note created by user
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    if lb_elem.labbook_id in labbook_ids:
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db_user_created = db.query(models.User).get(
+                file_to_update.created_by_id)
+            file_to_update.created_by = db_user_created
+            file_to_update.last_modified_by = user
+            db.close()
+            return file_to_update
+        db.refresh(file_to_update)
+        query = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=lb_elem.labbook_id, deleted=False).all()
+        if not query:
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': lb_elem.labbook_id})
+            except RuntimeError as e:
+                logger.error(e)
+
+        db_user_created = db.query(models.User).get(
+            file_to_update.created_by_id)
+        file_to_update.created_by = db_user_created
+        file_to_update.last_modified_by = user
+
+        return file_to_update
+
+    return None

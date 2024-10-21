@@ -8,13 +8,15 @@ from sqlalchemy.sql import text
 
 from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access, get_all_labbook_ids_from_non_admin_user
+    check_for_labbook_access, get_all_labbook_ids_from_non_admin_user, \
+    check_for_labbook_admin_access
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
 from joeseln_backend.services.privileges.privileges_service import \
     create_pic_privileges
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    check_for_admin_role, get_user_group_roles_with_match, get_user_group_roles
+    check_for_admin_role, get_user_group_roles_with_match, get_user_group_roles, \
+    check_for_admin_role_with_user_id
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.auth import security
 from joeseln_backend.models import models
@@ -33,7 +35,7 @@ def get_all_pictures(db: Session, params, user):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     if check_for_admin_role(db=db, username=user.username):
-        pics =  db.query(models.Picture).filter_by(
+        pics = db.query(models.Picture).filter_by(
             deleted=bool(params.get('deleted'))).order_by(
             text(order_params)).offset(params.get('offset')).limit(
             params.get('limit')).all()
@@ -127,58 +129,73 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
     return None
 
 
-def get_picture_relations(db: Session, picture_pk, params):
-    if not params:
-        relations = db.query(models.Relation).filter_by(
-            right_object_id=picture_pk, deleted=False).order_by(
-            models.Relation.created_at).all()
-    else:
-        order_params = db_ordering.get_order_params(
-            ordering=params.get('ordering'))
+def get_picture_relations(db: Session, picture_pk, params, user):
+    db_picture = db.query(models.Picture).get(picture_pk)
+    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                user=user):
 
-        relations = db.query(models.Relation).filter_by(
-            right_object_id=picture_pk, deleted=False).order_by(
-            text(order_params)).offset(params.get('offset')).limit(
-            params.get('limit')).all()
+        if not params:
+            relations = db.query(models.Relation).filter_by(
+                right_object_id=picture_pk, deleted=False).order_by(
+                models.Relation.created_at).all()
+        else:
+            order_params = db_ordering.get_order_params(
+                ordering=params.get('ordering'))
 
-    for rel in relations:
-        if rel.left_content_type == 70:
-            db_comment = db.query(models.Comment).get(rel.left_object_id)
+            relations = db.query(models.Relation).filter_by(
+                right_object_id=picture_pk, deleted=False).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+
+        for rel in relations:
+            if rel.left_content_type == 70:
+                db_comment = db.query(models.Comment).get(rel.left_object_id)
+
+                db_user_created = db.query(models.User).get(
+                    db_comment.created_by_id)
+                db_user_modified = db.query(models.User).get(
+                    db_comment.last_modified_by_id)
+                rel.created_by = db_user_created
+                rel.last_modified_by = db_user_modified
+                db_comment.created_by = db_user_created
+                db_comment.last_modified_by = db_user_modified
+                rel.left_content_object = Comment.parse_obj(db_comment)
+            else:
+                rel.left_content_object = None
 
             db_user_created = db.query(models.User).get(
-                db_comment.created_by_id)
+                db_picture.created_by_id)
             db_user_modified = db.query(models.User).get(
-                db_comment.last_modified_by_id)
-            rel.created_by = db_user_created
-            rel.last_modified_by = db_user_modified
-            db_comment.created_by = db_user_created
-            db_comment.last_modified_by = db_user_modified
-            rel.left_content_object = Comment.parse_obj(db_comment)
-        else:
-            rel.left_content_object = None
-        db_picture = db.query(models.Picture).get(picture_pk)
-        db_user_created = db.query(models.User).get(db_picture.created_by_id)
-        db_user_modified = db.query(models.User).get(
-            db_picture.last_modified_by_id)
-        db_picture.created_by = db_user_created
-        db_picture.last_modified_by = db_user_modified
-        rel.right_content_object = db_picture
+                db_picture.last_modified_by_id)
+            db_picture.created_by = db_user_created
+            db_picture.last_modified_by = db_user_modified
+            rel.right_content_object = db_picture
 
-    return relations
+        return relations
+
+    return []
 
 
-def delete_picture_relation(db: Session, picture_pk, relation_pk):
-    db_relation = db.query(models.Relation).get(relation_pk)
-    db_relation.deleted = True
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
-        return
-    db.refresh(db_relation)
+def delete_picture_relation(db: Session, picture_pk, relation_pk, user):
+    db_pic = db.query(models.Picture).get(picture_pk)
+    lb_elem = db.query(models.Labbookchildelement).get(db_pic.elem_id)
+    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                user=user):
+        db_relation = db.query(models.Relation).get(relation_pk)
+        db_relation.deleted = True
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        db.refresh(db_relation)
 
-    return get_picture_relations(db=db, picture_pk=picture_pk, params='')
+        return get_picture_relations(db=db, picture_pk=picture_pk, params='',
+                                     user=user)
+
+    return None
 
 
 def get_picture_related_comments_count(db: Session, picture_pk, user):
@@ -374,9 +391,6 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
     db_picture.last_modified_at = datetime.datetime.now()
     db_picture.last_modified_by_id = user.id
 
-
-
-
     lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
@@ -384,39 +398,44 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
+
+    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                user=user):
+
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+
+        db.refresh(db_picture)
+
+        db_user_created = db.query(models.User).get(db_picture.created_by_id)
+        db_picture.created_by = db_user_created
+        db_picture.last_modified_by = user
+
+        bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
+        ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
+        shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
+
+        with open(ri_img_path, 'wb') as image:
+            image.write(ri_img_contents)
+            image.close()
+
+        with open(shapes_path, 'wb') as shapes:
+            shapes.write(shapes_contents)
+            shapes.close()
+
         db.close()
-        return
 
-    db.refresh(db_picture)
+        transmit({'model_name': 'picture', 'model_pk': str(pk)})
+        pic = build_download_url_with_token(
+            picture=deepcopy(db_picture), user=user)
 
+        return pic
 
-    db_user_created = db.query(models.User).get(db_picture.created_by_id)
-    db_picture.created_by = db_user_created
-    db_picture.last_modified_by = user
-
-    bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
-    ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
-    shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
-
-    with open(ri_img_path, 'wb') as image:
-        image.write(ri_img_contents)
-        image.close()
-
-    with open(shapes_path, 'wb') as shapes:
-        shapes.write(shapes_contents)
-        shapes.close()
-
-    db.close()
-
-    transmit({'model_name': 'picture', 'model_pk': str(pk)})
-    pic = build_download_url_with_token(
-        picture=deepcopy(db_picture), user=user)
-
-    return pic
+    return None
 
 
 def build_download_url_with_token(picture, user):
@@ -456,6 +475,9 @@ def build_ri_download_response(picture_pk, db, jwt):
 
 
 def build_shapes_response(picture_pk, db, jwt):
+    user = get_user_from_jwt(token=jwt)
+    if user is None:
+        return
     db_picture = db.query(models.Picture).get(picture_pk)
     shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
     value = FileResponse(shapes_path)
@@ -495,6 +517,7 @@ def build_picture_download_url_with_token(picture_to_process, user):
     return picture_to_process
 
 
+# needs to be heavily factorized
 def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
     pic_to_update = db.query(models.Picture).get(picture_pk)
     pic_to_update.deleted = True
@@ -509,28 +532,97 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
-        return pic_to_update
-    db.refresh(pic_to_update)
 
-    db_user_created = db.query(models.User).get(pic_to_update.created_by_id)
-    pic_to_update.created_by = db_user_created
-    pic_to_update.last_modified_by = user
-
-    query = db.query(models.Labbookchildelement).filter_by(
-        labbook_id=labbook_data.labbook_pk, deleted=False).all()
-
-    if not query:
+    # First possibility
+    if check_for_admin_role(db=db, username=user.username):
         try:
-            transmit(
-                {'model_name': 'labbook', 'model_pk': labbook_data.labbook_pk})
-        except RuntimeError as e:
+            db.commit()
+        except SQLAlchemyError as e:
             logger.error(e)
-    return pic_to_update
+            db.close()
+            return pic_to_update
+        db.refresh(pic_to_update)
+
+        db_user_created = db.query(models.User).get(pic_to_update.created_by_id)
+        pic_to_update.created_by = db_user_created
+        pic_to_update.last_modified_by = user
+
+        query = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=labbook_data.labbook_pk, deleted=False).all()
+
+        if not query:
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': labbook_data.labbook_pk})
+            except RuntimeError as e:
+                logger.error(e)
+        return pic_to_update
+
+    # Second possibility: it's a note created by admin
+    if check_for_admin_role_with_user_id(db=db,
+                                         user_id=pic_to_update.created_by_id):
+
+        # allowed only for groupadmins
+        if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                          user=user):
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return pic_to_update
+            db.refresh(pic_to_update)
+
+            db_user_created = db.query(models.User).get(
+                pic_to_update.created_by_id)
+            pic_to_update.created_by = db_user_created
+            pic_to_update.last_modified_by = user
+
+            query = db.query(models.Labbookchildelement).filter_by(
+                labbook_id=labbook_data.labbook_pk, deleted=False).all()
+
+            if not query:
+                try:
+                    transmit(
+                        {'model_name': 'labbook',
+                         'model_pk': labbook_data.labbook_pk})
+                except RuntimeError as e:
+                    logger.error(e)
+            return pic_to_update
+        else:
+            return None
+
+    # Third possibility: it's a note created by user
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    if lb_elem.labbook_id in labbook_ids:
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return pic_to_update
+        db.refresh(pic_to_update)
+
+        db_user_created = db.query(models.User).get(
+            pic_to_update.created_by_id)
+        pic_to_update.created_by = db_user_created
+        pic_to_update.last_modified_by = user
+
+        query = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=labbook_data.labbook_pk, deleted=False).all()
+
+        if not query:
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': labbook_data.labbook_pk})
+            except RuntimeError as e:
+                logger.error(e)
+        return pic_to_update
+
+    return None
 
 
 def restore_picture(db: Session, picture_pk, user):
@@ -547,16 +639,94 @@ def restore_picture(db: Session, picture_pk, user):
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
+
+    # First possibility
+    if check_for_admin_role(db=db, username=user.username):
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return pic_to_update
+        db.refresh(pic_to_update)
+
+        db_user_created = db.query(models.User).get(pic_to_update.created_by_id)
+        pic_to_update.created_by = db_user_created
+        pic_to_update.last_modified_by = user
+
+        query = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=lb_elem.labbook_id, deleted=False).all()
+
+        if not query:
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': lb_elem.labbook_id})
+            except RuntimeError as e:
+                logger.error(e)
         return pic_to_update
-    db.refresh(pic_to_update)
 
-    db_user_created = db.query(models.User).get(pic_to_update.created_by_id)
-    pic_to_update.created_by = db_user_created
-    pic_to_update.last_modified_by = user
+    # Second possibility: it's a note created by admin
+    if check_for_admin_role_with_user_id(db=db,
+                                         user_id=pic_to_update.created_by_id):
 
-    return pic_to_update
+        # allowed only for groupadmins
+        if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                          user=user):
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return pic_to_update
+            db.refresh(pic_to_update)
+
+            db_user_created = db.query(models.User).get(
+                pic_to_update.created_by_id)
+            pic_to_update.created_by = db_user_created
+            pic_to_update.last_modified_by = user
+
+            query = db.query(models.Labbookchildelement).filter_by(
+                labbook_id=lb_elem.labbook_id, deleted=False).all()
+
+            if not query:
+                try:
+                    transmit(
+                        {'model_name': 'labbook',
+                         'model_pk': lb_elem.labbook_id})
+                except RuntimeError as e:
+                    logger.error(e)
+            return pic_to_update
+        else:
+            return None
+
+    # Third possibility: it's a note created by user
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    if lb_elem.labbook_id in labbook_ids:
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return pic_to_update
+        db.refresh(pic_to_update)
+
+        db_user_created = db.query(models.User).get(
+            pic_to_update.created_by_id)
+        pic_to_update.created_by = db_user_created
+        pic_to_update.last_modified_by = user
+
+        query = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=lb_elem.labbook_id, deleted=False).all()
+
+        if not query:
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': lb_elem.labbook_id})
+            except RuntimeError as e:
+                logger.error(e)
+        return pic_to_update
+
+    return None

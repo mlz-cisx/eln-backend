@@ -20,7 +20,7 @@ def get_export_data(db, picture_pk, jwt):
 
     db_picture = get_picture_for_export(db=db, picture_pk=picture_pk)
     db_picture_relations = get_picture_relations(db=db, picture_pk=picture_pk,
-                                                 params=None)
+                                                 params=None, user=user)
     # print(vars(db_picture))
     # for elem in elems:
     #     print(vars(elem))

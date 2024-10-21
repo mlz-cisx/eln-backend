@@ -59,7 +59,8 @@ def get_lb_childelements_for_export(db: Session, labbook_pk, access_token, user,
 
             elem.relations = get_picture_relations(db=db,
                                                    picture_pk=elem.child_object_id,
-                                                   params='')
+                                                   params='',
+                                                   user=user)
 
         if elem.child_object_content_type == 50:
             elem.child_object = file_service.get_file(db=db,
@@ -68,7 +69,7 @@ def get_lb_childelements_for_export(db: Session, labbook_pk, access_token, user,
 
             elem.relations = get_file_relations(db=db,
                                                 file_pk=elem.child_object_id,
-                                                params='')
+                                                params='', user=user)
 
     return query
 
