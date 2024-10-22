@@ -116,14 +116,16 @@ def update_all_lb_childelements_from_version(db: Session,
     for lb_childelem in labbook_childelems:
         elem = db.query(models.Labbookchildelement).get(
             lb_childelem['child_element_id'])
-        elem.position_x = lb_childelem['position_x']
-        elem.position_y = lb_childelem['position_y']
-        elem.width = lb_childelem['width']
-        elem.height = lb_childelem['height']
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
+        # we need this to exclude removed elements
+        if elem:
+            elem.position_x = lb_childelem['position_x']
+            elem.position_y = lb_childelem['position_y']
+            elem.width = lb_childelem['width']
+            elem.height = lb_childelem['height']
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
 
 
 def add_labbook_version(db: Session, labbook_pk, summary, user,
@@ -147,7 +149,7 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
             db.close()
             return db_labbook
         db.refresh(db_labbook)
-
+    # removed elements do not appear in query
     query = db.query(models.Labbookchildelement).filter_by(
         labbook_id=labbook_pk, deleted=False).order_by(
         models.Labbookchildelement.position_y).all()
