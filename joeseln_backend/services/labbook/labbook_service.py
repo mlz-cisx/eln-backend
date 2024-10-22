@@ -21,8 +21,6 @@ from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 
 
-
-
 def check_for_labbook_access(db: Session, labbook_pk, user):
     if not check_for_admin_role(db=db, username=user.username):
         user_groups = get_user_groups(db=db, username=user.username)
@@ -269,7 +267,6 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
     db_labbook.created_by = db_user_created
     db_labbook.last_modified_by = db_user_modified
 
-
     return db_labbook
 
 
@@ -305,3 +302,41 @@ def build_labbook_download_url_with_token(lb_to_process, user):
     )
     lb_to_process.path = f'{URL_BASE_PATH}labbooks/{lb_to_process.id}/export?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     return lb_to_process
+
+
+def soft_delete_labbook(db: Session, labbook_title, username):
+    user = db.query(models.User).filter_by(username=username).first()
+    db_labbook = db.query(models.Labbook).filter_by(title=labbook_title,
+                                                    deleted=False).first()
+    if db_labbook:
+        db_labbook.deleted = True
+        db_labbook.last_modified_at = datetime.datetime.now()
+        db_labbook.last_modified_by_id = user.id
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        db.refresh(db_labbook)
+        return True
+    return
+
+
+def restore_labbook(db: Session, labbook_title, username):
+    user = db.query(models.User).filter_by(username=username).first()
+    db_labbook = db.query(models.Labbook).filter_by(title=labbook_title,
+                                                    deleted=True).first()
+    if db_labbook:
+        db_labbook.deleted = False
+        db_labbook.last_modified_at = datetime.datetime.now()
+        db_labbook.last_modified_by_id = user.id
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        db.refresh(db_labbook)
+        return True
+    return

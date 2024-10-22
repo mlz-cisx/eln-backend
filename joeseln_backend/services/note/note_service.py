@@ -32,7 +32,7 @@ def get_all_notes(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
 
     if check_for_admin_role(db=db, username=user.username):
-        notes=  db.query(models.Note).filter_by(
+        notes = db.query(models.Note).filter_by(
             deleted=bool(params.get('deleted'))).order_by(
             text(order_params)).offset(params.get('offset')).limit(
             params.get('limit')).all()
@@ -63,7 +63,6 @@ def get_all_notes(db: Session, params, user):
             note.last_modified_by_id)
         note.created_by = db_user_created
         note.last_modified_by = db_user_modified
-
 
     return notes
 
@@ -154,7 +153,6 @@ def get_note_relations(db: Session, note_pk, params, user):
 
             else:
                 rel.left_content_object = None
-
 
             db_user_created = db.query(models.User).get(db_note.created_by_id)
             db_user_modified = db.query(models.User).get(
@@ -295,7 +293,6 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
 
     db_user_created = db.query(models.User).get(note_to_update.created_by_id)
 
-
     lb_elem = db.query(models.Labbookchildelement).get(note_to_update.elem_id)
     lb_elem.deleted = True
     lb_elem.last_modified_at = datetime.datetime.now()
@@ -400,7 +397,6 @@ def restore_note(db: Session, note_pk, user):
 
     db_user_created = db.query(models.User).get(note_to_update.created_by_id)
 
-
     lb_elem = db.query(models.Labbookchildelement).get(note_to_update.elem_id)
     lb_elem.deleted = False
     lb_elem.last_modified_at = datetime.datetime.now()
@@ -493,3 +489,37 @@ def build_note_download_url_with_token(note_to_process, user):
 
     note_to_process.path = f'{URL_BASE_PATH}notes/{note_to_process.id}/export?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     return note_to_process
+
+
+def get_all_deleted_notes(db: Session):
+    notes = db.query(models.Note).filter_by(
+        deleted=True).order_by(text('subject asc')).all()
+    return notes
+
+
+def remove_soft_deleted_note(db: Session, note_pk):
+    note_to_remove = db.query(models.Note).get(note_pk)
+    if note_to_remove and note_to_remove.deleted:
+        lb_elem = db.query(models.Labbookchildelement).get(
+            note_to_remove.elem_id)
+        relations = db.query(models.Relation).filter_by(
+            right_object_id=note_pk, left_content_type=70).all()
+        db.delete(note_to_remove)
+        # it has to be committed first because of foreign key dependency lb_elem
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            print(e)
+            db.close()
+            return
+        db.delete(lb_elem)
+        for relation in relations:
+            db.delete(relation)
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            print(e)
+            db.close()
+            return
+        return True
+    return
