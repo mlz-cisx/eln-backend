@@ -71,69 +71,72 @@ def add_picture_version(db: Session, picture_pk, summary, user,
                         restored_title=None, restored_ri_img=None,
                         restored_shapes=None):
     pic_to_test = db.query(models.Picture).get(picture_pk)
-    lb_elem = db.query(models.Labbookchildelement).get(pic_to_test.elem_id)
-    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                user=user) and check_for_version_edit_access_on_lb_elem(
-        db=db, lb_elem=lb_elem, user=user):
+    if pic_to_test:
+        lb_elem = db.query(models.Labbookchildelement).get(pic_to_test.elem_id)
+        if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                    user=user) and check_for_version_edit_access_on_lb_elem(
+            db=db, lb_elem=lb_elem, user=user):
 
-        if restored_title is None:
-            paths = picture_service.copy_and_update_picture(db=db,
-                                                            picture_pk=picture_pk)
-            restored_ri_img = paths[0]
-            restored_shapes = paths[1]
+            if restored_title is None:
+                paths = picture_service.copy_and_update_picture(db=db,
+                                                                picture_pk=picture_pk)
+                restored_ri_img = paths[0]
+                restored_shapes = paths[1]
 
-        else:
-            paths = picture_service.copy_and_update_picture(db=db,
-                                                            picture_pk=picture_pk,
-                                                            restored_ri=restored_ri_img,
-                                                            restored_shapes=restored_shapes)
-            restored_ri_img = paths[0]
-            restored_shapes = paths[1]
+            else:
+                paths = picture_service.copy_and_update_picture(db=db,
+                                                                picture_pk=picture_pk,
+                                                                restored_ri=restored_ri_img,
+                                                                restored_shapes=restored_shapes)
+                restored_ri_img = paths[0]
+                restored_shapes = paths[1]
 
-        number = 1
-        last_db_picture_version = db.query(models.Version).filter_by(
-            object_id=picture_pk).order_by(models.Version.number.desc()).first()
-        if last_db_picture_version:
-            number = last_db_picture_version.number + 1
+            number = 1
+            last_db_picture_version = db.query(models.Version).filter_by(
+                object_id=picture_pk).order_by(
+                models.Version.number.desc()).first()
+            if last_db_picture_version:
+                number = last_db_picture_version.number + 1
 
-        # has new path
-        db_picture = db.query(models.Picture).get(picture_pk)
+            # has new path
+            db_picture = db.query(models.Picture).get(picture_pk)
 
-        if restored_title is not None:
-            db_picture.title = restored_title
-            try:
-                db.commit()
-            except SQLAlchemyError as e:
-                logger.error(e)
-            db.refresh(db_picture)
-            picture_service.restore_picture(db=db, picture_pk=picture_pk,
-                                            user=user)
+            if restored_title is not None:
+                db_picture.title = restored_title
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    logger.error(e)
+                db.refresh(db_picture)
+                picture_service.restore_picture(db=db, picture_pk=picture_pk,
+                                                user=user)
 
-        version_metadata = {
-            'title': db_picture.title,
-            'ri_img': restored_ri_img,
-            'shapes': restored_shapes,
-            'metadata': [],
-            'projects': [],
-            'metadata_version': 1
-        }
+            version_metadata = {
+                'title': db_picture.title,
+                'ri_img': restored_ri_img,
+                'shapes': restored_shapes,
+                'metadata': [],
+                'projects': [],
+                'metadata_version': 1
+            }
 
-        db_picture_version = models.Version(
-            object_id=picture_pk,
-            version_metadata=version_metadata,
-            number=number,
-            summary=summary,
-            display=summary,
-            content_type_pk=picture_content_type_version,
-            created_at=datetime.datetime.now(),
-            created_by_id=user.id,
-            last_modified_at=datetime.datetime.now(),
-            last_modified_by_id=user.id
-        )
+            db_picture_version = models.Version(
+                object_id=picture_pk,
+                version_metadata=version_metadata,
+                number=number,
+                summary=summary,
+                display=summary,
+                content_type_pk=picture_content_type_version,
+                created_at=datetime.datetime.now(),
+                created_by_id=user.id,
+                last_modified_at=datetime.datetime.now(),
+                last_modified_by_id=user.id
+            )
 
-        db.add(db_picture_version)
-        db.commit()
-        db.refresh(db_picture_version)
-        # first element for main and restore, second for labbook_version_service
-        return [db_picture, db_picture_version]
+            db.add(db_picture_version)
+            db.commit()
+            db.refresh(db_picture_version)
+            # first element for main and restore, second for labbook_version_service
+            return [db_picture, db_picture_version]
+        return [None, None]
     return [None, None]

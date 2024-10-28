@@ -1,3 +1,4 @@
+import pathlib
 from copy import deepcopy
 import shutil
 from fastapi.responses import FileResponse
@@ -81,6 +82,12 @@ def get_picture(db: Session, picture_pk, user):
         picture=deepcopy(db_picture), user=user)
 
     return pic
+
+
+def get_all_deleted_pics(db: Session):
+    pics = db.query(models.Picture).filter_by(
+        deleted=True).order_by(text('title asc')).all()
+    return pics
 
 
 def get_picture_with_privileges(db: Session, picture_pk, user):
@@ -730,3 +737,58 @@ def restore_picture(db: Session, picture_pk, user):
         return pic_to_update
 
     return None
+
+
+def remove_soft_deleted_picture(db: Session, picture_pk):
+    pic_to_remove = db.query(models.Picture).get(picture_pk)
+
+    ri_img_path = f'{PICTURES_BASE_PATH}{pic_to_remove.rendered_image}'
+    bi_img_path = f'{PICTURES_BASE_PATH}{pic_to_remove.background_image}'
+    shapes_path = f'{PICTURES_BASE_PATH}{pic_to_remove.shapes_image}'
+
+    if pic_to_remove and pic_to_remove.deleted:
+        lb_elem = db.query(models.Labbookchildelement).get(
+            pic_to_remove.elem_id)
+        # only comment relations
+        relations = db.query(models.Relation).filter_by(
+            right_object_id=picture_pk, left_content_type=70).all()
+        db.delete(pic_to_remove)
+        # it has to be committed first because of foreign key dependency lb_elem
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            print(e)
+            db.close()
+            return
+
+        db.delete(lb_elem)
+        for relation in relations:
+            db.delete(relation)
+
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            print(e)
+            db.close()
+            return
+
+        try:
+            file_to_rem = pathlib.Path(ri_img_path)
+            file_to_rem.unlink()
+        except FileNotFoundError as e:
+            print(e)
+            return
+        try:
+            file_to_rem = pathlib.Path(bi_img_path)
+            file_to_rem.unlink()
+        except FileNotFoundError as e:
+            print(e)
+            return
+        try:
+            file_to_rem = pathlib.Path(shapes_path)
+            file_to_rem.unlink()
+        except FileNotFoundError as e:
+            print(e)
+            return
+        return True
+    return

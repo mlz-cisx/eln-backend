@@ -1,3 +1,4 @@
+import pathlib
 from copy import deepcopy
 
 from fastapi.responses import FileResponse
@@ -82,6 +83,12 @@ def get_file(db: Session, file_pk, user):
     file_content.last_modified_by = db_user_modified
 
     return file_content
+
+
+def get_all_deleted_files(db: Session):
+    files = db.query(models.File).filter_by(
+        deleted=True).order_by(text('display asc')).all()
+    return files
 
 
 def get_file_with_privileges(db: Session, file_pk, user):
@@ -637,3 +644,42 @@ def restore_file(db: Session, file_pk, user):
         return file_to_update
 
     return None
+
+
+def remove_soft_deleted_file(db: Session, file_pk):
+    file_to_remove = db.query(models.File).get(file_pk)
+    file_path = f'{FILES_BASE_PATH}{file_to_remove.path}'
+
+    if file_to_remove and file_to_remove.deleted:
+        lb_elem = db.query(models.Labbookchildelement).get(
+            file_to_remove.elem_id)
+        # only comment relations
+        relations = db.query(models.Relation).filter_by(
+            right_object_id=file_pk, left_content_type=70).all()
+        db.delete(file_to_remove)
+        # it has to be committed first because of foreign key dependency lb_elem
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            print(e)
+            db.close()
+            return
+
+        try:
+            file_to_rem = pathlib.Path(file_path)
+            file_to_rem.unlink()
+        except FileNotFoundError as e:
+            print(e)
+            return
+
+        db.delete(lb_elem)
+        for relation in relations:
+            db.delete(relation)
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            print(e)
+            db.close()
+            return
+        return True
+    return
