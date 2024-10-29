@@ -1,3 +1,5 @@
+import pathlib
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import text
@@ -15,7 +17,8 @@ from joeseln_backend.services.privileges.privileges_service import \
     create_labbook_privileges
 from joeseln_backend.auth import security
 from joeseln_backend.helper import db_ordering
-from joeseln_backend.conf.base_conf import URL_BASE_PATH
+from joeseln_backend.conf.base_conf import URL_BASE_PATH, PICTURES_BASE_PATH, \
+    FILES_BASE_PATH
 
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
@@ -304,9 +307,9 @@ def build_labbook_download_url_with_token(lb_to_process, user):
     return lb_to_process
 
 
-def soft_delete_labbook(db: Session, labbook_title, username):
+def soft_delete_labbook(db: Session, labbook_uuid, username):
     user = db.query(models.User).filter_by(username=username).first()
-    db_labbook = db.query(models.Labbook).filter_by(title=labbook_title,
+    db_labbook = db.query(models.Labbook).filter_by(id=labbook_uuid,
                                                     deleted=False).first()
     if db_labbook:
         db_labbook.deleted = True
@@ -323,9 +326,9 @@ def soft_delete_labbook(db: Session, labbook_title, username):
     return
 
 
-def restore_labbook(db: Session, labbook_title, username):
+def restore_labbook(db: Session, labbook_uuid, username):
     user = db.query(models.User).filter_by(username=username).first()
-    db_labbook = db.query(models.Labbook).filter_by(title=labbook_title,
+    db_labbook = db.query(models.Labbook).filter_by(id=labbook_uuid,
                                                     deleted=True).first()
     if db_labbook:
         db_labbook.deleted = False
@@ -339,4 +342,124 @@ def restore_labbook(db: Session, labbook_title, username):
             return
         db.refresh(db_labbook)
         return True
+    return
+
+
+def get_deleted_labbooks(db: Session):
+    return db.query(models.Labbook).filter_by(
+        deleted=True).order_by(text('title asc')).all()
+
+
+def get_non_deleted_labbooks(db: Session):
+    return db.query(models.Labbook).filter_by(
+        deleted=False).order_by(text('title asc')).all()
+
+
+def remove_deleted_labbook_with_its_content(db: Session, labbook_uuid):
+    db_labbook = db.query(models.Labbook).filter_by(id=labbook_uuid,
+                                                    deleted=True).first()
+    if db_labbook:
+        elems = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=labbook_uuid).all()
+        for elem in elems:
+            # note
+            if elem.child_object_content_type == 30:
+                note_to_remove = db.query(models.Note).get(elem.child_object_id)
+                relations = db.query(models.Relation).filter_by(
+                    right_object_id=elem.child_object_id,
+                    left_content_type=70).all()
+                db.delete(note_to_remove)
+                # it has to be committed first because of foreign key dependency
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    print(e)
+                db.delete(elem)
+                for relation in relations:
+                    db.delete(relation)
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    print(e)
+                print(f'{note_to_remove.subject} removed')
+
+            if elem.child_object_content_type == 40:
+                pic_to_remove = db.query(models.Picture).get(
+                    elem.child_object_id)
+
+                ri_img_path = f'{PICTURES_BASE_PATH}{pic_to_remove.rendered_image}'
+                bi_img_path = f'{PICTURES_BASE_PATH}{pic_to_remove.background_image}'
+                shapes_path = f'{PICTURES_BASE_PATH}{pic_to_remove.shapes_image}'
+
+                relations = db.query(models.Relation).filter_by(
+                    right_object_id=elem.child_object_id,
+                    left_content_type=70).all()
+                db.delete(pic_to_remove)
+                # it has to be committed first because of foreign key dependency
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    print(e)
+                db.delete(elem)
+                for relation in relations:
+                    db.delete(relation)
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    print(e)
+
+                try:
+                    file_to_rem = pathlib.Path(ri_img_path)
+                    file_to_rem.unlink()
+                except FileNotFoundError as e:
+                    print(e)
+                try:
+                    file_to_rem = pathlib.Path(bi_img_path)
+                    file_to_rem.unlink()
+                except FileNotFoundError as e:
+                    print(e)
+                try:
+                    file_to_rem = pathlib.Path(shapes_path)
+                    file_to_rem.unlink()
+                except FileNotFoundError as e:
+                    print(e)
+
+                print(f'{pic_to_remove.title} removed')
+
+            if elem.child_object_content_type == 50:
+                file_to_remove = db.query(models.File).get(elem.child_object_id)
+                file_path = f'{FILES_BASE_PATH}{file_to_remove.path}'
+                # only comment relations
+                relations = db.query(models.Relation).filter_by(
+                    right_object_id=elem.child_object_id,
+                    left_content_type=70).all()
+                db.delete(file_to_remove)
+                # it has to be committed first because of foreign key dependency
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    print(e)
+                try:
+                    file_to_rem = pathlib.Path(file_path)
+                    file_to_rem.unlink()
+                except FileNotFoundError as e:
+                    print(e)
+
+                db.delete(elem)
+                for relation in relations:
+                    db.delete(relation)
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    print(e)
+
+        db.delete(db_labbook)
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            print(e)
+            return
+
+        return True
+
     return
