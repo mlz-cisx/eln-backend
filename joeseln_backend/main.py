@@ -677,6 +677,8 @@ def get_bi_picture(
         picture_pk=picture_pk,
         db=db,
         jwt=request.query_params._dict['jwt'])
+    if bi_picture is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return bi_picture
     # DONE
 
@@ -693,6 +695,8 @@ def get_ri_picture(
         picture_pk=picture_pk,
         db=db,
         jwt=request.query_params._dict['jwt'])
+    if ri_picture is None:
+        raise HTTPException(status_code=404, detail="token expired")
     return ri_picture
     # DONE
 
@@ -708,6 +712,8 @@ def get_shapes(
                                                    jwt=
                                                    request.query_params._dict[
                                                        'jwt'])
+    if shapes is None:
+        raise HTTPException(status_code=404, detail="token expired")
     return shapes
     # DONE
 

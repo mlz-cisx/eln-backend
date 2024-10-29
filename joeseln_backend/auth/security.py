@@ -29,7 +29,7 @@ from joeseln_backend.mylogging.root_logger import logger
 
 SECRET_KEY = "b014bc552ecfc62a46b6c4bea9d35d6d7e5ff6f0244eff28a3f5ad4be1d3015d"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1
+ACCESS_TOKEN_EXPIRE_MINUTES = 20
 ACCESS_TOKEN_EXPIRE_SECONDS = 1000
 
 fake_users_db = {
@@ -164,9 +164,11 @@ def get_user_from_jwt(token: Annotated[str, Depends(oauth2_scheme)]):
             return user
         else:
             logger.info('token expired ')
+            return
 
     except jwt.exceptions.PyJWTError as e:
         logger.error(f'PyJWTError: {e}')
+        return
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
@@ -213,6 +215,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             return user
         else:
             logger.info('token expired ')
+            raise credentials_exception
 
     except jwt.exceptions.PyJWTError as e:
         logger.error(f'oidc user is considered as non oidc user: {e}')
