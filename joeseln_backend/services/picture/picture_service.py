@@ -92,47 +92,48 @@ def get_all_deleted_pics(db: Session):
 
 def get_picture_with_privileges(db: Session, picture_pk, user):
     db_picture = db.query(models.Picture).get(picture_pk)
-    db_user_created = db.query(models.User).get(db_picture.created_by_id)
-    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
-    db_picture.created_by = db_user_created
-    db_picture.last_modified_by = db_user_modified
+    if db_picture:
+        db_user_created = db.query(models.User).get(db_picture.created_by_id)
+        db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+        db_picture.created_by = db_user_created
+        db_picture.last_modified_by = db_user_modified
 
-    pic = build_download_url_with_token(
-        picture=deepcopy(db_picture), user=user)
+        pic = build_download_url_with_token(
+            picture=deepcopy(db_picture), user=user)
 
-    if check_for_admin_role(db=db, username=user.username):
-        return {'privileges': ADMIN,
-                'picture': pic}
+        if check_for_admin_role(db=db, username=user.username):
+            return {'privileges': ADMIN,
+                    'picture': pic}
 
-    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
-    if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                    user=user):
+        lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+        if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                        user=user):
+            return None
+
+        db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+        db_pic_creator = db.query(models.User).get(db_picture.created_by_id)
+
+        picture_created_by = 'USER'
+        if db_pic_creator.admin:
+            picture_created_by = 'ADMIN'
+
+        if db_lb:
+            if LABBOOK_QUERY_MODE == 'match':
+                user_roles = get_user_group_roles_with_match(db=db,
+                                                             username=user.username,
+                                                             groupname=db_lb.title)
+                privileges = create_pic_privileges(created_by=picture_created_by,
+                                                   user_roles=user_roles)
+
+            else:
+                user_roles = get_user_group_roles(db=db,
+                                                  username=user.username,
+                                                  groupname=db_lb.title)
+                privileges = create_pic_privileges(created_by=picture_created_by,
+                                                   user_roles=user_roles)
+
+            return {'privileges': privileges, 'picture': pic}
         return None
-
-    db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
-    db_pic_creator = db.query(models.User).get(db_picture.created_by_id)
-
-    picture_created_by = 'USER'
-    if db_pic_creator.admin:
-        picture_created_by = 'ADMIN'
-
-    if db_lb:
-        if LABBOOK_QUERY_MODE == 'match':
-            user_roles = get_user_group_roles_with_match(db=db,
-                                                         username=user.username,
-                                                         groupname=db_lb.title)
-            privileges = create_pic_privileges(created_by=picture_created_by,
-                                               user_roles=user_roles)
-
-        else:
-            user_roles = get_user_group_roles(db=db,
-                                              username=user.username,
-                                              groupname=db_lb.title)
-            privileges = create_pic_privileges(created_by=picture_created_by,
-                                               user_roles=user_roles)
-
-        return {'privileges': privileges, 'picture': pic}
-
     return None
 
 

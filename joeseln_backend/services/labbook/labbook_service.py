@@ -183,14 +183,16 @@ def get_labbook_for_export(db: Session, labbook_pk):
 def get_labbook_with_privileges(db: Session, labbook_pk, user):
     if check_for_admin_role(db=db, username=user.username):
         lb = db.query(models.Labbook).get(labbook_pk)
-        db_user_created = db.query(models.User).get(lb.created_by_id)
-        db_user_modified = db.query(models.User).get(
-            lb.last_modified_by_id)
-        lb.created_by = db_user_created
-        lb.last_modified_by = db_user_modified
+        if lb:
+            db_user_created = db.query(models.User).get(lb.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                lb.last_modified_by_id)
+            lb.created_by = db_user_created
+            lb.last_modified_by = db_user_modified
 
-        return {'privileges': ADMIN,
-                'labbook': lb}
+            return {'privileges': ADMIN,
+                    'labbook': lb}
+        return None
 
     user_groups = get_user_groups(db=db, username=user.username)
     if len(user_groups) == 0:

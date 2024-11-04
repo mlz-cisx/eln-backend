@@ -93,48 +93,50 @@ def get_all_deleted_files(db: Session):
 
 def get_file_with_privileges(db: Session, file_pk, user):
     db_file = db.query(models.File).get(file_pk)
-    db_user_created = db.query(models.User).get(db_file.created_by_id)
-    db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
+    if db_file:
+        db_user_created = db.query(models.User).get(db_file.created_by_id)
+        db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
 
-    file_content = build_download_url_with_token(
-        file_to_process=deepcopy(db_file),
-        user=user)
-    file_content.created_by = db_user_created
-    file_content.last_modified_by = db_user_modified
+        file_content = build_download_url_with_token(
+            file_to_process=deepcopy(db_file),
+            user=user)
+        file_content.created_by = db_user_created
+        file_content.last_modified_by = db_user_modified
 
-    if check_for_admin_role(db=db, username=user.username):
-        return {'privileges': ADMIN,
-                'file': file_content}
+        if check_for_admin_role(db=db, username=user.username):
+            return {'privileges': ADMIN,
+                    'file': file_content}
 
-    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
-    if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                    user=user):
+        lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+        if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                        user=user):
+            return None
+
+        db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+        db_user = db.query(models.User).get(db_file.created_by_id)
+
+        file_created_by = 'USER'
+        if db_user.admin:
+            file_created_by = 'ADMIN'
+
+        if db_lb:
+            if LABBOOK_QUERY_MODE == 'match':
+                user_roles = get_user_group_roles_with_match(db=db,
+                                                             username=user.username,
+                                                             groupname=db_lb.title)
+                privileges = create_file_privileges(created_by=file_created_by,
+                                                    user_roles=user_roles)
+
+            else:
+                user_roles = get_user_group_roles(db=db,
+                                                  username=user.username,
+                                                  groupname=db_lb.title)
+                privileges = create_file_privileges(created_by=file_created_by,
+                                                    user_roles=user_roles)
+
+            return {'privileges': privileges, 'file': file_content}
+
         return None
-
-    db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
-    db_user = db.query(models.User).get(db_file.created_by_id)
-
-    file_created_by = 'USER'
-    if db_user.admin:
-        file_created_by = 'ADMIN'
-
-    if db_lb:
-        if LABBOOK_QUERY_MODE == 'match':
-            user_roles = get_user_group_roles_with_match(db=db,
-                                                         username=user.username,
-                                                         groupname=db_lb.title)
-            privileges = create_file_privileges(created_by=file_created_by,
-                                                user_roles=user_roles)
-
-        else:
-            user_roles = get_user_group_roles(db=db,
-                                              username=user.username,
-                                              groupname=db_lb.title)
-            privileges = create_file_privileges(created_by=file_created_by,
-                                                user_roles=user_roles)
-
-        return {'privileges': privileges, 'file': file_content}
-
     return None
 
 

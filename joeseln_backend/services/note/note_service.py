@@ -78,44 +78,45 @@ def get_note(db: Session, note_pk):
 
 def get_note_with_privileges(db: Session, note_pk, user):
     db_note = db.query(models.Note).get(note_pk)
-    db_user_created = db.query(models.User).get(db_note.created_by_id)
-    db_user_modified = db.query(models.User).get(
-        db_note.last_modified_by_id)
-    db_note.created_by = db_user_created
-    db_note.last_modified_by = db_user_modified
-    if check_for_admin_role(db=db, username=user.username):
-        return {'privileges': ADMIN,
-                'note': db_note}
+    if db_note:
+        db_user_created = db.query(models.User).get(db_note.created_by_id)
+        db_user_modified = db.query(models.User).get(
+            db_note.last_modified_by_id)
+        db_note.created_by = db_user_created
+        db_note.last_modified_by = db_user_modified
+        if check_for_admin_role(db=db, username=user.username):
+            return {'privileges': ADMIN,
+                    'note': db_note}
 
-    lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
-    if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                    user=user):
+        lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+        if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                        user=user):
+            return None
+
+        db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+        db_note_creator = db.query(models.User).get(db_note.created_by_id)
+
+        note_created_by = 'USER'
+        if db_note_creator.admin:
+            note_created_by = 'ADMIN'
+
+        if db_lb:
+            if LABBOOK_QUERY_MODE == 'match':
+                user_roles = get_user_group_roles_with_match(db=db,
+                                                             username=user.username,
+                                                             groupname=db_lb.title)
+                privileges = create_note_privileges(created_by=note_created_by,
+                                                    user_roles=user_roles)
+
+            else:
+                user_roles = get_user_group_roles(db=db,
+                                                  username=user.username,
+                                                  groupname=db_lb.title)
+                privileges = create_note_privileges(created_by=note_created_by,
+                                                    user_roles=user_roles)
+
+            return {'privileges': privileges, 'note': db_note}
         return None
-
-    db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
-    db_note_creator = db.query(models.User).get(db_note.created_by_id)
-
-    note_created_by = 'USER'
-    if db_note_creator.admin:
-        note_created_by = 'ADMIN'
-
-    if db_lb:
-        if LABBOOK_QUERY_MODE == 'match':
-            user_roles = get_user_group_roles_with_match(db=db,
-                                                         username=user.username,
-                                                         groupname=db_lb.title)
-            privileges = create_note_privileges(created_by=note_created_by,
-                                                user_roles=user_roles)
-
-        else:
-            user_roles = get_user_group_roles(db=db,
-                                              username=user.username,
-                                              groupname=db_lb.title)
-            privileges = create_note_privileges(created_by=note_created_by,
-                                                user_roles=user_roles)
-
-        return {'privileges': privileges, 'note': db_note}
-
     return None
 
 
