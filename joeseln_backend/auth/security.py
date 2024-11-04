@@ -234,7 +234,10 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         user = update_oidc_user(db=SessionLocal(),
                                 oidc_user=OIDC_User_Create.parse_obj(user))
         update_oidc_user_groups(db=SessionLocal(), user=user)
+        user = get_user_with_groups_by_uname(db=SessionLocal(),
+                                             username=user.username)
         return user
+
     elif r_user.status_code == HTTP_401_UNAUTHORIZED:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,

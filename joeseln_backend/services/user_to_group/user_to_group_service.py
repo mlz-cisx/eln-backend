@@ -67,10 +67,13 @@ def delete_user_to_group(db: Session, user_to_group: UserToGroup_Create):
 def get_user_with_groups_by_uname(db: Session, username):
     user = db.query(models.User).filter_by(username=username).first()
     groups = get_user_groups(db=db, username=username)
+    admin_groups = get_user_groups_role_groupadmin(db=db,
+                                                  username=username)
     user.groups = groups
+    user.admin_groups = admin_groups
     try:
         del user.password
-        del user.admin
+        # del user.admin
         del user.created_at
         del user.last_modified_at
         del user.oidc_user
@@ -154,8 +157,8 @@ def update_oidc_user_groups(db: Session, user):
             remove_as_user_from_group(db=db, username=user.username,
                                       groupname=user_group)
 
-    user_groups = get_user_groups_role_user(db=db, username=user.username)
-    logger.info(user_groups)
+    # user_groups = get_user_groups_role_user(db=db, username=user.username)
+    # logger.info(user_groups)
 
 
 def check_for_admin_role(db: Session, username):

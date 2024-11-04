@@ -10,8 +10,9 @@ class User(BaseModel):
     email: str
     first_name: str | None = None
     last_name: str | None = None
+    admin: bool|None = None
     groups: Any | None = None
-
+    admin_groups: Any | None = None
     class Config:
         populate_by_name = True
         from_attributes = True
