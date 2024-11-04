@@ -5,7 +5,7 @@ from typing import Any
 
 
 class User(BaseModel):
-    id: int | str | UUID | None = None
+    id: int | str | UUID = Field(..., alias='pk')
     username: str
     email: str
     first_name: str | None = None
