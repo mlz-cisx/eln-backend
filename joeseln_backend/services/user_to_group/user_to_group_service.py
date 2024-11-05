@@ -68,7 +68,7 @@ def get_user_with_groups_by_uname(db: Session, username):
     user = db.query(models.User).filter_by(username=username).first()
     groups = get_user_groups(db=db, username=username)
     admin_groups = get_user_groups_role_groupadmin(db=db,
-                                                  username=username)
+                                                   username=username)
     user.groups = groups
     user.admin_groups = admin_groups
     try:
@@ -76,7 +76,7 @@ def get_user_with_groups_by_uname(db: Session, username):
         # del user.admin
         del user.created_at
         del user.last_modified_at
-        del user.oidc_user
+        # del user.oidc_user
     except KeyError as e:
         print(e)
 

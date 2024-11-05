@@ -10,9 +10,11 @@ class User(BaseModel):
     email: str
     first_name: str | None = None
     last_name: str | None = None
-    admin: bool|None = None
+    admin: bool | None = None
     groups: Any | None = None
     admin_groups: Any | None = None
+    oidc_user: bool | None = None
+
     class Config:
         populate_by_name = True
         from_attributes = True
@@ -53,3 +55,7 @@ class OIDC_User_Create(BaseModel):
     class Config:
         populate_by_name = True
         from_attributes = True
+
+
+class PasswordChange(BaseModel):
+    password: str
