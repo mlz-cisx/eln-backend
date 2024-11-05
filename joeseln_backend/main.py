@@ -38,7 +38,8 @@ from joeseln_backend.services.relation import relation_schemas
 from joeseln_backend.services.role.basic_roles_creator import \
     create_basic_roles, create_inital_admin
 
-from joeseln_backend.services.user.user_schema import User
+from joeseln_backend.services.user.user_schema import User, PasswordChange
+from joeseln_backend.services.user.user_password import gui_password_change
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
     export_file
@@ -1225,6 +1226,18 @@ async def websocket_endpoint(*, websocket: WebSocket):
 async def user_me(user: User = Depends(get_current_user)):
     logger.info(user.username)
     return user
+
+
+@app.put('/change_password')
+def change_password(password: PasswordChange,
+                    db: Session = Depends(get_db),
+                    user: User = Depends(get_current_user),
+                    ):
+    db_user = gui_password_change(db=db, user=user,
+                                  none_hashed_password=password)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return ['ok']
 
 
 @app.post("/token")
