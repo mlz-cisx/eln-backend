@@ -100,6 +100,12 @@ def add_picture_version(db: Session, picture_pk, summary, user,
 
             # has new path
             db_picture = db.query(models.Picture).get(picture_pk)
+            db_user_created = db.query(models.User).get(
+                db_picture.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                db_picture.last_modified_by_id)
+            db_picture.created_by = db_user_created
+            db_picture.last_modified_by = db_user_modified
 
             if restored_title is not None:
                 db_picture.title = restored_title

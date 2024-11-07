@@ -106,6 +106,12 @@ def add_note_version(db: Session, note_pk, summary, user, restored_content=None,
                 last_modified_by_id=user.id
             )
 
+            db_user_created = db.query(models.User).get(db_note.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                db_note.last_modified_by_id)
+            db_note.created_by = db_user_created
+            db_note.last_modified_by = db_user_modified
+
             db.add(db_note_version)
             db.commit()
             db.refresh(db_note_version)

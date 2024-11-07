@@ -110,6 +110,12 @@ def add_file_version(db: Session, file_pk, summary, user,
                 last_modified_by_id=user.id
             )
 
+            db_user_created = db.query(models.User).get(db_file.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                db_file.last_modified_by_id)
+            db_file.created_by = db_user_created
+            db_file.last_modified_by = db_user_modified
+
             db.add(db_file_version)
             db.commit()
             db.refresh(db_file_version)

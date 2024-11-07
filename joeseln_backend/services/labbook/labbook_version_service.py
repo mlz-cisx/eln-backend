@@ -271,4 +271,11 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
         db.close()
         return db_labbook
     db.refresh(db_labbook_version)
+
+    db_user_created = db.query(models.User).get(db_labbook.created_by_id)
+    db_user_modified = db.query(models.User).get(
+        db_labbook.last_modified_by_id)
+    db_labbook.created_by = db_user_created
+    db_labbook.last_modified_by = db_user_modified
+
     return db_labbook
