@@ -1307,3 +1307,122 @@ def eln_search(request: Request,
                                                'search'], user=user)
     return result
     # DONE
+
+
+@app.get("/admin/users")
+def get_users(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.post("/admin/users")
+def create_user(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.get("/admin/users/{user_id}")
+def get_user(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.patch("/admin/users/{user_id}/soft_delete/")
+def soft_delete_user(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.patch("/admin/users/{user_id}/restore/")
+def restore_user(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.get("/admin/users/admin")
+def get_admins(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.patch("/admin/users/admin/{user_id}/soft_delete/")
+def soft_delete_admin(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.patch("/admin/users/admin/{user_id}/restore/")
+def restore_admin(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.get("/admin/groups")
+def get_groups(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.get("/admin/groups/{group_pk}")
+def get_group(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.post("/admin/groups")
+def create_group(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.get("/admin/users/groupadmin/{group_pk}")
+def get_group_groupadmins(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.patch("/admin/users/groupadmin/{group_pk}/{user_id}/soft_delete/")
+def soft_delete_groupadmin(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.patch("/admin/users/groupadmin/{group_pk}/{user_id}/restore/")
+def restore_groupadmin(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.get("/admin/users/user/{group_pk}")
+def get_group_users(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.patch("/admin/users/user/{group_pk}/{user_id}/soft_delete/")
+def soft_delete_group_user(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
+
+
+@app.patch("/admin/users/user/{group_pk}/{user_id}/restore/")
+def restore_group_user(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    return ['ok']
