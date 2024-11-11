@@ -328,6 +328,31 @@ def soft_delete_labbook(db: Session, labbook_uuid, username):
     return
 
 
+def gui_soft_delete_labbook(db: Session, labbook_uuid, user):
+    if user.admin:
+        db_labbook = db.query(models.Labbook).get(labbook_uuid)
+        if db_labbook and not db_labbook.deleted:
+            db_labbook.deleted = True
+            db_labbook.last_modified_at = datetime.datetime.now()
+            db_labbook.last_modified_by_id = user.id
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return
+            db.refresh(db_labbook)
+            db_user_created = db.query(models.User).get(
+                db_labbook.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                db_labbook.last_modified_by_id)
+            db_labbook.created_by = db_user_created
+            db_labbook.last_modified_by = db_user_modified
+            return db_labbook
+        return
+    return
+
+
 def restore_labbook(db: Session, labbook_uuid, username):
     user = db.query(models.User).filter_by(username=username).first()
     db_labbook = db.query(models.Labbook).filter_by(id=labbook_uuid,
@@ -344,6 +369,31 @@ def restore_labbook(db: Session, labbook_uuid, username):
             return
         db.refresh(db_labbook)
         return True
+    return
+
+
+def gui_restore_labbook(db: Session, labbook_uuid, user):
+    if user.admin:
+        db_labbook = db.query(models.Labbook).get(labbook_uuid)
+        if db_labbook and db_labbook.deleted:
+            db_labbook.deleted = False
+            db_labbook.last_modified_at = datetime.datetime.now()
+            db_labbook.last_modified_by_id = user.id
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return
+            db.refresh(db_labbook)
+            db_user_created = db.query(models.User).get(
+                db_labbook.created_by_id)
+            db_user_modified = db.query(models.User).get(
+                db_labbook.last_modified_by_id)
+            db_labbook.created_by = db_user_created
+            db_labbook.last_modified_by = db_user_modified
+            return db_labbook
+        return
     return
 
 

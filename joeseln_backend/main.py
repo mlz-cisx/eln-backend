@@ -198,6 +198,38 @@ def create_labbook(labbook: labbook_schemas.LabbookCreate,
     # DONE
 
 
+@app.patch("/labbooks/{labbook_pk}/soft_delete/",
+           response_model=labbook_schemas.Labbook)
+def soft_delete_labbook(
+        labbook_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    # admin notes can only be deleted  by admins or groupadmins
+    db_labbook = labbook_service.gui_soft_delete_labbook(db=db,
+                                                         labbook_uuid=labbook_pk,
+                                                         user=user)
+    if db_labbook is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_labbook
+    # DONE
+
+
+@app.patch("/labbooks/{labbook_pk}/restore/",
+           response_model=labbook_schemas.Labbook)
+def restore_labbook(
+        labbook_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    # logger.info(user)
+    db_labbook = labbook_service.gui_restore_labbook(db=db,
+                                                     labbook_uuid=labbook_pk,
+                                                     user=user)
+    if db_labbook is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_labbook
+    # DONE
+
+
 @app.get("/labbooks/{labbook_pk}/elements/",
          response_model=list[labbookchildelement_schemas.Labbookchildelement])
 def read_labbook_elems(labbook_pk: UUID,
