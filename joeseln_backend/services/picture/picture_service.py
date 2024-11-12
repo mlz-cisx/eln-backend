@@ -36,10 +36,18 @@ def get_all_pictures(db: Session, params, user):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     if check_for_admin_role(db=db, username=user.username):
-        pics = db.query(models.Picture).filter_by(
-            deleted=bool(params.get('deleted'))).order_by(
-            text(order_params)).offset(params.get('offset')).limit(
-            params.get('limit')).all()
+        if params.get('search'):
+            search_text = params.get('search')
+            pics = db.query(models.Picture).filter(
+                models.Picture.title.ilike(f'%{search_text}%')).filter_by(
+                deleted=bool(params.get('deleted'))).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+        else:
+            pics = db.query(models.Picture).filter_by(
+                deleted=bool(params.get('deleted'))).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
         for pic in pics:
             db_user_created = db.query(models.User).get(pic.created_by_id)
             db_user_modified = db.query(models.User).get(
@@ -51,15 +59,28 @@ def get_all_pictures(db: Session, params, user):
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
-    pics = db.query(models.Picture).filter_by(
-        deleted=bool(params.get('deleted'))). \
-        join(models.Labbookchildelement,
-             models.Picture.elem_id ==
-             models.Labbookchildelement.id).filter(
-        models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
-        text('picture.' + order_params)).offset(
-        params.get('offset')).limit(
-        params.get('limit')).all()
+    if params.get('search'):
+        search_text = params.get('search')
+        pics = db.query(models.Picture).filter(
+            models.Picture.title.ilike(f'%{search_text}%')).filter_by(
+            deleted=bool(params.get('deleted'))). \
+            join(models.Labbookchildelement,
+                 models.Picture.elem_id ==
+                 models.Labbookchildelement.id).filter(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+            text('picture.' + order_params)).offset(
+            params.get('offset')).limit(
+            params.get('limit')).all()
+    else:
+        pics = db.query(models.Picture).filter_by(
+            deleted=bool(params.get('deleted'))). \
+            join(models.Labbookchildelement,
+                 models.Picture.elem_id ==
+                 models.Labbookchildelement.id).filter(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+            text('picture.' + order_params)).offset(
+            params.get('offset')).limit(
+            params.get('limit')).all()
 
     for pic in pics:
         db_user_created = db.query(models.User).get(pic.created_by_id)
@@ -94,7 +115,8 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
     db_picture = db.query(models.Picture).get(picture_pk)
     if db_picture:
         db_user_created = db.query(models.User).get(db_picture.created_by_id)
-        db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+        db_user_modified = db.query(models.User).get(
+            db_picture.last_modified_by_id)
         db_picture.created_by = db_user_created
         db_picture.last_modified_by = db_user_modified
 
@@ -122,15 +144,17 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
                 user_roles = get_user_group_roles_with_match(db=db,
                                                              username=user.username,
                                                              groupname=db_lb.title)
-                privileges = create_pic_privileges(created_by=picture_created_by,
-                                                   user_roles=user_roles)
+                privileges = create_pic_privileges(
+                    created_by=picture_created_by,
+                    user_roles=user_roles)
 
             else:
                 user_roles = get_user_group_roles(db=db,
                                                   username=user.username,
                                                   groupname=db_lb.title)
-                privileges = create_pic_privileges(created_by=picture_created_by,
-                                                   user_roles=user_roles)
+                privileges = create_pic_privileges(
+                    created_by=picture_created_by,
+                    user_roles=user_roles)
 
             return {'privileges': privileges, 'picture': pic}
         return None

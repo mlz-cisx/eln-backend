@@ -32,10 +32,18 @@ def get_all_notes(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
 
     if check_for_admin_role(db=db, username=user.username):
-        notes = db.query(models.Note).filter_by(
-            deleted=bool(params.get('deleted'))).order_by(
-            text(order_params)).offset(params.get('offset')).limit(
-            params.get('limit')).all()
+        if params.get('search'):
+            search_text = params.get('search')
+            notes = db.query(models.Note).filter(
+                models.Note.subject.ilike(f'%{search_text}%')).filter_by(
+                deleted=bool(params.get('deleted'))).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+        else:
+            notes = db.query(models.Note).filter_by(
+                deleted=bool(params.get('deleted'))).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
         for note in notes:
             db_user_created = db.query(models.User).get(note.created_by_id)
             db_user_modified = db.query(models.User).get(
@@ -47,15 +55,28 @@ def get_all_notes(db: Session, params, user):
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
-    notes = db.query(models.Note).filter_by(
-        deleted=bool(params.get('deleted'))). \
-        join(models.Labbookchildelement,
-             models.Note.elem_id ==
-             models.Labbookchildelement.id).filter(
-        models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
-        text('note.' + order_params)).offset(
-        params.get('offset')).limit(
-        params.get('limit')).all()
+    if params.get('search'):
+        search_text = params.get('search')
+        notes = db.query(models.Note).filter(
+            models.Note.subject.ilike(f'%{search_text}%')).filter_by(
+            deleted=bool(params.get('deleted'))). \
+            join(models.Labbookchildelement,
+                 models.Note.elem_id ==
+                 models.Labbookchildelement.id).filter(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+            text('note.' + order_params)).offset(
+            params.get('offset')).limit(
+            params.get('limit')).all()
+    else:
+        notes = db.query(models.Note).filter_by(
+            deleted=bool(params.get('deleted'))). \
+            join(models.Labbookchildelement,
+                 models.Note.elem_id ==
+                 models.Labbookchildelement.id).filter(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+            text('note.' + order_params)).offset(
+            params.get('offset')).limit(
+            params.get('limit')).all()
 
     for note in notes:
         db_user_created = db.query(models.User).get(note.created_by_id)

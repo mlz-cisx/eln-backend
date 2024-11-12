@@ -36,10 +36,18 @@ def get_all_files(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
 
     if check_for_admin_role(db=db, username=user.username):
-        files = db.query(models.File).filter_by(
-            deleted=bool(params.get('deleted'))).order_by(
-            text(order_params)).offset(params.get('offset')).limit(
-            params.get('limit')).all()
+        if params.get('search'):
+            search_text = params.get('search')
+            files = db.query(models.File).filter(
+                models.File.title.ilike(f'%{search_text}%')).filter_by(
+                deleted=bool(params.get('deleted'))).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+        else:
+            files = db.query(models.File).filter_by(
+                deleted=bool(params.get('deleted'))).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
         for file in files:
             db_user_created = db.query(models.User).get(file.created_by_id)
             db_user_modified = db.query(models.User).get(
@@ -51,15 +59,28 @@ def get_all_files(db: Session, params, user):
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
-    files = db.query(models.File).filter_by(
-        deleted=bool(params.get('deleted'))). \
-        join(models.Labbookchildelement,
-             models.File.elem_id ==
-             models.Labbookchildelement.id).filter(
-        models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
-        text('file.' + order_params)).offset(
-        params.get('offset')).limit(
-        params.get('limit')).all()
+    if params.get('search'):
+        search_text = params.get('search')
+        files = db.query(models.File).filter(
+                models.File.title.ilike(f'%{search_text}%')).filter_by(
+            deleted=bool(params.get('deleted'))). \
+            join(models.Labbookchildelement,
+                 models.File.elem_id ==
+                 models.Labbookchildelement.id).filter(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+            text('file.' + order_params)).offset(
+            params.get('offset')).limit(
+            params.get('limit')).all()
+    else:
+        files = db.query(models.File).filter_by(
+            deleted=bool(params.get('deleted'))). \
+            join(models.Labbookchildelement,
+                 models.File.elem_id ==
+                 models.Labbookchildelement.id).filter(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+            text('file.' + order_params)).offset(
+            params.get('offset')).limit(
+            params.get('limit')).all()
 
     for file in files:
         db_user_created = db.query(models.User).get(file.created_by_id)
@@ -95,7 +116,8 @@ def get_file_with_privileges(db: Session, file_pk, user):
     db_file = db.query(models.File).get(file_pk)
     if db_file:
         db_user_created = db.query(models.User).get(db_file.created_by_id)
-        db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
+        db_user_modified = db.query(models.User).get(
+            db_file.last_modified_by_id)
 
         file_content = build_download_url_with_token(
             file_to_process=deepcopy(db_file),
