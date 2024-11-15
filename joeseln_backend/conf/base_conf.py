@@ -22,7 +22,9 @@ WS_URL = 'ws://172.25.74.236:8010/ws/'
 # CORS  settings
 ORIGINS = [
     "http://localhost:4500",
-    "http://172.25.74.236:4500"
+    "http://172.25.74.236:4500",
+    "http://daphneopc01:4500",
+    "http://daphneopc01.office.frm2:4500",
 ]
 
 # Keycloak Settings
