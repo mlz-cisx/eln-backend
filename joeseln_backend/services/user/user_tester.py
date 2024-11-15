@@ -7,7 +7,7 @@ from joeseln_backend.auth.security import verify_password
 
 my_session = SessionLocal()
 
-test_user = create_user(db=my_session, user=User_Create.parse_obj(TEST_USER_2))
+test_user = create_user(db=my_session, user=UserCreate.parse_obj(TEST_USER_2))
 print(UserExtended.parse_obj(test_user))
 
 # test_user = get_user_by_uname(db=my_session, username='user2')

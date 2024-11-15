@@ -2,7 +2,7 @@ import sys
 
 sys.path.insert(0, '../../../..')
 from joeseln_backend.auth.security import get_password_hash
-from joeseln_backend.services.user.user_schema import User_Create
+from joeseln_backend.services.user.user_schema import UserCreate
 from joeseln_backend.services.user.user_service import \
     create_user
 from joeseln_backend.database.database import SessionLocal
@@ -26,7 +26,7 @@ def user_creator():
     }
 
     my_session = SessionLocal()
-    if create_user(db=my_session, user=User_Create.parse_obj(user_to_create)):
+    if create_user(db=my_session, user=UserCreate.parse_obj(user_to_create)):
         print(f'user {username} created')
     else:
         print(f'user {username} could not be created')

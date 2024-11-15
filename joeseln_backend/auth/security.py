@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.services.user.user_service import update_oidc_user, \
     get_user_by_uname
-from joeseln_backend.services.user.user_schema import OIDC_User_Create
+from joeseln_backend.services.user.user_schema import OIDCUserCreate
 from joeseln_backend.services.user_to_group.user_to_group_service import \
     get_user_with_groups_by_uname, update_oidc_user_groups
 
@@ -232,7 +232,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         user = dict(r_user.json())
         # TODO for a better performance this could be called only at /users/me
         user = update_oidc_user(db=SessionLocal(),
-                                oidc_user=OIDC_User_Create.parse_obj(user))
+                                oidc_user=OIDCUserCreate.parse_obj(user))
         update_oidc_user_groups(db=SessionLocal(), user=user)
         user = get_user_with_groups_by_uname(db=SessionLocal(),
                                              username=user.username)

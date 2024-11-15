@@ -9,7 +9,7 @@ def get_user_by_uname(db: Session, username):
     return db.query(models.User).filter_by(username=username).first()
 
 
-def update_oidc_user(db: Session, oidc_user: OIDC_User_Create):
+def update_oidc_user(db: Session, oidc_user: OIDCUserCreate):
     db_user = get_user_by_uname(db=db, username=oidc_user.preferred_username)
     if not db_user:
         db_user = models.User(username=oidc_user.preferred_username,
@@ -48,7 +48,7 @@ def update_oidc_user(db: Session, oidc_user: OIDC_User_Create):
         return db_user
 
 
-def create_user(db: Session, user: User_Create):
+def create_user(db: Session, user: UserCreate):
     db_user = models.User(username=user.username,
                           email=user.email,
                           oidc_user=user.oidc_user,
@@ -68,3 +68,27 @@ def create_user(db: Session, user: User_Create):
         return
     db.refresh(db_user)
     return db_user
+
+
+def guicreate_user(db: Session, user, user_to_create: GuiUserCreate):
+    if user.admin and (
+            user_to_create.password == user_to_create.password_confirmed):
+
+        db_user = models.User(username=user_to_create.username,
+                              email=user_to_create.email,
+                              password=user_to_create.password,
+                              first_name=user_to_create.first_name,
+                              last_name=user_to_create.last_name,
+                              created_at=datetime.datetime.now(),
+                              last_modified_at=datetime.datetime.now()
+                              )
+        try:
+            db.add(db_user)
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        db.refresh(db_user)
+        return db_user
+    return

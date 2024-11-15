@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field
 from uuid import UUID
 from typing import Any
 
+from joeseln_backend.services.privileges.privileges_schema import Privileges
+
 
 class User(BaseModel):
     id: int | str | UUID = Field(..., alias='pk')
@@ -21,13 +23,13 @@ class User(BaseModel):
 
 
 class UserExtended(BaseModel):
-    id: int | str | UUID = Field(..., alias='pk')
+    id: int | str | UUID
     username: str
     email: str
     oidc_user: bool
-    password: str
     first_name: str
     last_name: str
+    deleted: bool
     created_at: datetime.datetime
     last_modified_at: datetime.datetime
 
@@ -36,7 +38,7 @@ class UserExtended(BaseModel):
         from_attributes = True
 
 
-class User_Create(BaseModel):
+class UserCreate(BaseModel):
     username: str
     email: str
     oidc_user: bool
@@ -45,7 +47,16 @@ class User_Create(BaseModel):
     last_name: str
 
 
-class OIDC_User_Create(BaseModel):
+class GuiUserCreate(BaseModel):
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    password: str
+    password_confirmed: str
+
+
+class OIDCUserCreate(BaseModel):
     preferred_username: str
     email: str
     given_name: str
@@ -59,3 +70,8 @@ class OIDC_User_Create(BaseModel):
 
 class PasswordChange(BaseModel):
     password: str
+
+
+class UserWithPrivileges(BaseModel):
+    user: UserExtended | None
+    privileges: Privileges | None

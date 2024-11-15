@@ -5,7 +5,7 @@ from joeseln_backend.services.role.role_service import create_role, \
 from joeseln_backend.services.role.role_schema import Role_Create
 from joeseln_backend.services.user.user_service import get_user_by_uname, \
     create_user
-from joeseln_backend.services.user.user_schema import User_Create
+from joeseln_backend.services.user.user_schema import UserCreate
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.services.user_to_group.user_to_group_service import \
     add_admin_role
@@ -24,7 +24,7 @@ def create_basic_roles():
 def create_inital_admin():
     if not get_user_by_uname(db=my_session, username='admin'):
         create_user(db=my_session,
-                                user=User_Create.parse_obj(USER0))
+                                user=UserCreate.parse_obj(USER0))
         print(add_admin_role(db=my_session, username='admin'))
 
 

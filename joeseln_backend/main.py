@@ -23,6 +23,8 @@ from joeseln_backend.services.picture import picture_schemas, \
     picture_service
 from joeseln_backend.services.note import note_schemas, note_service, \
     note_version_service
+from joeseln_backend.services.admin_user import admin_user_service
+from joeseln_backend.services.user import user_service
 from joeseln_backend.services.labbookchildelements import \
     labbookchildelement_service, \
     labbookchildelement_schemas
@@ -38,7 +40,8 @@ from joeseln_backend.services.relation import relation_schemas
 from joeseln_backend.services.role.basic_roles_creator import \
     create_basic_roles, create_inital_admin
 
-from joeseln_backend.services.user.user_schema import User, PasswordChange
+from joeseln_backend.services.user.user_schema import User, PasswordChange, \
+    UserExtended, UserWithPrivileges, GuiUserCreate
 from joeseln_backend.services.user.user_password import gui_password_change
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
@@ -1309,39 +1312,67 @@ def eln_search(request: Request,
     # DONE
 
 
-@app.get("/admin/users")
+@app.get("/admin/users", response_model=list[UserExtended])
 def get_users(
+        request: Request,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_users = admin_user_service.get_all_users(db=db,
+                                                params=request.query_params._dict,
+                                                user=user)
+    if db_users is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_users
 
 
-@app.post("/admin/users")
+@app.post("/admin/users", response_model=UserExtended)
 def create_user(
+        user_to_create: GuiUserCreate,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user = user_service.guicreate_user(db=db, user=user,
+                                          user_to_create=user_to_create)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user
 
 
-@app.get("/admin/users/{user_id}")
+@app.get("/admin/users/{user_id}", response_model=UserWithPrivileges)
 def get_user(
+        user_id: int,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user = admin_user_service.get_user_by_id(db=db, user=user,
+                                                user_id=user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user
 
 
 @app.patch("/admin/users/{user_id}/soft_delete/")
 def soft_delete_user(
+        user_id: int,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user = admin_user_service.soft_delete_user(db=db,
+                                                  user_id=user_id,
+                                                  user=user)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user
 
 
 @app.patch("/admin/users/{user_id}/restore/")
 def restore_user(
+        user_id: int,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user = admin_user_service.restore_user(db=db,
+                                              user_id=user_id,
+                                              user=user)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user
 
 
 @app.get("/admin/users/admin")
