@@ -20,7 +20,7 @@ from joeseln_backend.services.privileges.admin_privileges.privileges_service imp
 from joeseln_backend.services.privileges.privileges_service import \
     create_file_privileges
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    check_for_admin_role, get_user_group_roles_with_match, get_user_group_roles, \
+     get_user_group_roles_with_match, get_user_group_roles, \
     check_for_admin_role_with_user_id
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.helper import db_ordering
@@ -35,7 +35,7 @@ def get_all_files(db: Session, params, user):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
 
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         if params.get('search'):
             search_text = params.get('search')
             files = db.query(models.File).filter(
@@ -125,7 +125,7 @@ def get_file_with_privileges(db: Session, file_pk, user):
         file_content.created_by = db_user_created
         file_content.last_modified_by = db_user_modified
 
-        if check_for_admin_role(db=db, username=user.username):
+        if user.admin:
             return {'privileges': ADMIN,
                     'file': file_content}
 
@@ -295,7 +295,7 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
     lb_to_update.last_modified_by_id = user.id
 
     # First possibility
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -450,7 +450,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
     lb_to_update.last_modified_by_id = user.id
 
     # First possibility
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -568,7 +568,7 @@ def restore_file(db: Session, file_pk, user):
     lb_to_update.last_modified_by_id = user.id
 
     # First possibility
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         try:
             db.commit()
         except SQLAlchemyError as e:

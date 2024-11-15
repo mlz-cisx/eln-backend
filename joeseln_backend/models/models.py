@@ -147,6 +147,7 @@ class User(Base):
     email = Column(Text, unique=True)
     oidc_user = Column(Boolean, default=False)
     admin = Column(Boolean, default=False)
+    deleted = Column(Boolean, default=False)
     password = Column(Text, default='not set')
     first_name = Column(Text)
     last_name = Column(Text)

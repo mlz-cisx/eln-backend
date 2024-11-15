@@ -9,7 +9,7 @@ from sqlalchemy import or_
 from joeseln_backend.models import models
 from joeseln_backend.services.labbook.labbook_schemas import *
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_group_roles, get_user_group_roles_with_match, check_for_admin_role, \
+    get_user_group_roles, get_user_group_roles_with_match,  \
     get_user_groups, get_user_groups_role_groupadmin
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
@@ -25,7 +25,7 @@ from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 
 
 def check_for_labbook_access(db: Session, labbook_pk, user):
-    if not check_for_admin_role(db=db, username=user.username):
+    if not user.admin:
         user_groups = get_user_groups(db=db, username=user.username)
 
         if len(user_groups) == 0:
@@ -46,7 +46,7 @@ def check_for_labbook_access(db: Session, labbook_pk, user):
 
 
 def check_for_labbook_admin_access(db: Session, labbook_pk, user):
-    if not check_for_admin_role(db=db, username=user.username):
+    if not user.admin:
         user_groups = get_user_groups_role_groupadmin(db=db,
                                                       username=user.username)
         if len(user_groups) == 0:
@@ -92,7 +92,7 @@ def get_all_labbook_ids_from_non_admin_user(db: Session, user):
 
 def get_labbooks_from_user(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         if params.get('search'):
             search_text = params.get('search')
             lbs = db.query(models.Labbook).filter(
@@ -156,7 +156,7 @@ def get_labbooks_from_user(db: Session, params, user):
 
 def create_labbook(db: Session, labbook: LabbookCreate, user):
     db_labbook = None
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         db_labbook = models.Labbook(version_number=0,
                                     title=labbook.title,
                                     description=labbook.description,
@@ -189,7 +189,7 @@ def get_labbook_for_export(db: Session, labbook_pk):
 
 
 def get_labbook_with_privileges(db: Session, labbook_pk, user):
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         lb = db.query(models.Labbook).get(labbook_pk)
         if lb:
             db_user_created = db.query(models.User).get(lb.created_by_id)
@@ -243,7 +243,7 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
 def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
     db_labbook = db.query(models.Labbook).get(labbook_pk)
     lb_privileges = None
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         lb_privileges = ADMIN
     elif LABBOOK_QUERY_MODE == 'match':
         user_roles = get_user_group_roles_with_match(db=db,
@@ -284,7 +284,7 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
 
 
 def get_labbook_export_link(db: Session, labbook_pk, user):
-    if not check_for_admin_role(db=db, username=user.username):
+    if not user.admin:
         user_groups = get_user_groups(db=db, username=user.username)
         if len(user_groups) == 0:
             return None

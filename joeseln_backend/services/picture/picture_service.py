@@ -16,7 +16,7 @@ from joeseln_backend.services.privileges.admin_privileges.privileges_service imp
 from joeseln_backend.services.privileges.privileges_service import \
     create_pic_privileges
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    check_for_admin_role, get_user_group_roles_with_match, get_user_group_roles, \
+     get_user_group_roles_with_match, get_user_group_roles, \
     check_for_admin_role_with_user_id
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.auth import security
@@ -35,7 +35,7 @@ from joeseln_backend.mylogging.root_logger import logger
 def get_all_pictures(db: Session, params, user):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         if params.get('search'):
             search_text = params.get('search')
             pics = db.query(models.Picture).filter(
@@ -123,7 +123,7 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
         pic = build_download_url_with_token(
             picture=deepcopy(db_picture), user=user)
 
-        if check_for_admin_role(db=db, username=user.username):
+        if user.admin:
             return {'privileges': ADMIN,
                     'picture': pic}
 
@@ -529,8 +529,7 @@ def get_picture_export_link(db: Session, picture_pk, user):
         'filename': f'{db_picture.title}.pdf'
     }
 
-    if check_for_admin_role(db=db,
-                            username=user.username) or check_for_labbook_access(
+    if user.admin or check_for_labbook_access(
         db=db, labbook_pk=lb_elem.labbook_id,
         user=user):
         return export_link
@@ -566,7 +565,7 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
     lb_to_update.last_modified_by_id = user.id
 
     # First possibility
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -673,7 +672,7 @@ def restore_picture(db: Session, picture_pk, user):
     lb_to_update.last_modified_by_id = user.id
 
     # First possibility
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         try:
             db.commit()
         except SQLAlchemyError as e:

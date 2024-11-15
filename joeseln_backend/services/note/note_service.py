@@ -15,7 +15,7 @@ from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.comment.comment_schemas import Comment
 
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_group_roles, get_user_group_roles_with_match, check_for_admin_role, \
+    get_user_group_roles, get_user_group_roles_with_match, \
     check_for_admin_role_with_user_id
 
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
@@ -31,7 +31,7 @@ from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 def get_all_notes(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
 
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         if params.get('search'):
             search_text = params.get('search')
             notes = db.query(models.Note).filter(
@@ -105,7 +105,7 @@ def get_note_with_privileges(db: Session, note_pk, user):
             db_note.last_modified_by_id)
         db_note.created_by = db_user_created
         db_note.last_modified_by = db_user_modified
-        if check_for_admin_role(db=db, username=user.username):
+        if user.admin:
             return {'privileges': ADMIN,
                     'note': db_note}
 
@@ -265,7 +265,7 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
     lb_to_update.last_modified_by_id = user.id
 
     # First possibility
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -325,7 +325,7 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
     lb_to_update.last_modified_by_id = user.id
 
     # First possibility
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -429,7 +429,7 @@ def restore_note(db: Session, note_pk, user):
     lb_to_update.last_modified_by_id = user.id
 
     # First possibility
-    if check_for_admin_role(db=db, username=user.username):
+    if user.admin:
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -493,8 +493,7 @@ def get_note_export_link(db: Session, note_pk, user):
         'filename': f'{db_note.subject}.pdf'
     }
 
-    if check_for_admin_role(db=db,
-                            username=user.username) or check_for_labbook_access(
+    if user.admin or check_for_labbook_access(
         db=db, labbook_pk=lb_elem.labbook_id,
         user=user):
         return export_link
