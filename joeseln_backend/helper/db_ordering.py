@@ -36,6 +36,26 @@ def get_order_params(ordering):
             return 'file_size asc'
         case '-file_size':
             return 'file_size desc'
+        case 'groupname':
+            return 'groupname asc'
+        case '-groupname':
+            return 'groupname desc'
+        case 'username':
+            return 'username asc'
+        case '-username':
+            return 'username desc'
+        case 'first_name':
+            return 'first_name asc'
+        case '-first_name':
+            return 'first_name desc'
+        case 'last_name':
+            return 'last_name asc'
+        case '-last_name':
+            return 'last_name desc'
+        case 'email':
+            return 'email asc'
+        case '-email':
+            return 'email desc'
         case None:
             return 'id desc'
         case _:

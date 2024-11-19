@@ -194,7 +194,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             # TODO for a better performance this could be called only at /users/me
             user = get_user_with_groups_by_uname(db=SessionLocal(),
                                                  username=username)
-            if user is None:
+            if user is None or user.deleted:
                 raise credentials_exception
             return user
     except jwt.exceptions.ExpiredSignatureError as e:
@@ -210,7 +210,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             user = get_user_with_groups_by_uname(db=SessionLocal(),
                                                  username=username)
 
-            if user is None:
+            if user is None or user.deleted:
                 raise credentials_exception
             return user
         else:
@@ -236,6 +236,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         update_oidc_user_groups(db=SessionLocal(), user=user)
         user = get_user_with_groups_by_uname(db=SessionLocal(),
                                              username=user.username)
+        if user is None or user.deleted:
+            raise credentials_exception
         return user
 
     elif r_user.status_code == HTTP_401_UNAUTHORIZED:

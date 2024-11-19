@@ -1,6 +1,10 @@
 from sqlalchemy import literal
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql import text
+from sqlalchemy import or_
+
+from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
 from joeseln_backend.services.role.role_service import get_role_by_rolename
 from joeseln_backend.services.user.user_service import get_user_by_uname
@@ -8,8 +12,197 @@ from joeseln_backend.services.user_to_group.user_to_group_schema import *
 from joeseln_backend.mylogging.root_logger import logger
 
 
+def get_all_groups(db: Session, params, user):
+    order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
+
+    if user.admin:
+        if params.get('search'):
+            search_text = params.get('search')
+            groups = db.query(models.Group).filter(
+                models.Group.groupname.ilike(f'%{search_text}%')).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+        else:
+            groups = db.query(models.Group).order_by(
+                text(order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+
+        return groups
+    return
+
+
+def get_all_groupusers(db: Session, group_pk, params, authed_user):
+    order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
+
+    if 'id' in order_params:
+        modified_order_params = 'user_to_group_role.user_id asc'
+    else:
+        modified_order_params = order_params
+
+    group_user = not bool(params.get('deleted'))
+
+    if authed_user.admin:
+        if params.get('search'):
+            search_text = params.get('search')
+            users = db.query(models.User).join(models.UserToGroupRole,
+                                               models.User.id == models.UserToGroupRole.user_id) \
+                .join(
+                models.Role,
+                models.Role.id == models.UserToGroupRole.user_group_role).filter(
+                models.UserToGroupRole.group_id == group_pk,
+                models.Role.rolename == 'user').filter(or_(
+                models.User.username.ilike(f'%{search_text}%'),
+                models.User.first_name.ilike(f'%{search_text}%'),
+                models.User.last_name.ilike(f'%{search_text}%'),
+            )).order_by(
+                text(modified_order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+
+            if not group_user:
+
+                all_other_users = db.query(models.User).filter_by(
+                    admin=False).filter(or_(
+                    models.User.username.ilike(f'%{search_text}%'),
+                    models.User.first_name.ilike(f'%{search_text}%'),
+                    models.User.last_name.ilike(f'%{search_text}%'),
+                )).order_by(
+                    text(order_params)).offset(params.get('offset')).limit(
+                    params.get('limit')).all()
+
+                for user_elem in users:
+                    if user_elem in all_other_users:
+                        all_other_users.remove(user_elem)
+
+                for user_elem in all_other_users:
+                    user_elem.in_group = False
+                return all_other_users
+
+            for user_elem in users:
+                user_elem.in_group = True
+            return users
+
+
+        else:
+            users = db.query(models.User).join(models.UserToGroupRole,
+                                               models.User.id == models.UserToGroupRole.user_id) \
+                .join(
+                models.Role,
+                models.Role.id == models.UserToGroupRole.user_group_role).filter(
+                models.UserToGroupRole.group_id == group_pk,
+                models.Role.rolename == 'user') \
+                .order_by(
+                text(modified_order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+
+            if not group_user:
+                all_other_users = db.query(models.User).filter_by(
+                    admin=False).order_by(
+                    text(order_params)).offset(params.get('offset')).limit(
+                    params.get('limit')).all()
+                for user_elem in users:
+                    if user_elem in all_other_users:
+                        all_other_users.remove(user_elem)
+
+                for user_elem in all_other_users:
+                    user_elem.in_group = False
+                return all_other_users
+
+            for user_elem in users:
+                user_elem.in_group = True
+            return users
+    return
+
+
+def get_all_groupadmins(db: Session, group_pk, params, authed_user):
+    order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
+
+    if 'id' in order_params:
+        modified_order_params = 'user_to_group_role.user_id asc'
+    else:
+        modified_order_params = order_params
+
+    group_groupadmin = not bool(params.get('deleted'))
+
+    if authed_user.admin:
+        if params.get('search'):
+            search_text = params.get('search')
+            users = db.query(models.User).join(models.UserToGroupRole,
+                                               models.User.id == models.UserToGroupRole.user_id) \
+                .join(
+                models.Role,
+                models.Role.id == models.UserToGroupRole.user_group_role).filter(
+                models.UserToGroupRole.group_id == group_pk,
+                models.Role.rolename == 'groupadmin').filter(or_(
+                models.User.username.ilike(f'%{search_text}%'),
+                models.User.first_name.ilike(f'%{search_text}%'),
+                models.User.last_name.ilike(f'%{search_text}%'),
+            )).order_by(
+                text(modified_order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+
+            if not group_groupadmin:
+
+                all_other_users = db.query(models.User).filter_by(
+                    admin=False).filter(or_(
+                    models.User.username.ilike(f'%{search_text}%'),
+                    models.User.first_name.ilike(f'%{search_text}%'),
+                    models.User.last_name.ilike(f'%{search_text}%'),
+                )).order_by(
+                    text(order_params)).offset(params.get('offset')).limit(
+                    params.get('limit')).all()
+
+                for user_elem in users:
+                    if user_elem in all_other_users:
+                        all_other_users.remove(user_elem)
+
+                for user_elem in all_other_users:
+                    user_elem.in_group = False
+                return all_other_users
+
+            for user_elem in users:
+                user_elem.in_group = True
+            return users
+
+
+        else:
+            users = db.query(models.User).join(models.UserToGroupRole,
+                                               models.User.id == models.UserToGroupRole.user_id) \
+                .join(
+                models.Role,
+                models.Role.id == models.UserToGroupRole.user_group_role).filter(
+                models.UserToGroupRole.group_id == group_pk,
+                models.Role.rolename == 'groupadmin') \
+                .order_by(
+                text(modified_order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+
+            if not group_groupadmin:
+                all_other_users = db.query(models.User).filter_by(
+                    admin=False).order_by(
+                    text(order_params)).offset(params.get('offset')).limit(
+                    params.get('limit')).all()
+                for user_elem in users:
+                    if user_elem in all_other_users:
+                        all_other_users.remove(user_elem)
+                for user_elem in all_other_users:
+                    user_elem.in_group = False
+                return all_other_users
+
+            for user_elem in users:
+                user_elem.in_group = True
+            return users
+    return
+
+
 def get_group_by_groupname(db: Session, groupname):
     return db.query(models.Group).filter_by(groupname=groupname).first()
+
+
+def get_groupname(db: Session, group_pk, user):
+    if user.admin:
+        group = db.query(models.Group).get(group_pk)
+        return group.groupname
+    return
 
 
 def create_group(db: Session, groupname):
@@ -119,6 +312,17 @@ def get_user_groups(db: Session, username):
 
 
 def get_user_groups_role_user(db: Session, username):
+    result = db.query(models.Group).join(models.UserToGroupRole,
+                                         models.Group.id == models.UserToGroupRole.group_id).join(
+        models.User, models.UserToGroupRole.user_id == models.User.id).join(
+        models.Role,
+        models.Role.id == models.UserToGroupRole.user_group_role).filter(
+        models.User.username == username, models.Role.rolename == 'user').all()
+    result = [x.groupname for x in result]
+    return result
+
+
+def get_groupuser(db: Session, username):
     result = db.query(models.Group).join(models.UserToGroupRole,
                                          models.Group.id == models.UserToGroupRole.group_id).join(
         models.User, models.UserToGroupRole.user_id == models.User.id).join(
@@ -249,6 +453,28 @@ def add_as_user_to_group(db: Session, username, groupname):
     return
 
 
+def gui_add_as_user_to_group(db: Session, authed_user, user_id, group_pk):
+    if authed_user.admin:
+        user = db.query(models.User).get(user_id)
+        group = db.query(models.Group).get(group_pk)
+        role = get_role_by_rolename(db=db, rolename='user')
+
+        if user is not None and group is not None and role is not None:
+            user_role_group = {
+                'user_id': user_id,
+                'group_id': group_pk,
+                'user_group_role': get_role_by_rolename(db=db,
+                                                        rolename='user').id
+            }
+            db_user_to_group = create_user_to_group(db=db,
+                                                    user_to_group=UserToGroup_Create.parse_obj(
+                                                        user_role_group))
+
+            return db_user_to_group
+        return
+    return
+
+
 def remove_as_user_from_group(db: Session, username, groupname):
     user = get_user_by_uname(db=db, username=username)
     group = get_group_by_groupname(db=db, groupname=groupname)
@@ -263,6 +489,26 @@ def remove_as_user_from_group(db: Session, username, groupname):
         return delete_user_to_group(db=db,
                                     user_to_group=UserToGroup_Create.parse_obj(
                                         user_role_group))
+    return
+
+
+def gui_remove_as_user_from_group(db: Session, authed_user, user_id, group_pk):
+    if authed_user.admin:
+        user = db.query(models.User).get(user_id)
+        group = db.query(models.Group).get(group_pk)
+        role = get_role_by_rolename(db=db, rolename='user')
+
+        if user is not None and group is not None and role is not None:
+            user_role_group = {
+                'user_id': user_id,
+                'group_id': group_pk,
+                'user_group_role': get_role_by_rolename(db=db,
+                                                        rolename='user').id
+            }
+            return delete_user_to_group(db=db,
+                                        user_to_group=UserToGroup_Create.parse_obj(
+                                            user_role_group))
+        return
     return
 
 
@@ -288,6 +534,28 @@ def add_as_groupadmin_to_group(db: Session, username, groupname):
     return False
 
 
+def gui_add_as_groupadmin_to_group(db: Session, authed_user, user_id, group_pk):
+    if authed_user.admin:
+        user = db.query(models.User).get(user_id)
+        group = db.query(models.Group).get(group_pk)
+        role = get_role_by_rolename(db=db, rolename='groupadmin')
+
+        if user is not None and group is not None and role is not None:
+            user_role_group = {
+                'user_id': user_id,
+                'group_id': group_pk,
+                'user_group_role': get_role_by_rolename(db=db,
+                                                        rolename='groupadmin').id
+            }
+            db_user_to_group = create_user_to_group(db=db,
+                                                    user_to_group=UserToGroup_Create.parse_obj(
+                                                        user_role_group))
+
+            return db_user_to_group
+        return
+    return
+
+
 def remove_as_groupadmin_from_group(db: Session, username, groupname):
     user = get_user_by_uname(db=db, username=username)
     group = get_group_by_groupname(db=db, groupname=groupname)
@@ -304,6 +572,27 @@ def remove_as_groupadmin_from_group(db: Session, username, groupname):
                                     user_to_group=UserToGroup_Create.parse_obj(
                                         user_role_group))
 
+    return
+
+
+def gui_remove_as_groupadmin_from_group(db: Session, authed_user, user_id,
+                                        group_pk):
+    if authed_user.admin:
+        user = db.query(models.User).get(user_id)
+        group = db.query(models.Group).get(group_pk)
+        role = get_role_by_rolename(db=db, rolename='groupadmin')
+
+        if user is not None and group is not None and role is not None:
+            user_role_group = {
+                'user_id': user_id,
+                'group_id': group_pk,
+                'user_group_role': get_role_by_rolename(db=db,
+                                                        rolename='groupadmin').id
+            }
+            return delete_user_to_group(db=db,
+                                        user_to_group=UserToGroup_Create.parse_obj(
+                                            user_role_group))
+        return
     return
 
 

@@ -25,6 +25,8 @@ from joeseln_backend.services.note import note_schemas, note_service, \
     note_version_service
 from joeseln_backend.services.admin_user import admin_user_service
 from joeseln_backend.services.user import user_service
+from joeseln_backend.services.user_to_group import user_to_group_service, \
+    user_to_group_schema
 from joeseln_backend.services.labbookchildelements import \
     labbookchildelement_service, \
     labbookchildelement_schemas
@@ -41,7 +43,8 @@ from joeseln_backend.services.role.basic_roles_creator import \
     create_basic_roles, create_inital_admin
 
 from joeseln_backend.services.user.user_schema import User, PasswordChange, \
-    UserExtended, UserWithPrivileges, GuiUserCreate
+    UserExtended, UserWithPrivileges, GuiUserCreate, AdminExtended, \
+    GroupUserExtended
 from joeseln_backend.services.user.user_password import gui_password_change
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
@@ -1375,39 +1378,69 @@ def restore_user(
     return db_user
 
 
-@app.get("/admin/users/admin")
-def get_admins(
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    return ['ok']
+@app.get("/admin/admins", response_model=list[AdminExtended])
+def get_admins(request: Request,
+               db: Session = Depends(get_db),
+               user: User = Depends(get_current_user)):
+    db_users = admin_user_service.get_all_admins(db=db,
+                                                 params=request.query_params._dict,
+                                                 user=user)
+    if db_users is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_users
 
 
-@app.patch("/admin/users/admin/{user_id}/soft_delete/")
+@app.patch("/admin/admins/{user_id}/soft_delete/", response_model=AdminExtended)
 def soft_delete_admin(
+        user_id: int,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user = admin_user_service.remove_as_admin(db=db,
+                                                 user_id=user_id,
+                                                 user=user)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user
 
 
-@app.patch("/admin/users/admin/{user_id}/restore/")
+@app.patch("/admin/admins/{user_id}/restore/", response_model=AdminExtended)
 def restore_admin(
+        user_id: int,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user = admin_user_service.set_as_admin(db=db,
+                                              user_id=user_id,
+                                              user=user)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user
 
 
-@app.get("/admin/groups")
+@app.get("/admin/groups", response_model=list[user_to_group_schema.Group])
 def get_groups(
+        request: Request,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_groups = user_to_group_service.get_all_groups(db=db,
+                                                     params=request.query_params._dict,
+                                                     user=user)
+    logger.info(db_groups)
+    if db_groups is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_groups
 
 
 @app.get("/admin/groups/{group_pk}")
 def get_group(
+        group_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    title = user_to_group_service.get_groupname(db=db,
+                                                group_pk=group_pk,
+                                                user=user)
+    if title is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return [title]
 
 
 @app.post("/admin/groups")
@@ -1417,43 +1450,95 @@ def create_group(
     return ['ok']
 
 
-@app.get("/admin/users/groupadmin/{group_pk}")
+@app.get("/admin/group/groupadmins/{group_pk}",
+         response_model=list[GroupUserExtended])
 def get_group_groupadmins(
+        request: Request,
+        group_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_groups = user_to_group_service.get_all_groupadmins(db=db,
+                                                          group_pk=group_pk,
+                                                          params=request.query_params._dict,
+                                                          authed_user=user)
+    if db_groups is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_groups
 
 
-@app.patch("/admin/users/groupadmin/{group_pk}/{user_id}/soft_delete/")
+@app.patch("/admin/group/groupadmins/{group_pk}/{user_id}/soft_delete/")
 def soft_delete_groupadmin(
+        user_id: int,
+        group_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user_to_group = user_to_group_service.gui_remove_as_groupadmin_from_group(
+        db=db,
+        group_pk=group_pk,
+        user_id=user_id,
+        authed_user=user)
+    if db_user_to_group is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user_to_group
 
 
-@app.patch("/admin/users/groupadmin/{group_pk}/{user_id}/restore/")
+@app.patch("/admin/group/groupadmins/{group_pk}/{user_id}/restore/")
 def restore_groupadmin(
+        user_id: int,
+        group_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user_to_group = user_to_group_service.gui_add_as_groupadmin_to_group(
+        db=db,
+        group_pk=group_pk,
+        user_id=user_id,
+        authed_user=user)
+    if db_user_to_group is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user_to_group
 
 
-@app.get("/admin/users/user/{group_pk}")
-def get_group_users(
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    return ['ok']
+@app.get("/admin/group/groupusers/{group_pk}",
+         response_model=list[GroupUserExtended])
+def get_group_users(request: Request,
+                    group_pk: UUID,
+                    db: Session = Depends(get_db),
+                    user: User = Depends(get_current_user)):
+    db_groups = user_to_group_service.get_all_groupusers(db=db,
+                                                         group_pk=group_pk,
+                                                         params=request.query_params._dict,
+                                                         authed_user=user)
+    if db_groups is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_groups
 
 
-@app.patch("/admin/users/user/{group_pk}/{user_id}/soft_delete/")
+@app.patch("/admin/group/groupusers/{group_pk}/{user_id}/soft_delete/")
 def soft_delete_group_user(
+        user_id: int,
+        group_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user_to_group = user_to_group_service.gui_remove_as_user_from_group(
+        db=db,
+        group_pk=group_pk,
+        user_id=user_id,
+        authed_user=user)
+    if db_user_to_group is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user_to_group
 
 
-@app.patch("/admin/users/user/{group_pk}/{user_id}/restore/")
+@app.patch("/admin/group/groupusers/{group_pk}/{user_id}/restore/")
 def restore_group_user(
+        user_id: int,
+        group_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_user_to_group = user_to_group_service.gui_add_as_user_to_group(db=db,
+                                                                      group_pk=group_pk,
+                                                                      user_id=user_id,
+                                                                      authed_user=user)
+    if db_user_to_group is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user_to_group

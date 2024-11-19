@@ -38,6 +38,22 @@ class UserExtended(BaseModel):
         from_attributes = True
 
 
+class AdminExtended(BaseModel):
+    id: int | str | UUID
+    username: str
+    email: str
+    oidc_user: bool
+    first_name: str
+    last_name: str
+    admin: bool
+    created_at: datetime.datetime
+    last_modified_at: datetime.datetime
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
+
+
 class UserCreate(BaseModel):
     username: str
     email: str
@@ -75,3 +91,20 @@ class PasswordChange(BaseModel):
 class UserWithPrivileges(BaseModel):
     user: UserExtended | None
     privileges: Privileges | None
+
+
+class GroupUserExtended(BaseModel):
+    id: int | str | UUID
+    username: str
+    email: str
+    oidc_user: bool
+    first_name: str
+    last_name: str
+    deleted: bool
+    in_group : bool
+    created_at: datetime.datetime
+    last_modified_at: datetime.datetime
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
