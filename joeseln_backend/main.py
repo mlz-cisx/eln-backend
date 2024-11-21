@@ -1262,7 +1262,6 @@ async def websocket_endpoint(*, websocket: WebSocket):
 
 @app.get('/users/me', response_model=User)
 async def user_me(user: User = Depends(get_current_user)):
-    logger.info(user.username)
     return user
 
 
@@ -1424,7 +1423,6 @@ def get_groups(
     db_groups = user_to_group_service.get_all_groups(db=db,
                                                      params=request.query_params._dict,
                                                      user=user)
-    logger.info(db_groups)
     if db_groups is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_groups
@@ -1443,11 +1441,17 @@ def get_group(
     return [title]
 
 
-@app.post("/admin/groups")
+@app.post("/admin/groups", response_model=user_to_group_schema.Group)
 def create_group(
+        group_to_create: user_to_group_schema.Group_Create,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    return ['ok']
+    db_group = user_to_group_service.gui_create_group(db=db,
+                                                      user=user,
+                                                      group=group_to_create)
+    if db_group is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_group
 
 
 @app.get("/admin/group/groupadmins/{group_pk}",

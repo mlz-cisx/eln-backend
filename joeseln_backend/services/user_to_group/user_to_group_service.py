@@ -54,7 +54,7 @@ def get_all_groupusers(db: Session, group_pk, params, authed_user):
                 models.User.username.ilike(f'%{search_text}%'),
                 models.User.first_name.ilike(f'%{search_text}%'),
                 models.User.last_name.ilike(f'%{search_text}%'),
-            )).order_by(
+            )).filter(models.User.admin == False).order_by(
                 text(modified_order_params)).offset(params.get('offset')).limit(
                 params.get('limit')).all()
 
@@ -90,7 +90,7 @@ def get_all_groupusers(db: Session, group_pk, params, authed_user):
                 models.Role.id == models.UserToGroupRole.user_group_role).filter(
                 models.UserToGroupRole.group_id == group_pk,
                 models.Role.rolename == 'user') \
-                .order_by(
+                .filter(models.User.admin == False).order_by(
                 text(modified_order_params)).offset(params.get('offset')).limit(
                 params.get('limit')).all()
 
@@ -136,7 +136,7 @@ def get_all_groupadmins(db: Session, group_pk, params, authed_user):
                 models.User.username.ilike(f'%{search_text}%'),
                 models.User.first_name.ilike(f'%{search_text}%'),
                 models.User.last_name.ilike(f'%{search_text}%'),
-            )).order_by(
+            )).filter(models.User.admin == False).order_by(
                 text(modified_order_params)).offset(params.get('offset')).limit(
                 params.get('limit')).all()
 
@@ -172,7 +172,7 @@ def get_all_groupadmins(db: Session, group_pk, params, authed_user):
                 models.Role.id == models.UserToGroupRole.user_group_role).filter(
                 models.UserToGroupRole.group_id == group_pk,
                 models.Role.rolename == 'groupadmin') \
-                .order_by(
+                .filter(models.User.admin == False).order_by(
                 text(modified_order_params)).offset(params.get('offset')).limit(
                 params.get('limit')).all()
 
@@ -220,6 +220,26 @@ def create_group(db: Session, groupname):
     db.refresh(db_group)
     db.close()
     return db_group
+
+
+def gui_create_group(db: Session, user, group: Group_Create):
+    if user.admin:
+        db_group = models.Group(groupname=group.groupname,
+                                created_at=datetime.datetime.now(),
+                                last_modified_at=datetime.datetime.now()
+                                )
+        try:
+            db.add(db_group)
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        db.refresh(db_group)
+        db.close()
+        return db_group
+
+    return
 
 
 def create_user_to_group(db: Session, user_to_group: UserToGroup_Create):
