@@ -16,7 +16,7 @@ from joeseln_backend.services.privileges.admin_privileges.privileges_service imp
 from joeseln_backend.services.privileges.privileges_service import \
     create_pic_privileges
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-     get_user_group_roles_with_match, get_user_group_roles, \
+    get_user_group_roles_with_match, get_user_group_roles, \
     check_for_admin_role_with_user_id
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.auth import security
@@ -103,6 +103,69 @@ def get_picture(db: Session, picture_pk, user):
         picture=deepcopy(db_picture), user=user)
 
     return pic
+
+
+def update_title(db: Session, picture_pk, user,
+                 pic_payload: UpdatePictureTitle):
+    db_picture = db.query(models.Picture).get(picture_pk)
+
+    db_picture.title = pic_payload.title
+    db_picture.last_modified_at = datetime.datetime.now()
+    db_picture.last_modified_by_id = user.id
+
+    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = user.id
+
+    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+
+    # picture created by instrument
+    if db_user_created.admin and check_for_labbook_admin_access(db=db,
+                                                                labbook_pk=lb_elem.labbook_id,
+                                                                user=user):
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        db.refresh(db_picture)
+        db_user_created = db.query(models.User).get(db_picture.created_by_id)
+        db_picture.created_by = db_user_created
+        db_picture.last_modified_by = user
+        db.close()
+        transmit({'model_name': 'picture', 'model_pk': str(picture_pk)})
+        pic = build_download_url_with_token(
+            picture=deepcopy(db_picture), user=user)
+
+        return pic
+
+    # picture not created by an admin
+    if not db_user_created.admin and check_for_labbook_access(db=db,
+                                                              labbook_pk=lb_elem.labbook_id,
+                                                              user=user):
+
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+
+        db.refresh(db_picture)
+        db_user_created = db.query(models.User).get(db_picture.created_by_id)
+        db_picture.created_by = db_user_created
+        db_picture.last_modified_by = user
+        db.close()
+        transmit({'model_name': 'picture', 'model_pk': str(picture_pk)})
+        pic = build_download_url_with_token(
+            picture=deepcopy(db_picture), user=user)
+
+        return pic
+
+    return None
 
 
 def get_all_deleted_pics(db: Session):
@@ -530,8 +593,8 @@ def get_picture_export_link(db: Session, picture_pk, user):
     }
 
     if user.admin or check_for_labbook_access(
-        db=db, labbook_pk=lb_elem.labbook_id,
-        user=user):
+            db=db, labbook_pk=lb_elem.labbook_id,
+            user=user):
         return export_link
 
     return None

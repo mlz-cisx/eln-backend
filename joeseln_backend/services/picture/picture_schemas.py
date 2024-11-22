@@ -84,3 +84,6 @@ class PicturePreviewVersion(BaseModel):
 class PictureWithPrivileges(BaseModel):
     picture: Picture | None
     privileges: Privileges | None
+
+class UpdatePictureTitle(BaseModel):
+    title: str

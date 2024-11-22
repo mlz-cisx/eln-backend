@@ -825,6 +825,23 @@ def restore_picture(
     # DONE
 
 
+@app.patch("/pictures/{picture_pk}/task/",
+           response_model=picture_schemas.Picture)
+def restore_picture(
+        pic_payload: picture_schemas.UpdatePictureTitle,
+        picture_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    # logger.info(user)
+    db_pic = picture_service.update_title(db=db, picture_pk=picture_pk,
+                                          user=user, pic_payload=pic_payload)
+    if db_pic is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+
+    return db_pic
+    # DONE
+
+
 @app.patch("/pictures/{picture_pk}/",
            response_model=picture_schemas.Picture)
 async def patch_picture(
