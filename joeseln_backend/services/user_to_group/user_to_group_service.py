@@ -616,6 +616,27 @@ def gui_remove_as_groupadmin_from_group(db: Session, authed_user, user_id,
     return
 
 
+def gui_delete_group(db: Session, authed_user, group_pk):
+    if authed_user.admin:
+        try:
+            db.query(models.UserToGroupRole).filter(
+                models.UserToGroupRole.group_id == group_pk).delete()
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        try:
+            db.query(models.Group).filter_by(id = group_pk).delete()
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        return['ok']
+    return
+
+
 def add_as_admin_to_group(db: Session, username, groupname):
     user_role_group = {
         'user_id': get_user_by_uname(db=db, username=username).id,

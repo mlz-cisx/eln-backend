@@ -1458,6 +1458,19 @@ def get_group(
     return [title]
 
 
+@app.patch("/admin/groups/{group_pk}/soft_delete/")
+def delete_group(
+        group_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    message = user_to_group_service.gui_delete_group(db=db,
+                                                   authed_user=user,
+                                                   group_pk=group_pk)
+    if message is None:
+        raise HTTPException(status_code=404, detail="Delete Error")
+    return message
+
+
 @app.post("/admin/groups", response_model=user_to_group_schema.Group)
 def create_group(
         group_to_create: user_to_group_schema.Group_Create,
