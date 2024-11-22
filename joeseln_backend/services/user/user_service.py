@@ -70,20 +70,17 @@ def create_user(db: Session, user: UserCreate):
     return db_user
 
 
-def guicreate_user(db: Session, user, user_to_create: GuiUserCreate):
-    if user.admin and (
-            user_to_create.password == user_to_create.password_confirmed):
+def gui_patch_user(db: Session, authed_user, user_id,
+                   user_to_patch: GuiUserPatch):
+    if authed_user.admin:
+        db_user = db.query(models.User).get(user_id)
+        db_user.username = user_to_patch.username
+        db_user.first_name = user_to_patch.first_name
+        db_user.last_name = user_to_patch.last_name
+        db_user.email = user_to_patch.user_email
+        db_user.last_modified_at = datetime.datetime.now()
 
-        db_user = models.User(username=user_to_create.username,
-                              email=user_to_create.email,
-                              password=user_to_create.password,
-                              first_name=user_to_create.first_name,
-                              last_name=user_to_create.last_name,
-                              created_at=datetime.datetime.now(),
-                              last_modified_at=datetime.datetime.now()
-                              )
         try:
-            db.add(db_user)
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)

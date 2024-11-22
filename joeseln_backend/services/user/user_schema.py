@@ -71,6 +71,13 @@ class GuiUserCreate(BaseModel):
     password: str
     password_confirmed: str
 
+class GuiUserPatch(BaseModel):
+    username: str
+    user_email: str
+    first_name: str
+    last_name: str
+
+
 
 class OIDCUserCreate(BaseModel):
     preferred_username: str

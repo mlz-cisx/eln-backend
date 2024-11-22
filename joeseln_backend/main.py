@@ -44,7 +44,7 @@ from joeseln_backend.services.role.basic_roles_creator import \
 
 from joeseln_backend.services.user.user_schema import User, PasswordChange, \
     UserExtended, UserWithPrivileges, GuiUserCreate, AdminExtended, \
-    GroupUserExtended
+    GroupUserExtended, GuiUserPatch
 from joeseln_backend.services.user.user_password import gui_password_change
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
@@ -1368,6 +1368,21 @@ def get_user(
     return db_user
 
 
+@app.patch("/admin/users/{user_id}", response_model=UserExtended)
+def patch_user(
+        user_id: int,
+        user_to_patch: GuiUserPatch,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    db_user = user_service.gui_patch_user(db=db,
+                                          authed_user=user,
+                                          user_id=user_id,
+                                          user_to_patch=user_to_patch)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user
+
+
 @app.patch("/admin/users/{user_id}/soft_delete/")
 def soft_delete_user(
         user_id: int,
@@ -1464,8 +1479,8 @@ def delete_group(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     message = user_to_group_service.gui_delete_group(db=db,
-                                                   authed_user=user,
-                                                   group_pk=group_pk)
+                                                     authed_user=user,
+                                                     group_pk=group_pk)
     if message is None:
         raise HTTPException(status_code=404, detail="Delete Error")
     return message
