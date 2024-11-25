@@ -9,6 +9,21 @@ from joeseln_backend.database.database import Base
 from joeseln_backend.mylogging.root_logger import logger
 
 
+class User(Base):
+    __tablename__ = 'user'
+    id = Column(BigInteger, primary_key=True)
+    username = Column(Text, unique=True)
+    email = Column(Text, unique=True)
+    oidc_user = Column(Boolean, default=False)
+    admin = Column(Boolean, default=False)
+    deleted = Column(Boolean, default=False)
+    password = Column(Text, default='not set')
+    first_name = Column(Text)
+    last_name = Column(Text)
+    created_at = Column(DateTime)
+    last_modified_at = Column(DateTime)
+
+
 class Labbook(Base):
     __tablename__ = 'labbook'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -16,9 +31,9 @@ class Labbook(Base):
     deleted = Column(Boolean, default=False)
     title = Column(String, unique=True)
     created_at = Column(DateTime)
-    created_by_id = Column(Integer)
+    created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)
-    last_modified_by_id = Column(Integer)
+    last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
     description = Column(Text, default='')
     # __ts_vector__ = Column(TSVector(), Computed(
     #      "to_tsvector('english', title || ' ' || description)",
@@ -41,9 +56,9 @@ class Labbookchildelement(Base):
     child_object_content_type_model = Column(String)
     version_number = Column(Integer)
     created_at = Column(DateTime)
-    created_by_id = Column(Integer)
+    created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)
-    last_modified_by_id = Column(Integer)
+    last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
 
 
 class Note(Base):
@@ -55,9 +70,9 @@ class Note(Base):
     content = Column(Text, default='')
     version_number = Column(Integer)
     created_at = Column(DateTime)
-    created_by_id = Column(Integer)
+    created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)
-    last_modified_by_id = Column(Integer)
+    last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
     # __ts_vector__ = Column(TSVector(), Computed(
     #      "to_tsvector('english', subject || ' ' || content)",
     #      persisted=True))
@@ -89,9 +104,9 @@ class Picture(Base):
     height = Column(Integer)
     version_number = Column(Integer)
     created_at = Column(DateTime)
-    created_by_id = Column(Integer)
+    created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)
-    last_modified_by_id = Column(Integer)
+    last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
     # png file path if it is background image for sketch,
     background_image = Column(Text, default='')
     # png file path if it is rendered image if you upload
@@ -130,29 +145,14 @@ class File(Base):
     mime_type = Column(Text, default='')
     file_size = Column(BigInteger)
     created_at = Column(DateTime)
-    created_by_id = Column(Integer)
+    created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)
-    last_modified_by_id = Column(Integer)
+    last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
     # __ts_vector__ = Column(TSVector(), Computed(
     #      "to_tsvector('english', title || ' ' || description)",
     #      persisted=True))
     # __table_args__ = (Index('ix_file___ts_vector__',
     #       __ts_vector__, postgresql_using='gin'),)
-
-
-class User(Base):
-    __tablename__ = 'user'
-    id = Column(BigInteger, primary_key=True)
-    username = Column(Text, unique=True)
-    email = Column(Text, unique=True)
-    oidc_user = Column(Boolean, default=False)
-    admin = Column(Boolean, default=False)
-    deleted = Column(Boolean, default=False)
-    password = Column(Text, default='not set')
-    first_name = Column(Text)
-    last_name = Column(Text)
-    created_at = Column(DateTime)
-    last_modified_at = Column(DateTime)
 
 
 class Group(Base):
@@ -195,7 +195,7 @@ class ChangesetChangeset(Base):
     # Note content changed , Note title changed, ....
     object_type_id = Column(Integer)
     # for now with fake users
-    user_id = Column(Integer)
+    user_id = Column(BigInteger, ForeignKey(User.id))
     # Not implemented
     object_id = Column(Integer)
 
@@ -252,9 +252,9 @@ class Version(Base):
     # versioning for note could be 32
     content_type_pk = Column(Integer)
     created_at = Column(DateTime)
-    created_by_id = Column(Integer)
+    created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)
-    last_modified_by_id = Column(Integer)
+    last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
     # unique (content_type_id, object_id, number)
 
 
@@ -280,9 +280,9 @@ class Relation(Base):
     right_content_type = Column(Integer)
     right_content_type_model = Column(Text)
     created_at = Column(DateTime)
-    created_by_id = Column(Integer)
+    created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)
-    last_modified_by_id = Column(Integer)
+    last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
     version_number = Column(Integer)
     deleted = Column(Boolean, default=False)
 
@@ -294,9 +294,9 @@ class Comment(Base):
     content = Column(Text, default='')
     version_number = Column(Integer)
     created_at = Column(DateTime)
-    created_by_id = Column(Integer)
+    created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)
-    last_modified_by_id = Column(Integer)
+    last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
 
 
 @event.listens_for(Note, "after_insert")
