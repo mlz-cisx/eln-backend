@@ -6,7 +6,8 @@ DB_PORT = 5440
 
 # initial users
 INITIAL_ADMIN = 'admin'
-INTRUMNENT_AS_ADMIN = 'instrument'
+INSTRUMENT_AS_ADMIN = 'instrument'
+STATIC_ADMIN_TOKEN = '#super_secret#'
 
 # two modes: match and equal
 LABBOOK_QUERY_MODE = 'match'
@@ -36,7 +37,6 @@ REALM = 'joe'
 KEYCLOAK_BASEURL = f'http://172.25.74.236:8181/realms' \
                    f'/{REALM}/protocol/openid-connect'
 
-STATIC_ADMIN_TOKEN = '#super_secret#'
 STATIC_WS_TOKEN = '#super_ws_secret#'
 
 # Jaeger Settings

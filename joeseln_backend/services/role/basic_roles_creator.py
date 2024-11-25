@@ -1,6 +1,6 @@
 from joeseln_backend.conf.mocks.mock_role import ROLE_USER, ROLE_GROUPADMIN
 from joeseln_backend.conf.mocks.mock_user import USER0, INSTRUMENT, \
-    INTRUMNENT_AS_ADMIN, INITIAL_ADMIN
+    INSTRUMENT_AS_ADMIN, INITIAL_ADMIN
 from joeseln_backend.services.role.role_service import create_role, \
     get_role_by_rolename
 from joeseln_backend.services.role.role_schema import Role_Create
@@ -26,6 +26,6 @@ def create_inital_admin():
         create_admin(db=my_session,
                      user=UserCreate.parse_obj(USER0))
 
-    if not get_user_by_uname(db=my_session, username=INTRUMNENT_AS_ADMIN):
+    if not get_user_by_uname(db=my_session, username=INSTRUMENT_AS_ADMIN):
         create_admin(db=my_session,
                      user=UserCreate.parse_obj(INSTRUMENT))

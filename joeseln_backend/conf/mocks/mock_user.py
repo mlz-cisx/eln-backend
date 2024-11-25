@@ -1,5 +1,5 @@
 from joeseln_backend.auth.security import get_password_hash
-from joeseln_backend.conf.base_conf import INTRUMNENT_AS_ADMIN, INITIAL_ADMIN
+from joeseln_backend.conf.base_conf import INSTRUMENT_AS_ADMIN, INITIAL_ADMIN
 
 USER0 = {
     'username': INITIAL_ADMIN,
@@ -11,12 +11,12 @@ USER0 = {
 }
 
 INSTRUMENT = {
-    'username': INTRUMNENT_AS_ADMIN,
-    'email': f'{INTRUMNENT_AS_ADMIN}@foo.com',
+    'username': INSTRUMENT_AS_ADMIN,
+    'email': f'{INSTRUMENT_AS_ADMIN}@foo.com',
     'oidc_user': False,
     'password': get_password_hash('secret'),
-    'first_name': INTRUMNENT_AS_ADMIN,
-    'last_name': INTRUMNENT_AS_ADMIN,
+    'first_name': INSTRUMENT_AS_ADMIN,
+    'last_name': INSTRUMENT_AS_ADMIN,
 }
 
 TEST_USER_1 = {

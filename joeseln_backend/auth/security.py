@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, status
 import bcrypt
 from pydantic import BaseModel
 from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.conf.base_conf import INSTRUMENT_AS_ADMIN
 from joeseln_backend.services.user.user_service import update_oidc_user, \
     get_user_by_uname
 from joeseln_backend.services.user.user_schema import OIDCUserCreate
@@ -32,25 +33,6 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 20
 ACCESS_TOKEN_EXPIRE_SECONDS = 1000
 
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-        "realm_access": {
-            "roles": ["MyProject1", "MyProject2"]
-        }
-    },
-    "admin": {
-        "username": "admin",
-        "full_name": "Super Admin",
-        "email": "admin@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}
 
 
 class Token(BaseModel):
@@ -134,7 +116,7 @@ def get_user_from_jwt(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         if token == STATIC_ADMIN_TOKEN:
             # logger.info('you can do everything')
-            user = get_user_by_uname(db=SessionLocal(), username='admin')
+            user = get_user_by_uname(db=SessionLocal(), username=INSTRUMENT_AS_ADMIN)
             return user
         else:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -183,7 +165,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         if token == STATIC_ADMIN_TOKEN:
             # logger.info('you can do everything')
             user = get_user_with_groups_by_uname(db=SessionLocal(),
-                                                 username='admin')
+                                                 username=INSTRUMENT_AS_ADMIN)
             return user
         else:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
