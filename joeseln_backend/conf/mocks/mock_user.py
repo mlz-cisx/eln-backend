@@ -1,12 +1,22 @@
 from joeseln_backend.auth.security import get_password_hash
+from joeseln_backend.conf.base_conf import INTRUMNENT_AS_ADMIN, INITIAL_ADMIN
 
 USER0 = {
-    'username': 'admin',
-    'email': 'admin@foo.com',
+    'username': INITIAL_ADMIN,
+    'email': f'{INITIAL_ADMIN}@foo.com',
     'oidc_user': False,
     'password': get_password_hash('secret'),
-    'first_name': 'admin',
-    'last_name': 'admin'
+    'first_name': INITIAL_ADMIN,
+    'last_name': INITIAL_ADMIN
+}
+
+INSTRUMENT = {
+    'username': INTRUMNENT_AS_ADMIN,
+    'email': f'{INTRUMNENT_AS_ADMIN}@foo.com',
+    'oidc_user': False,
+    'password': get_password_hash('secret'),
+    'first_name': INTRUMNENT_AS_ADMIN,
+    'last_name': INTRUMNENT_AS_ADMIN,
 }
 
 TEST_USER_1 = {

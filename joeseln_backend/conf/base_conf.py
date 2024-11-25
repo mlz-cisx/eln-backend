@@ -4,6 +4,10 @@ DB_PASSWORD = 'joeseln'
 DB_TABLE = 'joeseln'
 DB_PORT = 5440
 
+# initial users
+INITIAL_ADMIN = 'admin'
+INTRUMNENT_AS_ADMIN = 'instrument'
+
 # two modes: match and equal
 LABBOOK_QUERY_MODE = 'match'
 # LABBOOK_QUERY_MODE = 'equal'

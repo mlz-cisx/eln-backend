@@ -70,6 +70,29 @@ def create_user(db: Session, user: UserCreate):
     return db_user
 
 
+def create_admin(db: Session, user: UserCreate):
+    db_user = models.User(username=user.username,
+                          email=user.email,
+                          oidc_user=user.oidc_user,
+                          admin=True,
+                          password=user.password,
+                          first_name=user.first_name,
+                          last_name=user.last_name,
+                          created_at=datetime.datetime.now(),
+                          last_modified_at=datetime.datetime.now()
+                          )
+
+    try:
+        db.add(db_user)
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return
+    db.refresh(db_user)
+    return db_user
+
+
 def gui_patch_user(db: Session, authed_user, user_id,
                    user_to_patch: GuiUserPatch):
     if authed_user.admin:
