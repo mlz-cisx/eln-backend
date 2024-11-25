@@ -89,3 +89,27 @@ def gui_patch_user(db: Session, authed_user, user_id,
         db.refresh(db_user)
         return db_user
     return
+
+
+def guicreate_user(db: Session, user, user_to_create: GuiUserCreate):
+    if user.admin and (
+            user_to_create.password == user_to_create.password_confirmed):
+
+        db_user = models.User(username=user_to_create.username,
+                              email=user_to_create.email,
+                              password=user_to_create.password,
+                              first_name=user_to_create.first_name,
+                              last_name=user_to_create.last_name,
+                              created_at=datetime.datetime.now(),
+                              last_modified_at=datetime.datetime.now()
+                              )
+        try:
+            db.add(db_user)
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+        db.refresh(db_user)
+        return db_user
+    return

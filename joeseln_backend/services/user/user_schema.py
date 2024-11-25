@@ -94,6 +94,8 @@ class OIDCUserCreate(BaseModel):
 class PasswordChange(BaseModel):
     password: str
 
+class PasswordPatch(BaseModel):
+    password_patch: str
 
 class UserWithPrivileges(BaseModel):
     user: UserExtended | None

@@ -44,8 +44,9 @@ from joeseln_backend.services.role.basic_roles_creator import \
 
 from joeseln_backend.services.user.user_schema import User, PasswordChange, \
     UserExtended, UserWithPrivileges, GuiUserCreate, AdminExtended, \
-    GroupUserExtended, GuiUserPatch
-from joeseln_backend.services.user.user_password import gui_password_change
+    GroupUserExtended, GuiUserPatch, PasswordPatch
+from joeseln_backend.services.user.user_password import gui_password_change, \
+    gui_patch_user_password
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
     export_file
@@ -1383,6 +1384,21 @@ def patch_user(
     return db_user
 
 
+@app.patch("/admin/users/{user_id}/foo", response_model=UserExtended)
+def patch_user_password(
+        user_id: int,
+        password_to_patch: PasswordPatch,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    db_user = gui_patch_user_password(db=db,
+                                      authed_user=user,
+                                      user_id=user_id,
+                                      password_to_patch=password_to_patch)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_user
+
+
 @app.patch("/admin/users/{user_id}/soft_delete/")
 def soft_delete_user(
         user_id: int,
@@ -1447,7 +1463,7 @@ def restore_admin(
     return db_user
 
 
-@app.get("/admin/groups", response_model=list[user_to_group_schema.Group])
+@app.get("/admin/groups", response_model=list[user_to_group_schema.ExtendedGroup])
 def get_groups(
         request: Request,
         db: Session = Depends(get_db),
