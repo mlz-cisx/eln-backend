@@ -27,6 +27,17 @@ def get_all_groups(db: Session, params, user):
                 text(order_params)).offset(params.get('offset')).limit(
                 params.get('limit')).all()
 
+        for group in groups:
+            user_count = db.query(models.User).join(models.UserToGroupRole,
+                                                    models.User.id == models.UserToGroupRole.user_id) \
+                .join(
+                models.Role,
+                models.Role.id == models.UserToGroupRole.user_group_role).filter(
+                models.UserToGroupRole.group_id == group.id).count()
+            if user_count != 0:
+                group.group_empty = False
+            else:
+                group.group_empty = True
         return groups
     return
 
@@ -627,13 +638,13 @@ def gui_delete_group(db: Session, authed_user, group_pk):
             db.close()
             return
         try:
-            db.query(models.Group).filter_by(id = group_pk).delete()
+            db.query(models.Group).filter_by(id=group_pk).delete()
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
             db.close()
             return
-        return['ok']
+        return ['ok']
     return
 
 

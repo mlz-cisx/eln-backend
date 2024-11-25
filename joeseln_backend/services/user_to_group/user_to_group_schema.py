@@ -18,6 +18,18 @@ class Group(BaseModel):
         from_attributes = True
 
 
+class ExtendedGroup(BaseModel):
+    id: int | str | UUID = Field(..., alias='pk')
+    groupname: str
+    created_at: datetime.datetime
+    last_modified_at: datetime.datetime
+    group_empty: bool
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
+
+
 class UserToGroup_Create(BaseModel):
     user_id: int | str | UUID
     group_id: int | str | UUID
