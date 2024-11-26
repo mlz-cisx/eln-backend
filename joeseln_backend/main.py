@@ -1242,7 +1242,7 @@ def create_comment(
     return db_comment
     # DONE
 
-
+# TODO how to ws authenticate properly
 @app.websocket("/ws/elements/")
 async def websocket_endpoint(*, websocket: WebSocket):
     await manager.connect(websocket)
@@ -1251,21 +1251,21 @@ async def websocket_endpoint(*, websocket: WebSocket):
             data = await websocket.receive_json()
             # logger.info(data)
             if data['auth'] == STATIC_WS_TOKEN:
-                token = data['auth']
+                # token = data['auth']
                 # we don't want to transmit any token from backend !
-                del data['auth']
+                # del data['auth']
                 # TODO no authentication needed
                 await manager.broadcast_json(message=data)
             elif data['auth'] and '__zone_symbol__value' in json.loads(
                     json.dumps(data['auth'])):
                 # handling keycloak
-                token = json.loads(json.dumps(data['auth']))[
-                    '__zone_symbol__value']
+                # token = json.loads(json.dumps(data['auth']))[
+                #     '__zone_symbol__value']
                 # TODO do ws authentication here
                 await manager.broadcast_json(message=data)
             else:
                 # handling jwt auth
-                token = data['auth']
+                # token = data['auth']
                 # TODO do ws authentication here
                 await manager.broadcast_json(message=data)
 
