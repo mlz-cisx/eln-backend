@@ -1,9 +1,10 @@
 LABBOOK_USER = {
     'fullAccess': False,
     'view': True,
-    'edit': False,
+    'edit': True,
     'delete': False,
     'trash': False,
+    # restore right includes versioning
     'restore': False,
 }
 
