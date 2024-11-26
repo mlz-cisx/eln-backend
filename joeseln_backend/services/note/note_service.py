@@ -144,46 +144,48 @@ def get_note_with_privileges(db: Session, note_pk, user):
 def get_note_relations(db: Session, note_pk, params, user):
     db_note = db.query(models.Note).get(note_pk)
     lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
-    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                user=user):
-        if not params:
-            relations = db.query(models.Relation).filter_by(
-                right_object_id=note_pk, deleted=False).order_by(
-                models.Relation.created_at).all()
-        else:
-            order_params = db_ordering.get_order_params(
-                ordering=params.get('ordering'))
-
-            relations = db.query(models.Relation).filter_by(
-                right_object_id=note_pk, deleted=False).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
-                params.get('limit')).all()
-
-        for rel in relations:
-            if rel.left_content_type == 70:
-                db_comment = db.query(models.Comment).get(rel.left_object_id)
-
-                db_user_created = db.query(models.User).get(
-                    db_comment.created_by_id)
-                db_user_modified = db.query(models.User).get(
-                    db_comment.last_modified_by_id)
-                rel.created_by = db_user_created
-                rel.last_modified_by = db_user_modified
-                db_comment.created_by = db_user_created
-                db_comment.last_modified_by = db_user_modified
-                rel.left_content_object = Comment.parse_obj(db_comment)
-
+    if lb_elem:
+        if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                    user=user):
+            if not params:
+                relations = db.query(models.Relation).filter_by(
+                    right_object_id=note_pk, deleted=False).order_by(
+                    models.Relation.created_at).all()
             else:
-                rel.left_content_object = None
+                order_params = db_ordering.get_order_params(
+                    ordering=params.get('ordering'))
 
-            db_user_created = db.query(models.User).get(db_note.created_by_id)
-            db_user_modified = db.query(models.User).get(
-                db_note.last_modified_by_id)
-            db_note.created_by = db_user_created
-            db_note.last_modified_by = db_user_modified
-            rel.right_content_object = db_note
+                relations = db.query(models.Relation).filter_by(
+                    right_object_id=note_pk, deleted=False).order_by(
+                    text(order_params)).offset(params.get('offset')).limit(
+                    params.get('limit')).all()
 
-        return relations
+            for rel in relations:
+                if rel.left_content_type == 70:
+                    db_comment = db.query(models.Comment).get(rel.left_object_id)
+
+                    db_user_created = db.query(models.User).get(
+                        db_comment.created_by_id)
+                    db_user_modified = db.query(models.User).get(
+                        db_comment.last_modified_by_id)
+                    rel.created_by = db_user_created
+                    rel.last_modified_by = db_user_modified
+                    db_comment.created_by = db_user_created
+                    db_comment.last_modified_by = db_user_modified
+                    rel.left_content_object = Comment.parse_obj(db_comment)
+
+                else:
+                    rel.left_content_object = None
+
+                db_user_created = db.query(models.User).get(db_note.created_by_id)
+                db_user_modified = db.query(models.User).get(
+                    db_note.last_modified_by_id)
+                db_note.created_by = db_user_created
+                db_note.last_modified_by = db_user_modified
+                rel.right_content_object = db_note
+
+            return relations
+        return []
     return []
 
 
