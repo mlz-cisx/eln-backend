@@ -97,8 +97,9 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
                                                   user=user)
 
     # 2. restore child elements position
-    update_all_lb_childelements_from_version(db=db, labbook_childelems=
-    version_metadata['child_elements'])
+    update_all_lb_childelements_from_version(db=db, labbook_pk=labbook_pk,
+                                             labbook_childelems=
+                                             version_metadata['child_elements'])
 
     summary = f'restored from v{db_labbook_version.number}'
     version_metadata = db_labbook_version.version_metadata
@@ -112,12 +113,19 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
 
 
 def update_all_lb_childelements_from_version(db: Session,
+                                             labbook_pk,
                                              labbook_childelems):
+    current_labbookelements = db.query(models.Labbookchildelement).filter_by(
+        labbook_id=labbook_pk, deleted=False).all()
+
+    child_elem_ids = []
+
     for lb_childelem in labbook_childelems:
         elem = db.query(models.Labbookchildelement).get(
             lb_childelem['child_element_id'])
         # we need this to exclude removed elements
         if elem:
+            child_elem_ids.append(lb_childelem['child_element_id'])
             elem.position_x = lb_childelem['position_x']
             elem.position_y = lb_childelem['position_y']
             elem.width = lb_childelem['width']
@@ -126,6 +134,51 @@ def update_all_lb_childelements_from_version(db: Session,
                 db.commit()
             except SQLAlchemyError as e:
                 logger.error(e)
+
+    logger.info(child_elem_ids)
+    for curr_elem in current_labbookelements:
+        if str(curr_elem.id) not in child_elem_ids:
+            if curr_elem.child_object_content_type == 30:
+                note_to_update = db.query(models.Note).get(
+                    curr_elem.child_object_id)
+
+                note_to_update.deleted = True
+                note_to_update.last_modified_at = datetime.datetime.now()
+                curr_elem.deleted = True
+                curr_elem.last_modified_at = datetime.datetime.now()
+
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    logger.error(e)
+
+            if curr_elem.child_object_content_type == 40:
+                pic_to_update = db.query(models.Picture).get(
+                    curr_elem.child_object_id)
+
+                pic_to_update.deleted = True
+                pic_to_update.last_modified_at = datetime.datetime.now()
+                curr_elem.deleted = True
+                curr_elem.last_modified_at = datetime.datetime.now()
+
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    logger.error(e)
+
+            if curr_elem.child_object_content_type == 50:
+                file_to_update = db.query(models.File).get(
+                    curr_elem.child_object_id)
+
+                file_to_update.deleted = True
+                file_to_update.last_modified_at = datetime.datetime.now()
+                curr_elem.deleted = True
+                curr_elem.last_modified_at = datetime.datetime.now()
+
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    logger.error(e)
 
 
 def add_labbook_version(db: Session, labbook_pk, summary, user,
