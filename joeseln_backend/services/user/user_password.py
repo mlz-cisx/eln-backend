@@ -6,6 +6,7 @@ from joeseln_backend.auth.security import get_password_hash
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.user import user_schema
+from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
 
 
 def change_user_password(db: Session, username, hashed_password):
@@ -43,7 +44,8 @@ def gui_patch_user_password(db: Session, authed_user, user_id,
                             password_to_patch: user_schema.PasswordPatch):
     if authed_user.admin:
         db_user = db.query(models.User).get(user_id)
-        if db_user and not db_user.oidc_user:
+        if db_user and not db_user.oidc_user and db_user.username not in [
+            INITIAL_ADMIN, INSTRUMENT_AS_ADMIN]:
             db_user.password = get_password_hash(
                 password_to_patch.password_patch)
             db_user.last_modified_at = datetime.datetime.now()

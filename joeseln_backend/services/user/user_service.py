@@ -3,6 +3,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from joeseln_backend.models import models
 from joeseln_backend.services.user.user_schema import *
 from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
 
 
 def get_user_by_uname(db: Session, username):
@@ -97,20 +98,22 @@ def gui_patch_user(db: Session, authed_user, user_id,
                    user_to_patch: GuiUserPatch):
     if authed_user.admin:
         db_user = db.query(models.User).get(user_id)
-        db_user.username = user_to_patch.username
-        db_user.first_name = user_to_patch.first_name
-        db_user.last_name = user_to_patch.last_name
-        db_user.email = user_to_patch.user_email
-        db_user.last_modified_at = datetime.datetime.now()
+        if db_user.username not in [INITIAL_ADMIN, INSTRUMENT_AS_ADMIN]:
+            db_user.username = user_to_patch.username
+            db_user.first_name = user_to_patch.first_name
+            db_user.last_name = user_to_patch.last_name
+            db_user.email = user_to_patch.user_email
+            db_user.last_modified_at = datetime.datetime.now()
 
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
-            db.close()
-            return
-        db.refresh(db_user)
-        return db_user
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return
+            db.refresh(db_user)
+            return db_user
+        return
     return
 
 

@@ -11,6 +11,7 @@ from joeseln_backend.services.privileges.admin_privileges.privileges_service imp
 
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
+from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
 
 
 def get_all_users(db: Session, params, user):
@@ -124,7 +125,8 @@ def remove_as_admin(db: Session, user_id, user):
     if user.admin:
         db_user = db.query(models.User).get(user_id)
         # you can't remove own admnin role
-        if db_user and db_user.admin and user.id != db_user.id:
+        if db_user and db_user.admin and db_user.username not in [INITIAL_ADMIN,
+                                                                  INSTRUMENT_AS_ADMIN]:
             db_user.admin = False
             db_user.last_modified_at = datetime.datetime.now()
             try:

@@ -4,9 +4,12 @@ DB_PASSWORD = 'joeseln'
 DB_TABLE = 'joeseln'
 DB_PORT = 5440
 
-# initial users
+# initial users should not be changed
 INITIAL_ADMIN = 'admin'
 INSTRUMENT_AS_ADMIN = 'instrument'
+
+
+# token should be moved to external store for secrets
 STATIC_ADMIN_TOKEN = '#super_secret#'
 
 # two modes: match and equal
@@ -34,7 +37,7 @@ ORIGINS = [
 
 # Keycloak Settings
 REALM = 'joe'
-KEYCLOAK_BASEURL = f'http://172.25.74.236:8181/realms' \
+KEYCLOAK_BASEURL = f'http://daphneopc01:8181/realms' \
                    f'/{REALM}/protocol/openid-connect'
 
 STATIC_WS_TOKEN = '#super_ws_secret#'
