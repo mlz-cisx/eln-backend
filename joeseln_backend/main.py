@@ -1242,13 +1242,15 @@ def create_comment(
     return db_comment
     # DONE
 
-# TODO how to ws authenticate properly
+
+# TODO how to authenticate ws properly
 @app.websocket("/ws/elements/")
 async def websocket_endpoint(*, websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
             try:
+                # catch receiving after websocket close
                 data = await websocket.receive_json()
             except RuntimeError:
                 break
@@ -1256,8 +1258,8 @@ async def websocket_endpoint(*, websocket: WebSocket):
             if data['auth'] == STATIC_WS_TOKEN:
                 # token = data['auth']
                 # we don't want to transmit any token from backend !
-                # del data['auth']
-                # logger.info(token)
+                del data['auth']
+                # logger.info(data)
                 # TODO no authentication needed
                 await manager.broadcast_json(message=data)
             elif data['auth'] and '__zone_symbol__value' in json.loads(
@@ -1469,7 +1471,8 @@ def restore_admin(
     return db_user
 
 
-@app.get("/admin/groups", response_model=list[user_to_group_schema.ExtendedGroup])
+@app.get("/admin/groups",
+         response_model=list[user_to_group_schema.ExtendedGroup])
 def get_groups(
         request: Request,
         db: Session = Depends(get_db),
