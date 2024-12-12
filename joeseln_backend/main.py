@@ -1248,12 +1248,16 @@ async def websocket_endpoint(*, websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            data = await websocket.receive_json()
+            try:
+                data = await websocket.receive_json()
+            except RuntimeError:
+                break
             # logger.info(data)
             if data['auth'] == STATIC_WS_TOKEN:
                 # token = data['auth']
                 # we don't want to transmit any token from backend !
                 # del data['auth']
+                # logger.info(token)
                 # TODO no authentication needed
                 await manager.broadcast_json(message=data)
             elif data['auth'] and '__zone_symbol__value' in json.loads(
@@ -1261,11 +1265,13 @@ async def websocket_endpoint(*, websocket: WebSocket):
                 # handling keycloak
                 # token = json.loads(json.dumps(data['auth']))[
                 #     '__zone_symbol__value']
+                # logger.info(token)
                 # TODO do ws authentication here
                 await manager.broadcast_json(message=data)
             else:
                 # handling jwt auth
                 # token = data['auth']
+                # logger.info(token)
                 # TODO do ws authentication here
                 await manager.broadcast_json(message=data)
 
