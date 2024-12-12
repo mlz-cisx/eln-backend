@@ -1,7 +1,5 @@
 from sqlalchemy import or_
-
 from joeseln_backend.models import models
-from joeseln_backend.conf.mocks import mock_user
 from joeseln_backend.services.labbook.labbook_service import \
     check_for_labbook_access
 

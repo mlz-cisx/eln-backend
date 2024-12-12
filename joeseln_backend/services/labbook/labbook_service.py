@@ -9,7 +9,7 @@ from sqlalchemy import or_
 from joeseln_backend.models import models
 from joeseln_backend.services.labbook.labbook_schemas import *
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_group_roles, get_user_group_roles_with_match,  \
+    get_user_group_roles, get_user_group_roles_with_match, \
     get_user_groups, get_user_groups_role_groupadmin
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
@@ -121,28 +121,57 @@ def get_labbooks_from_user(db: Session, params, user):
 
     labbooks = []
     if LABBOOK_QUERY_MODE == 'match':
-        labbooks = db.query(models.Labbook).join(models.Group,
-                                                 models.Labbook.title.contains(
-                                                     models.Group.groupname)).join(
-            models.UserToGroupRole,
-            models.Group.id == models.UserToGroupRole.group_id).join(
-            models.User,
-            models.UserToGroupRole.user_id == models.User.id).filter(
-            models.Labbook.deleted == bool(params.get('deleted'))).filter(
-            models.User.username == user.username).order_by(
-            text(order_text)).offset(params.get('offset')).limit(
-            params.get('limit')).all()
+        if params.get('search'):
+            search_text = params.get('search')
+            labbooks = db.query(models.Labbook).join(models.Group,
+                                                     models.Labbook.title.contains(
+                                                         models.Group.groupname)).join(
+                models.UserToGroupRole,
+                models.Group.id == models.UserToGroupRole.group_id).join(
+                models.User,
+                models.UserToGroupRole.user_id == models.User.id).filter(
+                models.Labbook.title.ilike(f'%{search_text}%')).filter(
+                models.Labbook.deleted == bool(params.get('deleted'))).filter(
+                models.User.username == user.username).order_by(
+                text(order_text)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+        else:
+            labbooks = db.query(models.Labbook).join(models.Group,
+                                                     models.Labbook.title.contains(
+                                                         models.Group.groupname)).join(
+                models.UserToGroupRole,
+                models.Group.id == models.UserToGroupRole.group_id).join(
+                models.User,
+                models.UserToGroupRole.user_id == models.User.id).filter(
+                models.Labbook.deleted == bool(params.get('deleted'))).filter(
+                models.User.username == user.username).order_by(
+                text(order_text)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
     elif LABBOOK_QUERY_MODE == 'equal':
-        labbooks = db.query(models.Labbook).join(models.Group,
-                                                 models.Group.groupname == models.Labbook.title).join(
-            models.UserToGroupRole,
-            models.Group.id == models.UserToGroupRole.group_id).join(
-            models.User,
-            models.UserToGroupRole.user_id == models.User.id).filter(
-            models.Labbook.deleted == bool(params.get('deleted'))).filter(
-            models.User.username == user.username).order_by(
-            text(order_text)).offset(params.get('offset')).limit(
-            params.get('limit')).all()
+        if params.get('search'):
+            search_text = params.get('search')
+            labbooks = db.query(models.Labbook).join(models.Group,
+                                                     models.Group.groupname == models.Labbook.title).join(
+                models.UserToGroupRole,
+                models.Group.id == models.UserToGroupRole.group_id).join(
+                models.User,
+                models.UserToGroupRole.user_id == models.User.id).filter(
+                models.Labbook.title.ilike(f'%{search_text}%')).filter(
+                models.Labbook.deleted == bool(params.get('deleted'))).filter(
+                models.User.username == user.username).order_by(
+                text(order_text)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+        else:
+            labbooks = db.query(models.Labbook).join(models.Group,
+                                                     models.Group.groupname == models.Labbook.title).join(
+                models.UserToGroupRole,
+                models.Group.id == models.UserToGroupRole.group_id).join(
+                models.User,
+                models.UserToGroupRole.user_id == models.User.id).filter(
+                models.Labbook.deleted == bool(params.get('deleted'))).filter(
+                models.User.username == user.username).order_by(
+                text(order_text)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
 
     for lb in labbooks:
         db_user_created = db.query(models.User).get(lb.created_by_id)
