@@ -46,7 +46,7 @@ from joeseln_backend.services.user.user_schema import User, PasswordChange, \
     UserExtended, UserWithPrivileges, GuiUserCreate, AdminExtended, \
     GroupUserExtended, GuiUserPatch, PasswordPatch
 from joeseln_backend.services.user.user_password import gui_password_change, \
-    gui_patch_user_password
+    gui_patch_user_password, guicreate_user
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
     export_file
@@ -1358,8 +1358,8 @@ def create_user(
         user_to_create: GuiUserCreate,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
-    db_user = user_service.guicreate_user(db=db, user=user,
-                                          user_to_create=user_to_create)
+    db_user = guicreate_user(db=db, user=user,
+                             user_to_create=user_to_create)
     if db_user is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_user
