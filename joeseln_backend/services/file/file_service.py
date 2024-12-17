@@ -18,9 +18,9 @@ from joeseln_backend.services.labbook.labbook_service import \
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
 from joeseln_backend.services.privileges.privileges_service import \
-    create_file_privileges
+    create_file_privileges, create_strict_privileges
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-     get_user_group_roles_with_match, get_user_group_roles, \
+    get_user_group_roles_with_match, get_user_group_roles, \
     check_for_admin_role_with_user_id
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.helper import db_ordering
@@ -62,7 +62,7 @@ def get_all_files(db: Session, params, user):
     if params.get('search'):
         search_text = params.get('search')
         files = db.query(models.File).filter(
-                models.File.title.ilike(f'%{search_text}%')).filter_by(
+            models.File.title.ilike(f'%{search_text}%')).filter_by(
             deleted=bool(params.get('deleted'))). \
             join(models.Labbookchildelement,
                  models.File.elem_id ==
@@ -141,7 +141,7 @@ def get_file_with_privileges(db: Session, file_pk, user):
         if db_user.admin:
             file_created_by = 'ADMIN'
 
-        if db_lb:
+        if db_lb and not db_lb.strict_mode:
             if LABBOOK_QUERY_MODE == 'match':
                 user_roles = get_user_group_roles_with_match(db=db,
                                                              username=user.username,
@@ -156,6 +156,16 @@ def get_file_with_privileges(db: Session, file_pk, user):
                 privileges = create_file_privileges(created_by=file_created_by,
                                                     user_roles=user_roles)
 
+            return {'privileges': privileges, 'file': file_content}
+
+        if db_lb and db_lb.strict_mode and user.id == db_user.id:
+            privileges = create_strict_privileges(
+                created_by='SELF')
+            return {'privileges': privileges, 'file': file_content}
+
+        if db_lb and db_lb.strict_mode and user.id != db_user.id:
+            privileges = create_strict_privileges(
+                created_by='ANOTHER')
             return {'privileges': privileges, 'file': file_content}
 
         return None
@@ -202,6 +212,7 @@ def get_file_relations(db: Session, file_pk, params, user):
                 db_file.last_modified_by_id)
             db_file.created_by = db_user_created
             db_file.last_modified_by = db_user_modified
+            rel.right_content_object = db_file
 
         return relations
     return []

@@ -131,6 +131,33 @@ def create_note_privileges(created_by, user_roles):
             return privileges
 
 
+def create_strict_privileges(created_by):
+    self_privileges = {
+        'fullAccess': False,
+        'view': True,
+        'edit': True,
+        'delete': True,
+        'trash': True,
+        'restore': True,
+    }
+
+    other_privileges = {
+        'fullAccess': False,
+        'view': True,
+        'edit': False,
+        'delete': False,
+        'trash': False,
+        'restore': False,
+    }
+
+    match created_by:
+        case 'SELF':
+            return self_privileges
+
+        case 'ANOTHER':
+            return other_privileges
+
+
 def create_file_privileges(created_by, user_roles):
     privileges = {
         'fullAccess': False,

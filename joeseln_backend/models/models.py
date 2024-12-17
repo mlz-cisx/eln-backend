@@ -30,6 +30,7 @@ class Labbook(Base):
     version_number = Column(Integer)
     deleted = Column(Boolean, default=False)
     title = Column(String, unique=True)
+    strict_mode = Column(Boolean, default=False)
     created_at = Column(DateTime)
     created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)

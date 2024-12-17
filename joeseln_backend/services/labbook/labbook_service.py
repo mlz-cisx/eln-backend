@@ -289,6 +289,8 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
 
     if lb_privileges['edit']:
         db_labbook.title = labbook.title
+        # we borrow this flag for strict mode
+        db_labbook.strict_mode = labbook.is_template
         db_labbook.last_modified_at = datetime.datetime.now()
         db_labbook.last_modified_by_id = user.id
         try:

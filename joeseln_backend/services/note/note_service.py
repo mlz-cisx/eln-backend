@@ -4,7 +4,7 @@ from sqlalchemy.sql import text
 
 from joeseln_backend.auth import security
 from joeseln_backend.services.privileges.privileges_service import \
-    create_note_privileges
+    create_note_privileges, create_strict_privileges
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.models import models
 from joeseln_backend.services.note.note_schemas import *
@@ -121,7 +121,7 @@ def get_note_with_privileges(db: Session, note_pk, user):
         if db_note_creator.admin:
             note_created_by = 'ADMIN'
 
-        if db_lb:
+        if db_lb and not db_lb.strict_mode:
             if LABBOOK_QUERY_MODE == 'match':
                 user_roles = get_user_group_roles_with_match(db=db,
                                                              username=user.username,
@@ -137,6 +137,17 @@ def get_note_with_privileges(db: Session, note_pk, user):
                                                     user_roles=user_roles)
 
             return {'privileges': privileges, 'note': db_note}
+
+        if db_lb and db_lb.strict_mode and user.id == db_note_creator.id:
+            privileges = create_strict_privileges(
+                created_by='SELF')
+            return {'privileges': privileges, 'note': db_note}
+
+        if db_lb and db_lb.strict_mode and user.id != db_note_creator.id:
+            privileges = create_strict_privileges(
+                created_by='ANOTHER')
+            return {'privileges': privileges, 'note': db_note}
+
         return None
     return None
 
@@ -162,7 +173,8 @@ def get_note_relations(db: Session, note_pk, params, user):
 
             for rel in relations:
                 if rel.left_content_type == 70:
-                    db_comment = db.query(models.Comment).get(rel.left_object_id)
+                    db_comment = db.query(models.Comment).get(
+                        rel.left_object_id)
 
                     db_user_created = db.query(models.User).get(
                         db_comment.created_by_id)
@@ -177,7 +189,8 @@ def get_note_relations(db: Session, note_pk, params, user):
                 else:
                     rel.left_content_object = None
 
-                db_user_created = db.query(models.User).get(db_note.created_by_id)
+                db_user_created = db.query(models.User).get(
+                    db_note.created_by_id)
                 db_user_modified = db.query(models.User).get(
                     db_note.last_modified_by_id)
                 db_note.created_by = db_user_created
@@ -496,8 +509,8 @@ def get_note_export_link(db: Session, note_pk, user):
     }
 
     if user.admin or check_for_labbook_access(
-        db=db, labbook_pk=lb_elem.labbook_id,
-        user=user):
+            db=db, labbook_pk=lb_elem.labbook_id,
+            user=user):
         return export_link
 
     return None

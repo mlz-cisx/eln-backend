@@ -14,7 +14,7 @@ from joeseln_backend.services.labbook.labbook_service import \
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
 from joeseln_backend.services.privileges.privileges_service import \
-    create_pic_privileges
+    create_pic_privileges, create_strict_privileges
 from joeseln_backend.services.user_to_group.user_to_group_service import \
     get_user_group_roles_with_match, get_user_group_roles, \
     check_for_admin_role_with_user_id
@@ -202,7 +202,7 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
         if db_pic_creator.admin:
             picture_created_by = 'ADMIN'
 
-        if db_lb:
+        if db_lb and not db_lb.strict_mode:
             if LABBOOK_QUERY_MODE == 'match':
                 user_roles = get_user_group_roles_with_match(db=db,
                                                              username=user.username,
@@ -220,6 +220,17 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
                     user_roles=user_roles)
 
             return {'privileges': privileges, 'picture': pic}
+
+        if db_lb and db_lb.strict_mode and user.id == db_pic_creator.id:
+            privileges = create_strict_privileges(
+                created_by='SELF')
+            return {'privileges': privileges, 'picture': pic}
+
+        if db_lb and db_lb.strict_mode and user.id != db_pic_creator.id:
+            privileges = create_strict_privileges(
+                created_by='ANOTHER')
+            return {'privileges': privileges, 'picture': pic}
+
         return None
     return None
 
