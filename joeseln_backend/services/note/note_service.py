@@ -300,6 +300,9 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
                                          user_id=note_to_update.created_by_id):
         return None
 
+    if lb_to_update.strict_mode and user.id != note_to_update.created_by_id:
+        return None
+
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
     # Third possibility: consider a note created by non admin
@@ -365,6 +368,9 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
         return note_to_update
+
+    if lb_to_update.strict_mode and user.id != note_to_update.created_by_id:
+        return None
 
     # Second possibility: it's a note created by admin
     if check_for_admin_role_with_user_id(db=db,

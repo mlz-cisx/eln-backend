@@ -331,9 +331,12 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
                                          user_id=db_file.created_by_id):
         return None
 
+    if lb_to_update.strict_mode and user.id != db_file.created_by_id:
+        return None
+
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
-    # Third possibility: consider a note created by non admin
+    # Third possibility: consider a file created by non admin
     if lb_elem.labbook_id in labbook_ids:
         try:
             db.commit()
@@ -490,6 +493,9 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
         file_to_update.last_modified_by = user
 
         return file_to_update
+
+    if lb_to_update.strict_mode and user.id != file_to_update.created_by_id:
+        return None
 
     # Second possibility: it's a file created by admin
     if check_for_admin_role_with_user_id(db=db,

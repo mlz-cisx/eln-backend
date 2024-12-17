@@ -503,7 +503,11 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
 
     lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = user.id
+    # lb_to_update.last_modified_by_id = user.id
+
+    if not user.admin and lb_to_update.strict_mode \
+            and user.id != db_picture.created_by_id:
+        return None
 
     if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                 user=user):
@@ -664,7 +668,12 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
                 logger.error(e)
         return pic_to_update
 
-    # Second possibility: it's a note created by admin
+    if not user.admin and lb_to_update.strict_mode \
+            and user.id != pic_to_update.created_by_id:
+        return None
+
+
+    # Second possibility: it's a picture created by admin
     if check_for_admin_role_with_user_id(db=db,
                                          user_id=pic_to_update.created_by_id):
 
