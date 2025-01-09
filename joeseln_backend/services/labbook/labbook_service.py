@@ -111,7 +111,8 @@ def get_labbooks_from_user(db: Session, params, user):
                 lb.last_modified_by_id)
             lb.created_by = db_user_created
             lb.last_modified_by = db_user_modified
-
+            lb.length = db.query(models.Labbookchildelement).filter_by(
+                labbook_id=lb.id, deleted=False).count()
         return lbs
 
     if order_params:
@@ -179,6 +180,8 @@ def get_labbooks_from_user(db: Session, params, user):
             lb.last_modified_by_id)
         lb.created_by = db_user_created
         lb.last_modified_by = db_user_modified
+        lb.length = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=lb.id, deleted=False).count()
 
     return labbooks
 

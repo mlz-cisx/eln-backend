@@ -35,6 +35,10 @@ class Labbook(BaseModel):
         populate_by_name = True
 
 
+class LabbookWithLen(Labbook):
+    length: int
+
+
 class LabbookCreate(BaseModel):
     title: str
     description: str
@@ -44,6 +48,7 @@ class LabbookPatch(BaseModel):
     title: str
     is_template: bool
     projects: List[str]
+
 
 class LabbookVersionSummary(BaseModel):
     summary: str
@@ -74,13 +79,12 @@ class LabbookVersion(BaseModel):
 class LabbookPreviewVersion(BaseModel):
     title: str
     description: str
-    is_template : bool
-    child_elements : List[Any]
+    is_template: bool
+    child_elements: List[Any]
 
     metadata: List[Any]
     projects: List[Any]
     metadata_version: int
-
 
     class Config:
         populate_by_name = True

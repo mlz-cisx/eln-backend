@@ -124,7 +124,7 @@ def get_health():
     return ['ok']
 
 
-@app.get("/labbooks/", response_model=list[labbook_schemas.Labbook])
+@app.get("/labbooks/", response_model=list[labbook_schemas.LabbookWithLen])
 def read_labbooks(request: Request,
                   db: Session = Depends(get_db),
                   user: User = Depends(get_current_user)):
