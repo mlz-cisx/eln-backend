@@ -7,8 +7,8 @@
 - pip install psycopg2-binary
 - create postgres database
 - enter credentials into joeseln_backend/conf/base_conf.py
-- run joeseln_backend/models/table_creator.py
 - enter virtual environment e.g. *source venv/bin/activate*
+- main.py creates tables and initial admins 
 - because of nested async calls with websockets we need *--loop asyncio*, you can start from directory where the main.py is located with:
   ```uvicorn main:app --reload --port 8010 --host 0.0.0.0 --loop asyncio```
 - see also: https://www.uvicorn.org/#command-line-options
