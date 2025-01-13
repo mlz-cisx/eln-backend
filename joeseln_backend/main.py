@@ -56,7 +56,8 @@ from joeseln_backend.conf.base_conf import ORIGINS, JAEGER_HOST, JAEGER_PORT, \
 from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
     get_current_user, authenticate_user, \
     ACCESS_TOKEN_EXPIRE_SECONDS, \
-    create_access_token
+    create_access_token, get_current_jwt_user_for_ws, \
+    get_current_keycloak_user_for_ws
 from joeseln_backend.ws.connection_manager import manager
 
 # first logger
@@ -1243,7 +1244,6 @@ def create_comment(
     # DONE
 
 
-# TODO how to authenticate ws properly
 @app.websocket("/ws/elements/")
 async def websocket_endpoint(*, websocket: WebSocket):
     await manager.connect(websocket)
@@ -1256,26 +1256,28 @@ async def websocket_endpoint(*, websocket: WebSocket):
                 break
             # logger.info(data)
             if data['auth'] == STATIC_WS_TOKEN:
-                # token = data['auth']
                 # we don't want to transmit any token from backend !
                 del data['auth']
-                # logger.info(data)
-                # TODO no authentication needed
+                # message from internal ws client => no authentication needed
                 await manager.broadcast_json(message=data)
             elif data['auth'] and '__zone_symbol__value' in json.loads(
                     json.dumps(data['auth'])):
                 # handling keycloak
-                # token = json.loads(json.dumps(data['auth']))[
-                #     '__zone_symbol__value']
-                # logger.info(token)
-                # TODO do ws authentication here
-                await manager.broadcast_json(message=data)
+                token = json.loads(json.dumps(data['auth']))[
+                    '__zone_symbol__value']
+                if await get_current_keycloak_user_for_ws(token=token):
+                    # no message required
+                    await manager.broadcast_json(message='')
+                else:
+                    break
             else:
                 # handling jwt auth
-                # token = data['auth']
-                # logger.info(token)
-                # TODO do ws authentication here
-                await manager.broadcast_json(message=data)
+                token = data['auth']
+                if await get_current_jwt_user_for_ws(token=token):
+                    # no message required
+                    await manager.broadcast_json(message='')
+                else:
+                    break
 
 
     except WebSocketDisconnect:

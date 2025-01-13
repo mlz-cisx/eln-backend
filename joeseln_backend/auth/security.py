@@ -34,7 +34,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 20
 ACCESS_TOKEN_EXPIRE_SECONDS = 1000
 
 
-
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -116,7 +115,8 @@ def get_user_from_jwt(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         if token == STATIC_ADMIN_TOKEN:
             # logger.info('you can do everything')
-            user = get_user_by_uname(db=SessionLocal(), username=INSTRUMENT_AS_ADMIN)
+            user = get_user_by_uname(db=SessionLocal(),
+                                     username=INSTRUMENT_AS_ADMIN)
             return user
         else:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -235,6 +235,25 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             detail='Internal authentication error (our bad)'
         )
 
+
+async def get_current_jwt_user_for_ws(token):
+    try:
+        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return True
+    except jwt.exceptions.PyJWTError:
+        return
+
+
+async def get_current_keycloak_user_for_ws(token):
+    headers = {'Authorization': 'bearer ' + token}
+    r_user = requests.get(
+        KEYCLOAK_BASEURL + '/userinfo',
+        headers=headers,
+        verify=False
+    )
+    if r_user.status_code == HTTP_200_OK:
+        return True
+    return
 
 
 class Security:
