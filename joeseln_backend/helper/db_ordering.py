@@ -1,9 +1,10 @@
 def get_order_params(ordering):
     match ordering:
+        # defaults pk are mapped to created_at field
         case 'pk':
-            return 'id asc'
+            return 'created_at asc'
         case '-pk':
-            return 'id desc'
+            return 'created_at desc'
         case 'subject':
             return 'subject asc'
         case '-subject':
