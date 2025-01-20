@@ -38,6 +38,8 @@ from joeseln_backend.services.file import file_version_service, file_schemas, \
 from joeseln_backend.services.comment import comment_schemas, comment_service
 
 from joeseln_backend.services.relation import relation_schemas
+from joeseln_backend.services.history import history_schema
+from joeseln_backend.services.history.history_service import get_history
 
 from joeseln_backend.services.role.basic_roles_creator import \
     create_basic_roles, create_inital_admin
@@ -312,7 +314,7 @@ async def update_labbook_elements(
     # DONE
 
 
-@app.get("/labbooks/{labbook_pk}/history/")
+@app.get("/labbooks/{labbook_pk}/history/", response_model=list[history_schema.ElemHistory])
 def get_labbook_history(
         request: Request,
         labbook_pk: UUID,
@@ -320,8 +322,8 @@ def get_labbook_history(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # for all users
-    logger.info(request.query_params._dict)
-    return ['ok']
+    return get_history(db=db, elem_id=labbook_pk, user=user)
+
 
 
 @app.get("/labbooks/{labbook_pk}/versions/",
@@ -522,14 +524,15 @@ def export_link__note(
     # DONE
 
 
-@app.get("/notes/{note_pk}/history/")
+@app.get("/notes/{note_pk}/history/",
+         response_model=list[history_schema.ElemHistory])
 def get_note_history(
         request: Request,
         note_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return ['ok']
+    return get_history(db=db, elem_id=note_pk, user=user)
     # DONE not in use
 
 
@@ -872,14 +875,15 @@ async def patch_picture(
     # DONE
 
 
-@app.get("/pictures/{picture_pk}/history/")
+@app.get("/pictures/{picture_pk}/history/",
+         response_model=list[history_schema.ElemHistory])
 def get_picture_history(
         request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return ['ok']
+    return get_history(db=db, elem_id=picture_pk, user=user)
     # DONE not implemented
 
 
@@ -1125,14 +1129,15 @@ def restore_file(
     # DONE
 
 
-@app.get("/files/{file_pk}/history/")
+@app.get("/files/{file_pk}/history/",
+         response_model=list[history_schema.ElemHistory])
 def get_file_history(
         request: Request,
         file_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return ['ok']
+    return get_history(db=db, elem_id=file_pk, user=user)
     # DONE not implemented
 
 

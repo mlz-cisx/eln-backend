@@ -42,6 +42,8 @@ KEYCLOAK_BASEURL = f'http://daphneopc01:8181/realms' \
 
 STATIC_WS_TOKEN = '#super_ws_secret#'
 
+STATIC_HISTORY_DEBOUNCE = 5
+
 # Jaeger Settings
 # docker
 # run - d - -name

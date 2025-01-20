@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
 from joeseln_backend.auth.security import get_user_from_jwt
+from joeseln_backend.services.history.history_service import \
+    create_history_entry
 from joeseln_backend.services.labbook.labbook_service import \
     check_for_labbook_access, get_all_labbook_ids_from_non_admin_user, \
     check_for_labbook_admin_access
@@ -415,7 +417,19 @@ def create_picture(db: Session, title: str, display: str,
         db.close()
         return db_picture
     db.refresh(db_picture)
-    db.close()
+
+    # changerecord = [field_name,old_value,new_value]
+    # changerecords = [changerecord, changerecord, .....]
+    changerecords = [['title', None, title],
+                     ['display', None, display]]
+    # changeset_types:
+    # U : edited/updated, R : restored, S: trashed , I initialized/created
+    create_history_entry(db=db,
+                         elem_id=db_picture.id,
+                         user=user,
+                         object_type_id=40,
+                         changeset_type='I',
+                         changerecords=changerecords)
 
     return db_picture
 
@@ -518,6 +532,16 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
             logger.error(e)
             db.close()
             return
+
+        changerecords = [['shapes', '...', '...']]
+        # changeset_types:
+        # U : edited/updated, R : restored, S: trashed , I initialized/created
+        create_history_entry(db=db,
+                             elem_id=db_picture.id,
+                             user=user,
+                             object_type_id=40,
+                             changeset_type='U',
+                             changerecords=changerecords)
 
         db.refresh(db_picture)
 
@@ -666,12 +690,18 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
                      'model_pk': labbook_data.labbook_pk})
             except RuntimeError as e:
                 logger.error(e)
+
+        create_history_entry(db=db,
+                             elem_id=picture_pk,
+                             user=user,
+                             object_type_id=40,
+                             changeset_type='S',
+                             changerecords=[])
         return pic_to_update
 
     if not user.admin and lb_to_update.strict_mode \
             and user.id != pic_to_update.created_by_id:
         return None
-
 
     # Second possibility: it's a picture created by admin
     if check_for_admin_role_with_user_id(db=db,
@@ -703,6 +733,13 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
                          'model_pk': labbook_data.labbook_pk})
                 except RuntimeError as e:
                     logger.error(e)
+
+            create_history_entry(db=db,
+                                 elem_id=picture_pk,
+                                 user=user,
+                                 object_type_id=40,
+                                 changeset_type='S',
+                                 changerecords=[])
             return pic_to_update
         else:
             return None
@@ -734,6 +771,14 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
                      'model_pk': labbook_data.labbook_pk})
             except RuntimeError as e:
                 logger.error(e)
+
+        create_history_entry(db=db,
+                             elem_id=picture_pk,
+                             user=user,
+                             object_type_id=40,
+                             changeset_type='S',
+                             changerecords=[])
+
         return pic_to_update
 
     return None
@@ -778,6 +823,13 @@ def restore_picture(db: Session, picture_pk, user):
                      'model_pk': lb_elem.labbook_id})
             except RuntimeError as e:
                 logger.error(e)
+
+        create_history_entry(db=db,
+                             elem_id=picture_pk,
+                             user=user,
+                             object_type_id=40,
+                             changeset_type='R',
+                             changerecords=[])
         return pic_to_update
 
     # Second possibility: it's a note created by admin
@@ -810,6 +862,12 @@ def restore_picture(db: Session, picture_pk, user):
                          'model_pk': lb_elem.labbook_id})
                 except RuntimeError as e:
                     logger.error(e)
+            create_history_entry(db=db,
+                                 elem_id=picture_pk,
+                                 user=user,
+                                 object_type_id=40,
+                                 changeset_type='R',
+                                 changerecords=[])
             return pic_to_update
         else:
             return None
@@ -841,6 +899,13 @@ def restore_picture(db: Session, picture_pk, user):
                      'model_pk': lb_elem.labbook_id})
             except RuntimeError as e:
                 logger.error(e)
+
+        create_history_entry(db=db,
+                             elem_id=picture_pk,
+                             user=user,
+                             object_type_id=40,
+                             changeset_type='R',
+                             changerecords=[])
         return pic_to_update
 
     return None

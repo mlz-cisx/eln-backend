@@ -35,5 +35,7 @@ type2model = {
     file_content_type: file_content_type_model,
     version_content_type: version_content_type_model,
     comment_content_type: comment_content_type_model,
-    relation_content_type_model: relation_content_type_model
+    relation_content_type_model: relation_content_type_model,
+    labbook_content_type: labbook_content_type_model,
+    element_content_type: element_content_type_model
 }

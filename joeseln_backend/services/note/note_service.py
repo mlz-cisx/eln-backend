@@ -8,6 +8,8 @@ from joeseln_backend.services.privileges.privileges_service import \
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.models import models
 from joeseln_backend.services.note.note_schemas import *
+from joeseln_backend.services.history.history_service import \
+    create_history_entry, create_note_update_history_entry
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.base_conf import URL_BASE_PATH
 
@@ -255,7 +257,21 @@ def create_note(db: Session, note: NoteCreate, user):
         db.close()
         return db_note
     db.refresh(db_note)
-    db.close()
+
+    # changerecord = [field_name,old_value,new_value]
+    # changerecords = [changerecord, changerecord, .....]
+    changerecords = [['subject', None, note.subject],
+                     ['content', None, note.content]]
+    # changeset_types:
+    # U : edited/updated, R : restored, S: trashed , I initialized/created
+
+    create_history_entry(db=db,
+                         elem_id=db_note.id,
+                         user=user,
+                         object_type_id=30,
+                         changeset_type='I',
+                         changerecords=changerecords)
+
     db_note.last_modified_by = user
     db_note.created_by = user
 
@@ -264,6 +280,8 @@ def create_note(db: Session, note: NoteCreate, user):
 
 def update_note(db: Session, note_pk, note: NoteCreate, user):
     note_to_update = db.query(models.Note).get(note_pk)
+    old_subject = note_to_update.subject
+    old_content = note_to_update.content
     note_to_update.subject = note.subject
     note_to_update.content = note.content
     note_to_update.last_modified_at = datetime.datetime.now()
@@ -293,6 +311,20 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
         # ws transmit via event
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
+
+        # changerecord = [field_name,old_value,new_value]
+        # changerecords = [changerecord, changerecord, .....]
+        changerecords = [['subject', old_subject, note.subject],
+                         ['content', old_content, note.content]]
+        # changeset_types:
+        # U : edited/updated, R : restored, S: trashed , I initialized/created
+        create_note_update_history_entry(db=db,
+                                         elem_id=note_pk,
+                                         user=user,
+                                         object_type_id=30,
+                                         changeset_type='U',
+                                         changerecords=changerecords)
+
         return note_to_update
 
     # Second possibility: note is created by admin und user is now not admin
@@ -319,6 +351,20 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
         # ws transmit via event
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
+
+        # changerecord = [field_name,old_value,new_value]
+        # changerecords = [changerecord, changerecord, .....]
+        changerecords = [['subject', None, note.subject],
+                         ['content', None, note.content]]
+        # changeset_types:
+        # U : edited/updated, R : restored, S: trashed , I initialized/created
+        create_note_update_history_entry(db=db,
+                                         elem_id=note_pk,
+                                         user=user,
+                                         object_type_id=30,
+                                         changeset_type='U',
+                                         changerecords=changerecords)
+
         return note_to_update
 
     return None
@@ -367,6 +413,13 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
 
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
+
+        create_history_entry(db=db,
+                             elem_id=note_pk,
+                             user=user,
+                             object_type_id=30,
+                             changeset_type='S',
+                             changerecords=[])
         return note_to_update
 
     if lb_to_update.strict_mode and user.id != note_to_update.created_by_id:
@@ -399,6 +452,14 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
 
             note_to_update.created_by = db_user_created
             note_to_update.last_modified_by = user
+
+            create_history_entry(db=db,
+                                 elem_id=note_pk,
+                                 user=user,
+                                 object_type_id=30,
+                                 changeset_type='S',
+                                 changerecords=[])
+
             return note_to_update
         else:
             return None
@@ -427,6 +488,14 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
 
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
+
+        create_history_entry(db=db,
+                             elem_id=note_pk,
+                             user=user,
+                             object_type_id=30,
+                             changeset_type='S',
+                             changerecords=[])
+
         return note_to_update
 
     return None
@@ -461,6 +530,14 @@ def restore_note(db: Session, note_pk, user):
 
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
+
+        create_history_entry(db=db,
+                             elem_id=note_pk,
+                             user=user,
+                             object_type_id=30,
+                             changeset_type='R',
+                             changerecords=[])
+
         return note_to_update
 
     # Second possibility: it's a note created by admin
@@ -480,6 +557,14 @@ def restore_note(db: Session, note_pk, user):
             db.refresh(note_to_update)
             note_to_update.created_by = db_user_created
             note_to_update.last_modified_by = user
+
+            create_history_entry(db=db,
+                                 elem_id=note_pk,
+                                 user=user,
+                                 object_type_id=30,
+                                 changeset_type='R',
+                                 changerecords=[])
+
             return note_to_update
         else:
             return None
@@ -498,6 +583,13 @@ def restore_note(db: Session, note_pk, user):
 
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
+
+        create_history_entry(db=db,
+                             elem_id=note_pk,
+                             user=user,
+                             object_type_id=30,
+                             changeset_type='R',
+                             changerecords=[])
 
         return note_to_update
 

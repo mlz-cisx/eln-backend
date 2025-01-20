@@ -58,6 +58,6 @@ def get_order_params(ordering):
         case '-email':
             return 'email desc'
         case None:
-            return 'id desc'
+            return 'created_at desc'
         case _:
-            return 'id desc'
+            return 'created_at desc'

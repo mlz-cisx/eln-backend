@@ -1,6 +1,8 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, \
     Text, event, BigInteger, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import  relationship
+
 from uuid import uuid4
 
 from joeseln_backend.ws.ws_client import transmit
@@ -199,6 +201,7 @@ class ChangesetChangeset(Base):
     user_id = Column(BigInteger, ForeignKey(User.id))
     # Not implemented
     object_id = Column(Integer)
+    change_records = relationship("ChangesetChangerecord", backref="changeset_changeset")
 
 
 class ChangesetChangerecord(Base):

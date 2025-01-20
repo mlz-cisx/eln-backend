@@ -12,6 +12,8 @@ from joeseln_backend.services.entry_path.entry_path_service import create_path, 
 from joeseln_backend.auth import security
 from joeseln_backend.models import models
 from joeseln_backend.services.file.file_schemas import *
+from joeseln_backend.services.history.history_service import \
+    create_history_entry, create_file_update_history_entry
 from joeseln_backend.services.labbook.labbook_service import \
     check_for_labbook_access, get_all_labbook_ids_from_non_admin_user, \
     check_for_labbook_admin_access
@@ -285,14 +287,28 @@ def create_file(db: Session, title: str,
         db.close()
         return
     db.refresh(db_file)
-    db.close()
+
+    # changerecord = [field_name,old_value,new_value]
+    # changerecords = [changerecord, changerecord, .....]
+    changerecords = [['title', None, title],
+                     ['name', None, name]]
+    # changeset_types:
+    # U : edited/updated, R : restored, S: trashed , I initialized/created
+    create_history_entry(db=db,
+                         elem_id=db_file.id,
+                         user=user,
+                         object_type_id=50,
+                         changeset_type='I',
+                         changerecords=changerecords)
 
     return db_file
 
 
 def update_file(file_pk, db: Session, elem: FilePatch, user):
     db_file = db.query(models.File).get(file_pk)
+    old_title = db_file.title
     db_file.title = elem.title
+    old_description = db_file.description
     db_file.description = elem.description
     db_file.last_modified_at = datetime.datetime.now()
     db_file.last_modified_by_id = user.id
@@ -324,6 +340,23 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
         db_user_created = db.query(models.User).get(db_file.created_by_id)
         db_file.created_by = db_user_created
         db_file.last_modified_by = user
+
+        # changerecord = [field_name,old_value,new_value]
+        # changerecords = [changerecord, changerecord, .....]
+        if old_description == elem.description:
+            changerecords = [['title', old_title, elem.title]]
+        else:
+            changerecords = [['title', old_title, elem.title],
+                             ['description', old_description, elem.description]]
+        # changeset_types:
+        # U : edited/updated, R : restored, S: trashed , I initialized/created
+        create_file_update_history_entry(db=db,
+                                         elem_id=db_file.id,
+                                         user=user,
+                                         object_type_id=50,
+                                         changeset_type='U',
+                                         changerecords=changerecords)
+
         return db_file
 
     # Second possibility: file is created by admin und user is now not admin
@@ -350,6 +383,21 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
             db.close()
 
             return db_file
+
+        if old_description == elem.description:
+            changerecords = [['title', old_title, elem.title]]
+        else:
+            changerecords = [['title', old_title, elem.title],
+                             ['description', old_description, elem.description]]
+        # changeset_types:
+        # U : edited/updated, R : restored, S: trashed , I initialized/created
+        create_file_update_history_entry(db=db,
+                                         elem_id=db_file.id,
+                                         user=user,
+                                         object_type_id=50,
+                                         changeset_type='U',
+                                         changerecords=changerecords)
+
         db.refresh(db_file)
         transmit({'model_name': 'file', 'model_pk': str(file_pk)})
 
@@ -492,6 +540,12 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
         file_to_update.created_by = db_user_created
         file_to_update.last_modified_by = user
 
+        create_history_entry(db=db,
+                             elem_id=file_pk,
+                             user=user,
+                             object_type_id=50,
+                             changeset_type='S',
+                             changerecords=[])
         return file_to_update
 
     if lb_to_update.strict_mode and user.id != file_to_update.created_by_id:
@@ -529,7 +583,12 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
                 file_to_update.created_by_id)
             file_to_update.created_by = db_user_created
             file_to_update.last_modified_by = user
-
+            create_history_entry(db=db,
+                                 elem_id=file_pk,
+                                 user=user,
+                                 object_type_id=50,
+                                 changeset_type='S',
+                                 changerecords=[])
             return file_to_update
         else:
             return None
@@ -563,7 +622,12 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             file_to_update.created_by_id)
         file_to_update.created_by = db_user_created
         file_to_update.last_modified_by = user
-
+        create_history_entry(db=db,
+                             elem_id=file_pk,
+                             user=user,
+                             object_type_id=50,
+                             changeset_type='S',
+                             changerecords=[])
         return file_to_update
 
     return None
@@ -612,7 +676,12 @@ def restore_file(db: Session, file_pk, user):
             file_to_update.created_by_id)
         file_to_update.created_by = db_user_created
         file_to_update.last_modified_by = user
-
+        create_history_entry(db=db,
+                             elem_id=file_pk,
+                             user=user,
+                             object_type_id=50,
+                             changeset_type='R',
+                             changerecords=[])
         return file_to_update
 
     # Second possibility: it's a file created by admin
@@ -647,7 +716,12 @@ def restore_file(db: Session, file_pk, user):
                 file_to_update.created_by_id)
             file_to_update.created_by = db_user_created
             file_to_update.last_modified_by = user
-
+            create_history_entry(db=db,
+                                 elem_id=file_pk,
+                                 user=user,
+                                 object_type_id=50,
+                                 changeset_type='R',
+                                 changerecords=[])
             return file_to_update
         else:
             return None
@@ -681,7 +755,12 @@ def restore_file(db: Session, file_pk, user):
             file_to_update.created_by_id)
         file_to_update.created_by = db_user_created
         file_to_update.last_modified_by = user
-
+        create_history_entry(db=db,
+                             elem_id=file_pk,
+                             user=user,
+                             object_type_id=50,
+                             changeset_type='R',
+                             changerecords=[])
         return file_to_update
 
     return None

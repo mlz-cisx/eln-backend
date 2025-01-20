@@ -1,7 +1,8 @@
 import datetime
-from typing import List, Any
+from typing import List, Any, Optional
 from pydantic import BaseModel, Field, Json
 from uuid import UUID
+
 
 from joeseln_backend.conf.content_types import *
 from joeseln_backend.services.privileges.privileges_schema import Privileges
@@ -45,9 +46,14 @@ class LabbookCreate(BaseModel):
 
 
 class LabbookPatch(BaseModel):
-    title: str
-    is_template: bool
-    projects: List[str]
+    title: str | Optional[bool] = Field(None)
+    is_template: bool | Optional[bool] = Field(None)
+    projects: List[str] | Optional[bool] = Field(None)
+    description: str | Optional[bool] = Field(None)
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
 
 
 class LabbookVersionSummary(BaseModel):

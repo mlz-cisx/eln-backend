@@ -7,6 +7,8 @@ from sqlalchemy.sql import text
 from sqlalchemy import or_
 
 from joeseln_backend.models import models
+from joeseln_backend.services.history.history_service import \
+    create_history_entry
 from joeseln_backend.services.labbook.labbook_schemas import *
 from joeseln_backend.services.user_to_group.user_to_group_service import \
     get_user_group_roles, get_user_group_roles_with_match, \
@@ -210,6 +212,19 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
         db_labbook.created_by = db_user_created
         db_labbook.last_modified_by = db_user_modified
 
+        # changerecord = [field_name,old_value,new_value]
+        # changerecords = [changerecord, changerecord, .....]
+        changerecords = [['title', None, labbook.title],
+                         ['description', None, labbook.description]]
+        # changeset_types:
+        # U : edited/updated, R : restored, S: trashed , I initialized/created
+        create_history_entry(db=db,
+                             elem_id=db_labbook.id,
+                             user=user,
+                             object_type_id=10,
+                             changeset_type='I',
+                             changerecords=changerecords)
+
     return db_labbook
 
 
@@ -289,11 +304,26 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
                                           groupname=db_labbook.title)
 
         lb_privileges = create_labbook_privileges(user_roles=user_roles)
-
+    changerecords = []
     if lb_privileges['edit']:
-        db_labbook.title = labbook.title
-        # we borrow this flag for strict mode
-        db_labbook.strict_mode = labbook.is_template
+        # it is patched with form-input labbook page
+        if labbook.title:
+            old_labbook_title = db_labbook.title
+            old_labbook_strict_mode = db_labbook.strict_mode
+            db_labbook.title = labbook.title
+            # we borrow this flag for strict mode
+            db_labbook.strict_mode = labbook.is_template
+
+            changerecords = [['title', old_labbook_title, labbook.title],
+                             ['strict mode', old_labbook_strict_mode,
+                              labbook.is_template]]
+
+        # it is patched with description modal
+        elif not labbook.title:
+            old_labbook_description = db_labbook.description
+            db_labbook.description = f'{labbook.description} '
+            changerecords = [['description', old_labbook_description,
+                              f'{labbook.description} ']]
         db_labbook.last_modified_at = datetime.datetime.now()
         db_labbook.last_modified_by_id = user.id
         try:
@@ -303,6 +333,14 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
             db.close()
             return db_labbook
         db.refresh(db_labbook)
+
+        create_history_entry(db=db,
+                             elem_id=labbook_pk,
+                             user=user,
+                             object_type_id=10,
+                             changeset_type='U',
+                             changerecords=changerecords)
+
     # TODO use ws?
     # try:
     #     transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
