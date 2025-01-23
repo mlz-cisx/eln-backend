@@ -314,7 +314,8 @@ async def update_labbook_elements(
     # DONE
 
 
-@app.get("/labbooks/{labbook_pk}/history/", response_model=list[history_schema.ElemHistory])
+@app.get("/labbooks/{labbook_pk}/history/",
+         response_model=list[history_schema.ElemHistory])
 def get_labbook_history(
         request: Request,
         labbook_pk: UUID,
@@ -323,7 +324,6 @@ def get_labbook_history(
     # logger.info(user)
     # for all users
     return get_history(db=db, elem_id=labbook_pk, user=user)
-
 
 
 @app.get("/labbooks/{labbook_pk}/versions/",
@@ -415,7 +415,7 @@ def create_note(
 
 
 @app.get("/notes/",
-         response_model=list[note_schemas.Note])
+         response_model=list[note_schemas.NoteWithLbTitle])
 def read_notes(
         request: Request,
         db: Session = Depends(get_db),
@@ -682,7 +682,7 @@ async def UploadImage(request: Request,
     # DONE
 
 
-@app.get("/pictures/", response_model=list[picture_schemas.Picture])
+@app.get("/pictures/", response_model=list[picture_schemas.PictureWithLbTitle])
 def read_pictures(
         request: Request,
         db: Session = Depends(get_db),
@@ -1003,7 +1003,7 @@ async def UploadFile(request: Request,
 
 
 @app.get("/files/",
-         response_model=list[file_schemas.File])
+         response_model=list[file_schemas.FileWithLbTitle])
 def read_files(
         request: Request,
         db: Session = Depends(get_db),

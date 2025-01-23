@@ -75,3 +75,7 @@ class NotePreviewVersion(BaseModel):
 class NoteWithPrivileges(BaseModel):
     note: Note | None
     privileges: Privileges | None
+
+
+class NoteWithLbTitle(Note):
+    lb_title: str | None

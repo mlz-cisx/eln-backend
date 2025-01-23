@@ -28,8 +28,9 @@ def get_all_note_versions(db: Session, note_pk, user):
         db_note_version.last_modified_by = db_user_modified
     db_note = db.query(models.Note).get(note_pk)
     lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
-    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                user=user) and check_for_version_edit_access_on_lb_elem(
+    if lb_elem and check_for_labbook_access(db=db,
+                                            labbook_pk=lb_elem.labbook_id,
+                                            user=user) and check_for_version_edit_access_on_lb_elem(
         db=db, lb_elem=lb_elem, user=user):
         return db_note_versions
     return None
@@ -38,8 +39,9 @@ def get_all_note_versions(db: Session, note_pk, user):
 def get_note_version_metadata(db: Session, note_pk, version_pk, user):
     db_note = db.query(models.Note).get(note_pk)
     lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
-    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                user=user) and check_for_version_edit_access_on_lb_elem(
+    if lb_elem and check_for_labbook_access(db=db,
+                                            labbook_pk=lb_elem.labbook_id,
+                                            user=user) and check_for_version_edit_access_on_lb_elem(
         db=db, lb_elem=lb_elem, user=user):
         db_note_version = db.query(models.Version).get(version_pk)
         # renaming and json.dumps for schema

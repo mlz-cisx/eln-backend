@@ -57,6 +57,13 @@ def get_all_files(db: Session, params, user):
             file.created_by = db_user_created
             file.last_modified_by = db_user_modified
 
+            try:
+                lb_elem = db.query(models.Labbookchildelement).get(file.elem_id)
+                lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+                file.lb_title = lb.title
+            except:
+                file.lb_title = 'None'
+
         return files
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)

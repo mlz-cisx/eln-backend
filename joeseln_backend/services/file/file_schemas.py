@@ -96,6 +96,11 @@ class FilePreviewVersion(BaseModel):
         populate_by_name = True
         from_attributes = True
 
+
 class FileWithPrivileges(BaseModel):
     file: File | None
     privileges: Privileges | None
+
+
+class FileWithLbTitle(File):
+    lb_title: str | None

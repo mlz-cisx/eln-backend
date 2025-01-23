@@ -85,5 +85,10 @@ class PictureWithPrivileges(BaseModel):
     picture: Picture | None
     privileges: Privileges | None
 
+
 class UpdatePictureTitle(BaseModel):
     title: str
+
+
+class PictureWithLbTitle(Picture):
+    lb_title: str | None

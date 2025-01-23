@@ -57,6 +57,13 @@ def get_all_pictures(db: Session, params, user):
             pic.created_by = db_user_created
             pic.last_modified_by = db_user_modified
 
+            try:
+                lb_elem = db.query(models.Labbookchildelement).get(pic.elem_id)
+                lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+                pic.lb_title = lb.title
+            except:
+                pic.lb_title = 'None'
+
         return pics
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
@@ -90,6 +97,13 @@ def get_all_pictures(db: Session, params, user):
             pic.last_modified_by_id)
         pic.created_by = db_user_created
         pic.last_modified_by = db_user_modified
+
+        try:
+            lb_elem = db.query(models.Labbookchildelement).get(pic.elem_id)
+            lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+            pic.lb_title = lb.title
+        except:
+            pic.lb_title = 'None'
 
     return pics
 

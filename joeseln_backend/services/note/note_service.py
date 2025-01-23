@@ -53,6 +53,12 @@ def get_all_notes(db: Session, params, user):
             note.created_by = db_user_created
             note.last_modified_by = db_user_modified
 
+            try:
+                lb_elem = db.query(models.Labbookchildelement).get(note.elem_id)
+                lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+                note.lb_title = lb.title
+            except:
+                note.lb_title = 'None'
         return notes
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
@@ -86,6 +92,13 @@ def get_all_notes(db: Session, params, user):
             note.last_modified_by_id)
         note.created_by = db_user_created
         note.last_modified_by = db_user_modified
+
+        try:
+            lb_elem = db.query(models.Labbookchildelement).get(note.elem_id)
+            lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+            note.lb_title = lb.title
+        except:
+            note.lb_title = 'None'
 
     return notes
 

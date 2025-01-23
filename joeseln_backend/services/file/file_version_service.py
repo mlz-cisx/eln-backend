@@ -30,8 +30,9 @@ def get_all_file_versions(db: Session, file_pk, user):
     db_file = db.query(models.File).get(file_pk)
     lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
 
-    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                user=user) and check_for_version_edit_access_on_lb_elem(
+    if lb_elem and check_for_labbook_access(db=db,
+                                            labbook_pk=lb_elem.labbook_id,
+                                            user=user) and check_for_version_edit_access_on_lb_elem(
         db=db, lb_elem=lb_elem, user=user):
         return db_file_versions
     return None
@@ -40,8 +41,9 @@ def get_all_file_versions(db: Session, file_pk, user):
 def get_file_version_metadata(db: Session, file_pk, version_pk, user):
     db_file = db.query(models.File).get(file_pk)
     lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
-    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                user=user) and check_for_version_edit_access_on_lb_elem(
+    if lb_elem and check_for_labbook_access(db=db,
+                                            labbook_pk=lb_elem.labbook_id,
+                                            user=user) and check_for_version_edit_access_on_lb_elem(
         db=db, lb_elem=lb_elem, user=user):
         db_file_version = db.query(models.Version).get(version_pk)
         # renaming and json.dumps for schema
@@ -74,7 +76,8 @@ def add_file_version(db: Session, file_pk, summary, user,
 
             number = 1
             last_db_file_version = db.query(models.Version).filter_by(
-                object_id=file_pk).order_by(models.Version.number.desc()).first()
+                object_id=file_pk).order_by(
+                models.Version.number.desc()).first()
             if last_db_file_version:
                 number = last_db_file_version.number + 1
 
