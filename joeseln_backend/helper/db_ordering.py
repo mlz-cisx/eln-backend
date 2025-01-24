@@ -61,3 +61,4 @@ def get_order_params(ordering):
             return 'created_at desc'
         case _:
             return 'created_at desc'
+
