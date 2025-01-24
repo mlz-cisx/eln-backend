@@ -1,0 +1,92 @@
+version: '3.8'
+
+# file structure
+# .
+# ├── frontend/
+# │   └── joeselnfrontend/
+# │       └── Dockerfile 
+# ├── backend/
+# │   └── Dockerfile 
+# ├── rabbit2mlzeln/
+# │   └── Dockerfile
+# └── docker-compose.yml
+#
+# docker-compose build
+# docker-compose up
+
+services:
+  eln-backend:
+    image: eln-backend
+    build:
+      context: ./backend
+    ports:
+      - "8010:8010"
+    environment:
+      DB_USER: "test"
+      DB_PASSWORD: "test"
+      DB_TABLE: "eln"
+      DB_PORT: 5432
+      DB_ADDR: "eln-postgres"
+      INITIAL_ADMIN: "admin"
+      INSTRUMENT_AS_ADMIN: "instrument"
+      STATIC_ADMIN_TOKEN: "#super_secret#"
+      STATIC_WS_TOKEN: "#super_secret#"
+      LABBOOK_QUERY_MODE: "match"
+      URL_BASE_PATH: "http://wojians-macbook.local/api/"  # with tailing slash
+      WS_URL: "ws://wojians-macbook.local/ws/"
+      ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
+      REALM: "joe"
+      KEYCLOAK_BASEURL: "http://wojians-macbook.local:8080/realms/joe/protocol/openid-connect"
+      JAEGER_HOST: "localhost"
+      JAEGER_PORT: 6831
+      JAEGER_SERVICE_NAME: "MLZ-ELN"
+      STATIC_HISTORY_DEBOUNCE: 5
+
+    volumes:
+      - ./data/pictures/:/data/pictures
+      - ./data/files/:/data/files
+
+  eln-frontend:
+    image: eln-frontend
+    build:
+      context: ./frontend/joeselnfrontend/
+      args:
+        API_URL: "http://wojians-macbook.local/api" # without tailing slash
+        WS_URL: "http://wojians-macbook.local/ws"
+        ELN_EXPORTER: "http://172.25.75.26:5000"
+        KEYCLOAK_URL: "http://wojians-macbook.local:8080/"
+        KEYCLOAK_REALM: "joe"
+        KEYCLOAK_CLIENT_ID: "my_client"
+    ports:
+      - "80:80"
+
+  eln-postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: "test"
+      POSTGRES_PASSWORD: "test"
+      POSTGRES_DB: "eln"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # eln-rabbit2mlzeln:
+  #   image: eln-rabbit2mlzeln
+  #   build:
+  #     context: ./rabbit2mlzeln/
+  #   environment:
+  #     RABBIT_URL=wojians-macbook.local
+  #     RABBIT_PORT=5673
+  #     RABBIT_VIRTUAL_HOST=/
+  #     RABBIT_USERNAME=guest
+  #     RABBIT_PASSWORD=guest
+  #     RABBIT_STATIC_QUEUE=test_queue
+  #     WORKBENCH_URL=http://wojians-macbook.local:8010/
+  #     AUTH_TOKEN=#super_secret#
+  #     CSRF_TOKEN=jhDS4TpoDRmX66r1meuwWAInInghCmxzoSZckriOfYQmKg8LegYNtuGEVAhahTOy
+  #     LB_NOT_AVAILABLE=create
+  #     INSTRUMENT=default
+  #     LB_MAX_SIZE=200
+
