@@ -122,12 +122,12 @@ class Test(BaseModel):
 oauth2_scheme_alter = OAuth2PasswordBearer(tokenUrl="token")
 
 
-@app.get("/health/")
+@app.get("/api/health/")
 def get_health():
     return ['ok']
 
 
-@app.get("/labbooks/", response_model=list[labbook_schemas.LabbookWithLen])
+@app.get("/api/labbooks/", response_model=list[labbook_schemas.LabbookWithLen])
 def read_labbooks(request: Request,
                   db: Session = Depends(get_db),
                   user: User = Depends(get_current_user)):
@@ -140,7 +140,7 @@ def read_labbooks(request: Request,
     # DONE
 
 
-@app.patch("/labbooks/{labbook_pk}", response_model=labbook_schemas.Labbook)
+@app.patch("/api/labbooks/{labbook_pk}", response_model=labbook_schemas.Labbook)
 def patch_labbook(labbook: labbook_schemas.LabbookPatch,
                   labbook_pk: UUID,
                   db: Session = Depends(get_db),
@@ -152,7 +152,7 @@ def patch_labbook(labbook: labbook_schemas.LabbookPatch,
     # DONE
 
 
-@app.get("/labbooks/{labbook_pk}",
+@app.get("/api/labbooks/{labbook_pk}",
          response_model=labbook_schemas.LabbookWithPrivileges)
 def read_labbook(labbook_pk: UUID,
                  db: Session = Depends(get_db),
@@ -167,7 +167,7 @@ def read_labbook(labbook_pk: UUID,
     # DONE
 
 
-@app.get("/labbooks/{labbook_pk}/export/", response_class=FileResponse)
+@app.get("/api/labbooks/{labbook_pk}/export/", response_class=FileResponse)
 def export_labbook_content(request: Request, labbook_pk: UUID,
                            db: Session = Depends(get_db),
                            user: User = Depends(get_current_user)):
@@ -181,7 +181,7 @@ def export_labbook_content(request: Request, labbook_pk: UUID,
     # DONE
 
 
-@app.get("/labbooks/{labbook_pk}/get_export_link/")
+@app.get("/api/labbooks/{labbook_pk}/get_export_link/")
 def export_link_labbook(labbook_pk: UUID,
                         db: Session = Depends(get_db),
                         user: User = Depends(get_current_user)):
@@ -194,7 +194,7 @@ def export_link_labbook(labbook_pk: UUID,
     # DONE
 
 
-@app.post("/labbooks/", response_model=labbook_schemas.Labbook)
+@app.post("/api/labbooks/", response_model=labbook_schemas.Labbook)
 def create_labbook(labbook: labbook_schemas.LabbookCreate,
                    db: Session = Depends(get_db),
                    user: User = Depends(get_current_user)):
@@ -208,7 +208,7 @@ def create_labbook(labbook: labbook_schemas.LabbookCreate,
     # DONE
 
 
-@app.patch("/labbooks/{labbook_pk}/soft_delete/",
+@app.patch("/api/labbooks/{labbook_pk}/soft_delete/",
            response_model=labbook_schemas.Labbook)
 def soft_delete_labbook(
         labbook_pk: UUID,
@@ -224,7 +224,7 @@ def soft_delete_labbook(
     # DONE
 
 
-@app.patch("/labbooks/{labbook_pk}/restore/",
+@app.patch("/api/labbooks/{labbook_pk}/restore/",
            response_model=labbook_schemas.Labbook)
 def restore_labbook(
         labbook_pk: UUID,
@@ -240,7 +240,7 @@ def restore_labbook(
     # DONE
 
 
-@app.get("/labbooks/{labbook_pk}/elements/",
+@app.get("/api/labbooks/{labbook_pk}/elements/",
          response_model=list[labbookchildelement_schemas.Labbookchildelement])
 def read_labbook_elems(labbook_pk: UUID,
                        db: Session = Depends(get_db),
@@ -256,7 +256,7 @@ def read_labbook_elems(labbook_pk: UUID,
     # DONE
 
 
-@app.post("/labbooks/{labbook_pk}/elements/",
+@app.post("/api/labbooks/{labbook_pk}/elements/",
           response_model=labbookchildelement_schemas.Labbookchildelement)
 async def create_labbook_elem(
         labbook_pk: UUID,
@@ -274,7 +274,7 @@ async def create_labbook_elem(
     # DONE has to be integrated with post note, file, picture,
 
 
-@app.patch("/labbooks/{labbook_pk}/elements/{element_pk}/",
+@app.patch("/api/labbooks/{labbook_pk}/elements/{element_pk}/",
            response_model=labbookchildelement_schemas.Labbookchildelement)
 async def patch_labbook_elem(
         labbook_pk: UUID,
@@ -295,7 +295,7 @@ async def patch_labbook_elem(
     # DONE but it is not used actually
 
 
-@app.put("/labbooks/{labbook_pk}/elements/update_all/")
+@app.put("/api/labbooks/{labbook_pk}/elements/update_all/")
 async def update_labbook_elements(
         labbook_pk: str,
         elems: list[labbookchildelement_schemas.Labbookchildelement_Update],
@@ -314,7 +314,7 @@ async def update_labbook_elements(
     # DONE
 
 
-@app.get("/labbooks/{labbook_pk}/history/",
+@app.get("/api/labbooks/{labbook_pk}/history/",
          response_model=list[history_schema.ElemHistory])
 def get_labbook_history(
         request: Request,
@@ -326,7 +326,7 @@ def get_labbook_history(
     return get_history(db=db, elem_id=labbook_pk, user=user)
 
 
-@app.get("/labbooks/{labbook_pk}/versions/",
+@app.get("/api/labbooks/{labbook_pk}/versions/",
          response_model=list[labbook_schemas.LabbookVersion])
 def get_labbook_versions(
         request: Request,
@@ -344,7 +344,7 @@ def get_labbook_versions(
     # DONE
 
 
-@app.post("/labbooks/{labbook_pk}/versions/",
+@app.post("/api/labbooks/{labbook_pk}/versions/",
           response_model=labbook_schemas.Labbook)
 def add_labbook_version(
         summary: labbook_schemas.LabbookVersionSummary,
@@ -363,7 +363,7 @@ def add_labbook_version(
     # DONE
 
 
-@app.post("/labbooks/{labbook_pk}/versions/{version_pk}/restore/")
+@app.post("/api/labbooks/{labbook_pk}/versions/{version_pk}/restore/")
 def restore_labbook_version(
         labbook_pk: UUID,
         version_pk: str,
@@ -381,7 +381,7 @@ def restore_labbook_version(
     # DONE
 
 
-@app.get("/labbooks/{labbook_pk}/versions/{version_pk}/preview/",
+@app.get("/api/labbooks/{labbook_pk}/versions/{version_pk}/preview/",
          response_model=labbook_schemas.LabbookPreviewVersion)
 def preview_labbook_version(
         labbook_pk: UUID,
@@ -401,7 +401,7 @@ def preview_labbook_version(
     # DONE
 
 
-@app.post("/notes/",
+@app.post("/api/notes/",
           response_model=note_schemas.Note)
 def create_note(
         elem: note_schemas.NoteCreate,
@@ -414,7 +414,7 @@ def create_note(
     # DONE
 
 
-@app.get("/notes/",
+@app.get("/api/notes/",
          response_model=list[note_schemas.NoteWithLbTitle])
 def read_notes(
         request: Request,
@@ -429,7 +429,7 @@ def read_notes(
     # DONE
 
 
-@app.patch("/notes/{note_pk}/",
+@app.patch("/api/notes/{note_pk}/",
            response_model=note_schemas.Note)
 def patch_note(
         note_pk: UUID,
@@ -447,7 +447,7 @@ def patch_note(
     # DONE
 
 
-@app.patch("/notes/{note_pk}/soft_delete/",
+@app.patch("/api/notes/{note_pk}/soft_delete/",
            response_model=note_schemas.Note)
 def soft_delete_note(
         note_pk: UUID,
@@ -464,7 +464,7 @@ def soft_delete_note(
     # DONE
 
 
-@app.patch("/notes/{note_pk}/restore/",
+@app.patch("/api/notes/{note_pk}/restore/",
            response_model=note_schemas.Note)
 def restore_note(
         note_pk: UUID,
@@ -479,7 +479,7 @@ def restore_note(
     # DONE
 
 
-@app.get("/notes/{note_pk}/", response_model=note_schemas.NoteWithPrivileges)
+@app.get("/api/notes/{note_pk}/", response_model=note_schemas.NoteWithPrivileges)
 def get_note(
         note_pk: UUID,
         db: Session = Depends(get_db),
@@ -493,7 +493,7 @@ def get_note(
     # DONE
 
 
-@app.get("/notes/{note_pk}/export/",
+@app.get("/api/notes/{note_pk}/export/",
          response_class=FileResponse)
 def export_note_content(
         request: Request,
@@ -510,7 +510,7 @@ def export_note_content(
     # DONE
 
 
-@app.get("/notes/{note_pk}/get_export_link/")
+@app.get("/api/notes/{note_pk}/get_export_link/")
 def export_link__note(
         note_pk: UUID,
         db: Session = Depends(get_db),
@@ -524,7 +524,7 @@ def export_link__note(
     # DONE
 
 
-@app.get("/notes/{note_pk}/history/",
+@app.get("/api/notes/{note_pk}/history/",
          response_model=list[history_schema.ElemHistory])
 def get_note_history(
         request: Request,
@@ -536,7 +536,7 @@ def get_note_history(
     # DONE not in use
 
 
-@app.get("/notes/{note_pk}/versions/",
+@app.get("/api/notes/{note_pk}/versions/",
          response_model=list[note_schemas.NoteVersion])
 async def get_note_versions(
         note_pk: UUID,
@@ -552,7 +552,7 @@ async def get_note_versions(
     # DONE
 
 
-@app.post("/notes/{note_pk}/versions/", response_model=note_schemas.Note)
+@app.post("/api/notes/{note_pk}/versions/", response_model=note_schemas.Note)
 def add_note_version(
         summary: note_schemas.NoteVersionSummary,
         note_pk: UUID,
@@ -569,7 +569,7 @@ def add_note_version(
     # DONE
 
 
-@app.post("/notes/{note_pk}/versions/{version_pk}/restore/")
+@app.post("/api/notes/{note_pk}/versions/{version_pk}/restore/")
 async def restore_note_version(
         note_pk: UUID,
         version_pk: str,
@@ -585,7 +585,7 @@ async def restore_note_version(
     # DONE
 
 
-@app.get("/notes/{note_pk}/versions/{version_pk}/preview/",
+@app.get("/api/notes/{note_pk}/versions/{version_pk}/preview/",
          response_model=note_schemas.NotePreviewVersion)
 async def preview_note_version(
         note_pk: UUID,
@@ -604,7 +604,7 @@ async def preview_note_version(
     # DONE
 
 
-@app.get("/notes/{note_pk}/relations/",
+@app.get("/api/notes/{note_pk}/relations/",
          response_model=list[relation_schemas.Relation])
 def get_note_relations(
         request: Request,
@@ -617,7 +617,7 @@ def get_note_relations(
     # DONE
 
 
-@app.post("/notes/{note_pk}/relations/")
+@app.post("/api/notes/{note_pk}/relations/")
 def add_note_relation(
         request: Request,
         note_pk: UUID,
@@ -628,7 +628,7 @@ def add_note_relation(
     # DONE not in use
 
 
-@app.put("/notes/{note_pk}/relations/{relation_pk}/")
+@app.put("/api/notes/{note_pk}/relations/{relation_pk}/")
 def put_note_relation(
         request: Request,
         note_pk: UUID,
@@ -640,7 +640,7 @@ def put_note_relation(
     # DONE not in use
 
 
-@app.delete("/notes/{note_pk}/relations/{relation_pk}/")
+@app.delete("/api/notes/{note_pk}/relations/{relation_pk}/")
 def delete_note_relation(
         request: Request,
         note_pk: UUID,
@@ -657,7 +657,7 @@ def delete_note_relation(
     # DONE
 
 
-@app.post("/pictures/", response_model=picture_schemas.Picture)
+@app.post("/api/pictures/", response_model=picture_schemas.Picture)
 async def UploadImage(request: Request,
                       db: Session = Depends(get_db),
                       user: User = Depends(get_current_user)):
@@ -682,7 +682,7 @@ async def UploadImage(request: Request,
     # DONE
 
 
-@app.get("/pictures/", response_model=list[picture_schemas.PictureWithLbTitle])
+@app.get("/api/pictures/", response_model=list[picture_schemas.PictureWithLbTitle])
 def read_pictures(
         request: Request,
         db: Session = Depends(get_db),
@@ -695,7 +695,7 @@ def read_pictures(
     # DONE
 
 
-@app.get("/pictures/{picture_pk}/",
+@app.get("/api/pictures/{picture_pk}/",
          response_model=picture_schemas.PictureWithPrivileges)
 def get_picture(
         picture_pk: UUID,
@@ -710,7 +710,7 @@ def get_picture(
 
 
 # TODO check if this is secure: user auth will be done with request.query_params._dict
-@app.get("/pictures/{picture_pk}/bi_download/",
+@app.get("/api/pictures/{picture_pk}/bi_download/",
          response_class=FileResponse)
 def get_bi_picture(
         request: Request,
@@ -728,7 +728,7 @@ def get_bi_picture(
 
 
 # TODO check if this is secure: user auth will be done with request.query_params._dict
-@app.get("/pictures/{picture_pk}/ri_download/",
+@app.get("/api/pictures/{picture_pk}/ri_download/",
          response_class=FileResponse)
 def get_ri_picture(
         request: Request,
@@ -746,7 +746,7 @@ def get_ri_picture(
 
 
 # TODO check if this is secure: user auth will be done with request.query_params._dict
-@app.get("/pictures/{picture_pk}/shapes/",
+@app.get("/api/pictures/{picture_pk}/shapes/",
          response_class=FileResponse)
 def get_shapes(
         request: Request,
@@ -762,7 +762,7 @@ def get_shapes(
     # DONE
 
 
-@app.get("/pictures/{picture_pk}/export/",
+@app.get("/api/pictures/{picture_pk}/export/",
          response_class=FileResponse)
 def export_picture_content(
         request: Request,
@@ -779,7 +779,7 @@ def export_picture_content(
     # DONE
 
 
-@app.get("/pictures/{picture_pk}/get_export_link/")
+@app.get("/api/pictures/{picture_pk}/get_export_link/")
 def export_link_picture(
         request: Request,
         picture_pk: UUID,
@@ -796,7 +796,7 @@ def export_link_picture(
     # DONE
 
 
-@app.patch("/pictures/{picture_pk}/soft_delete/",
+@app.patch("/api/pictures/{picture_pk}/soft_delete/",
            response_model=picture_schemas.Picture)
 def soft_delete_picture(
         picture_pk: UUID,
@@ -814,7 +814,7 @@ def soft_delete_picture(
     # DONE
 
 
-@app.patch("/pictures/{picture_pk}/restore/",
+@app.patch("/api/pictures/{picture_pk}/restore/",
            response_model=picture_schemas.Picture)
 def restore_picture(
         picture_pk: UUID,
@@ -830,7 +830,7 @@ def restore_picture(
     # DONE
 
 
-@app.patch("/pictures/{picture_pk}/task/",
+@app.patch("/api/pictures/{picture_pk}/task/",
            response_model=picture_schemas.Picture)
 def restore_picture(
         pic_payload: picture_schemas.UpdatePictureTitle,
@@ -847,7 +847,7 @@ def restore_picture(
     # DONE
 
 
-@app.patch("/pictures/{picture_pk}/",
+@app.patch("/api/pictures/{picture_pk}/",
            response_model=picture_schemas.Picture)
 async def patch_picture(
         request: Request,
@@ -875,7 +875,7 @@ async def patch_picture(
     # DONE
 
 
-@app.get("/pictures/{picture_pk}/history/",
+@app.get("/api/pictures/{picture_pk}/history/",
          response_model=list[history_schema.ElemHistory])
 def get_picture_history(
         request: Request,
@@ -887,7 +887,7 @@ def get_picture_history(
     # DONE not implemented
 
 
-@app.get("/pictures/{picture_pk}/versions/",
+@app.get("/api/pictures/{picture_pk}/versions/",
          response_model=list[picture_schemas.PictureVersion])
 def get_picture_versions(
         picture_pk: UUID,
@@ -903,7 +903,7 @@ def get_picture_versions(
     # DONE
 
 
-@app.post("/pictures/{picture_pk}/versions/",
+@app.post("/api/pictures/{picture_pk}/versions/",
           response_model=picture_schemas.Picture)
 def add_picture_version(
         summary: picture_schemas.PictureVersionSummary,
@@ -923,7 +923,7 @@ def add_picture_version(
     # DONE
 
 
-@app.post("/pictures/{picture_pk}/versions/{version_pk}/restore/")
+@app.post("/api/pictures/{picture_pk}/versions/{version_pk}/restore/")
 def restore_picture_version(
         picture_pk: UUID,
         version_pk: str,
@@ -941,7 +941,7 @@ def restore_picture_version(
     # DONE
 
 
-@app.get("/pictures/{picture_pk}/versions/{version_pk}/preview/",
+@app.get("/api/pictures/{picture_pk}/versions/{version_pk}/preview/",
          response_model=picture_schemas.PicturePreviewVersion)
 def preview_picture_version(
         picture_pk: UUID,
@@ -961,7 +961,7 @@ def preview_picture_version(
     # DONE
 
 
-@app.get("/pictures/{picture_pk}/relations/",
+@app.get("/api/pictures/{picture_pk}/relations/",
          response_model=list[relation_schemas.Relation])
 def get_picture_relations(
         request: Request,
@@ -974,7 +974,7 @@ def get_picture_relations(
     # DONE
 
 
-@app.delete("/pictures/{picture_pk}/relations/{relation_pk}/")
+@app.delete("/api/pictures/{picture_pk}/relations/{relation_pk}/")
 def delete_picture_relation(
         request: Request,
         picture_pk: UUID,
@@ -987,7 +987,7 @@ def delete_picture_relation(
     # DONE
 
 
-@app.post("/files/", response_model=file_schemas.File)
+@app.post("/api/files/", response_model=file_schemas.File)
 async def UploadFile(request: Request,
                      db: Session = Depends(get_db),
                      user: User = Depends(get_current_user)):
@@ -1002,7 +1002,7 @@ async def UploadFile(request: Request,
     # DONE
 
 
-@app.get("/files/",
+@app.get("/api/files/",
          response_model=list[file_schemas.FileWithLbTitle])
 def read_files(
         request: Request,
@@ -1017,7 +1017,7 @@ def read_files(
     # DONE
 
 
-@app.patch("/files/{file_pk}", response_model=file_schemas.File)
+@app.patch("/api/files/{file_pk}", response_model=file_schemas.File)
 def patch_file(
         elem: file_schemas.FilePatch,
         file_pk: UUID,
@@ -1032,7 +1032,7 @@ def patch_file(
     # DONE
 
 
-@app.get("/files/{file_pk}", response_model=file_schemas.FileWithPrivileges)
+@app.get("/api/files/{file_pk}", response_model=file_schemas.FileWithPrivileges)
 def get_file(
         file_pk: UUID,
         db: Session = Depends(get_db),
@@ -1045,7 +1045,7 @@ def get_file(
     # DONE
 
 
-@app.get("/files/{file_pk}/download",
+@app.get("/api/files/{file_pk}/download",
          response_class=FileResponse)
 def download_file(
         request: Request,
@@ -1065,7 +1065,7 @@ def download_file(
     # DONE
 
 
-@app.get("/files/{file_pk}/export",
+@app.get("/api/files/{file_pk}/export",
          response_class=FileResponse)
 def export_file_content(
         request: Request,
@@ -1083,7 +1083,7 @@ def export_file_content(
     # DONE
 
 
-@app.get("/files/{file_pk}/get_export_link/")
+@app.get("/api/files/{file_pk}/get_export_link/")
 def export_link_file(
         request: Request,
         file_pk: UUID,
@@ -1098,7 +1098,7 @@ def export_link_file(
     # DONE
 
 
-@app.patch("/files/{file_pk}/soft_delete/",
+@app.patch("/api/files/{file_pk}/soft_delete/",
            response_model=file_schemas.File)
 def soft_delete_file(
         file_pk: UUID,
@@ -1115,7 +1115,7 @@ def soft_delete_file(
     # DONE
 
 
-@app.patch("/files/{file_pk}/restore/",
+@app.patch("/api/files/{file_pk}/restore/",
            response_model=file_schemas.File)
 def restore_file(
         file_pk: UUID,
@@ -1129,7 +1129,7 @@ def restore_file(
     # DONE
 
 
-@app.get("/files/{file_pk}/history/",
+@app.get("/api/files/{file_pk}/history/",
          response_model=list[history_schema.ElemHistory])
 def get_file_history(
         request: Request,
@@ -1141,7 +1141,7 @@ def get_file_history(
     # DONE not implemented
 
 
-@app.get("/files/{file_pk}/versions/",
+@app.get("/api/files/{file_pk}/versions/",
          response_model=list[file_schemas.FileVersion])
 def get_file_versions(
         request: Request,
@@ -1158,7 +1158,7 @@ def get_file_versions(
     # DONE
 
 
-@app.post("/files/{file_pk}/versions/", response_model=file_schemas.File)
+@app.post("/api/files/{file_pk}/versions/", response_model=file_schemas.File)
 def add_file_version(
         summary: file_schemas.FileVersionSummary,
         file_pk: UUID,
@@ -1174,7 +1174,7 @@ def add_file_version(
     # DONE
 
 
-@app.post("/files/{file_pk}/versions/{version_pk}/restore/")
+@app.post("/api/files/{file_pk}/versions/{version_pk}/restore/")
 def restore_file_version(
         file_pk: UUID,
         version_pk: str,
@@ -1190,7 +1190,7 @@ def restore_file_version(
     # DONE
 
 
-@app.get("/files/{file_pk}/versions/{version_pk}/preview/",
+@app.get("/api/files/{file_pk}/versions/{version_pk}/preview/",
          response_model=file_schemas.FilePreviewVersion)
 def preview_file_version(
         file_pk: UUID,
@@ -1210,7 +1210,7 @@ def preview_file_version(
     # DONE
 
 
-@app.get("/files/{file_pk}/relations/",
+@app.get("/api/files/{file_pk}/relations/",
          response_model=list[relation_schemas.Relation])
 def get_file_relations(
         request: Request,
@@ -1223,7 +1223,7 @@ def get_file_relations(
     # DONE
 
 
-@app.delete("/files/{file_pk}/relations/{relation_pk}/")
+@app.delete("/api/files/{file_pk}/relations/{relation_pk}/")
 def delete_file_relation(
         request: Request,
         file_pk: UUID,
@@ -1236,7 +1236,7 @@ def delete_file_relation(
     # DONE
 
 
-@app.post("/comments/")
+@app.post("/api/comments/")
 def create_comment(
         comment: comment_schemas.CreateComment,
         db: Session = Depends(get_db),
@@ -1293,12 +1293,12 @@ async def websocket_endpoint(*, websocket: WebSocket):
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
 
-@app.get('/users/me', response_model=User)
+@app.get('/api/users/me', response_model=User)
 async def user_me(user: User = Depends(get_current_user)):
     return user
 
 
-@app.put('/change_password')
+@app.put('/api/change_password')
 def change_password(password: PasswordChange,
                     db: Session = Depends(get_db),
                     user: User = Depends(get_current_user),
@@ -1310,7 +1310,7 @@ def change_password(password: PasswordChange,
     return ['ok']
 
 
-@app.post("/token")
+@app.post("/api/token")
 async def login_for_access_token(
         form_data: Annotated[OAuth2PasswordRequestForm, Depends(),],
         db: Session = Depends(get_db),
@@ -1332,7 +1332,7 @@ async def login_for_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@app.get("/search/")
+@app.get("/api/search/")
 def eln_search(request: Request,
                db: Session = Depends(get_db),
                user: User = Depends(get_current_user)):
@@ -1347,7 +1347,7 @@ def eln_search(request: Request,
     # DONE
 
 
-@app.get("/admin/users", response_model=list[UserExtended])
+@app.get("/api/admin/users", response_model=list[UserExtended])
 def get_users(
         request: Request,
         db: Session = Depends(get_db),
@@ -1360,7 +1360,7 @@ def get_users(
     return db_users
 
 
-@app.post("/admin/users", response_model=UserExtended)
+@app.post("/api/admin/users", response_model=UserExtended)
 def create_user(
         user_to_create: GuiUserCreate,
         db: Session = Depends(get_db),
@@ -1372,7 +1372,7 @@ def create_user(
     return db_user
 
 
-@app.get("/admin/users/{user_id}", response_model=UserWithPrivileges)
+@app.get("/api/admin/users/{user_id}", response_model=UserWithPrivileges)
 def get_user(
         user_id: int,
         db: Session = Depends(get_db),
@@ -1384,7 +1384,7 @@ def get_user(
     return db_user
 
 
-@app.patch("/admin/users/{user_id}", response_model=UserExtended)
+@app.patch("/api/admin/users/{user_id}", response_model=UserExtended)
 def patch_user(
         user_id: int,
         user_to_patch: GuiUserPatch,
@@ -1399,7 +1399,7 @@ def patch_user(
     return db_user
 
 
-@app.patch("/admin/users/{user_id}/foo", response_model=UserExtended)
+@app.patch("/api/admin/users/{user_id}/foo", response_model=UserExtended)
 def patch_user_password(
         user_id: int,
         password_to_patch: PasswordPatch,
@@ -1414,7 +1414,7 @@ def patch_user_password(
     return db_user
 
 
-@app.patch("/admin/users/{user_id}/soft_delete/")
+@app.patch("/api/admin/users/{user_id}/soft_delete/")
 def soft_delete_user(
         user_id: int,
         db: Session = Depends(get_db),
@@ -1427,7 +1427,7 @@ def soft_delete_user(
     return db_user
 
 
-@app.patch("/admin/users/{user_id}/restore/")
+@app.patch("/api/admin/users/{user_id}/restore/")
 def restore_user(
         user_id: int,
         db: Session = Depends(get_db),
@@ -1440,7 +1440,7 @@ def restore_user(
     return db_user
 
 
-@app.get("/admin/admins", response_model=list[AdminExtended])
+@app.get("/api/admin/admins", response_model=list[AdminExtended])
 def get_admins(request: Request,
                db: Session = Depends(get_db),
                user: User = Depends(get_current_user)):
@@ -1452,7 +1452,7 @@ def get_admins(request: Request,
     return db_users
 
 
-@app.patch("/admin/admins/{user_id}/soft_delete/", response_model=AdminExtended)
+@app.patch("/api/admin/admins/{user_id}/soft_delete/", response_model=AdminExtended)
 def soft_delete_admin(
         user_id: int,
         db: Session = Depends(get_db),
@@ -1465,7 +1465,7 @@ def soft_delete_admin(
     return db_user
 
 
-@app.patch("/admin/admins/{user_id}/restore/", response_model=AdminExtended)
+@app.patch("/api/admin/admins/{user_id}/restore/", response_model=AdminExtended)
 def restore_admin(
         user_id: int,
         db: Session = Depends(get_db),
@@ -1478,7 +1478,7 @@ def restore_admin(
     return db_user
 
 
-@app.get("/admin/groups",
+@app.get("/api/admin/groups",
          response_model=list[user_to_group_schema.ExtendedGroup])
 def get_groups(
         request: Request,
@@ -1492,7 +1492,7 @@ def get_groups(
     return db_groups
 
 
-@app.get("/admin/groups/{group_pk}")
+@app.get("/api/admin/groups/{group_pk}")
 def get_group(
         group_pk: UUID,
         db: Session = Depends(get_db),
@@ -1505,7 +1505,7 @@ def get_group(
     return [title]
 
 
-@app.patch("/admin/groups/{group_pk}/soft_delete/")
+@app.patch("/api/admin/groups/{group_pk}/soft_delete/")
 def delete_group(
         group_pk: UUID,
         db: Session = Depends(get_db),
@@ -1518,7 +1518,7 @@ def delete_group(
     return message
 
 
-@app.post("/admin/groups", response_model=user_to_group_schema.Group)
+@app.post("/api/admin/groups", response_model=user_to_group_schema.Group)
 def create_group(
         group_to_create: user_to_group_schema.Group_Create,
         db: Session = Depends(get_db),
@@ -1531,7 +1531,7 @@ def create_group(
     return db_group
 
 
-@app.get("/admin/group/groupadmins/{group_pk}",
+@app.get("/api/admin/group/groupadmins/{group_pk}",
          response_model=list[GroupUserExtended])
 def get_group_groupadmins(
         request: Request,
@@ -1547,7 +1547,7 @@ def get_group_groupadmins(
     return db_groups
 
 
-@app.patch("/admin/group/groupadmins/{group_pk}/{user_id}/soft_delete/")
+@app.patch("/api/admin/group/groupadmins/{group_pk}/{user_id}/soft_delete/")
 def soft_delete_groupadmin(
         user_id: int,
         group_pk: UUID,
@@ -1563,7 +1563,7 @@ def soft_delete_groupadmin(
     return db_user_to_group
 
 
-@app.patch("/admin/group/groupadmins/{group_pk}/{user_id}/restore/")
+@app.patch("/api/admin/group/groupadmins/{group_pk}/{user_id}/restore/")
 def restore_groupadmin(
         user_id: int,
         group_pk: UUID,
@@ -1579,7 +1579,7 @@ def restore_groupadmin(
     return db_user_to_group
 
 
-@app.get("/admin/group/groupusers/{group_pk}",
+@app.get("/api/admin/group/groupusers/{group_pk}",
          response_model=list[GroupUserExtended])
 def get_group_users(request: Request,
                     group_pk: UUID,
@@ -1594,7 +1594,7 @@ def get_group_users(request: Request,
     return db_groups
 
 
-@app.patch("/admin/group/groupusers/{group_pk}/{user_id}/soft_delete/")
+@app.patch("/api/admin/group/groupusers/{group_pk}/{user_id}/soft_delete/")
 def soft_delete_group_user(
         user_id: int,
         group_pk: UUID,
@@ -1610,7 +1610,7 @@ def soft_delete_group_user(
     return db_user_to_group
 
 
-@app.patch("/admin/group/groupusers/{group_pk}/{user_id}/restore/")
+@app.patch("/api/admin/group/groupusers/{group_pk}/{user_id}/restore/")
 def restore_group_user(
         user_id: int,
         group_pk: UUID,
