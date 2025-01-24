@@ -47,6 +47,14 @@ def get_all_groupusers(db: Session, group_pk, params, authed_user):
 
     if 'id' in order_params:
         modified_order_params = 'user_to_group_role.user_id asc'
+    elif 'created_at asc' in order_params:
+        modified_order_params = 'user_to_group_role.created_at asc asc'
+    elif 'created_at desc' in order_params:
+        modified_order_params = 'user_to_group_role.created_at desc'
+    elif 'last_modified_at asc' in order_params:
+        modified_order_params = 'user_to_group_role.last_modified_at asc'
+    elif 'last_modified_at desc' in order_params:
+        modified_order_params = 'user_to_group_role.last_modified_at desc'
     else:
         modified_order_params = order_params
 
@@ -129,6 +137,14 @@ def get_all_groupadmins(db: Session, group_pk, params, authed_user):
 
     if 'id' in order_params:
         modified_order_params = 'user_to_group_role.user_id asc'
+    elif 'created_at asc' in order_params:
+        modified_order_params = 'user_to_group_role.created_at asc asc'
+    elif 'created_at desc' in order_params:
+        modified_order_params = 'user_to_group_role.created_at desc'
+    elif 'last_modified_at asc' in order_params:
+        modified_order_params = 'user_to_group_role.last_modified_at asc'
+    elif 'last_modified_at desc' in order_params:
+        modified_order_params = 'user_to_group_role.last_modified_at desc'
     else:
         modified_order_params = order_params
 
