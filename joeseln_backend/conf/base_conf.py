@@ -3,6 +3,7 @@ DB_USER = 'joeseln'
 DB_PASSWORD = 'joeseln'
 DB_TABLE = 'joeseln'
 DB_PORT = 5440
+DB_ADDR = 'localhost'
 
 # initial users should not be changed
 INITIAL_ADMIN = 'admin'

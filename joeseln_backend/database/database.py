@@ -2,14 +2,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from joeseln_backend.conf.base_conf import DB_USER, DB_PASSWORD, DB_TABLE, \
-    DB_PORT
+    DB_PORT, DB_ADDR
 
 _user = DB_USER
 _password = DB_PASSWORD
 _db = DB_TABLE
 _port = DB_PORT
+_addr = DB_ADDR
 
-SQLALCHEMY_DATABASE_URL = f"postgresql://{_user}:{_password}@localhost:{_port}/{_db}"
+SQLALCHEMY_DATABASE_URL = f"postgresql://{_user}:{_password}@{_addr}:{_port}/{_db}"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_size=20, max_overflow=50)
 
