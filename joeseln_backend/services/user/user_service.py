@@ -42,10 +42,18 @@ def update_oidc_user(db: Session, oidc_user: OIDCUserCreate):
             return db_user
 
         db.refresh(db_user)
-        db_user.groups = oidc_user.realm_access['roles']
+        try:
+            db_user.groups = oidc_user.realm_access['roles']
+        except TypeError as e:
+            logger.error(str(e))
+            return None
         return db_user
     else:
-        db_user.groups = oidc_user.realm_access['roles']
+        try:
+            db_user.groups = oidc_user.realm_access['roles']
+        except TypeError as e:
+            logger.error(str(e))
+            return None
         return db_user
 
 

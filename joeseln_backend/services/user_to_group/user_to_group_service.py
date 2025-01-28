@@ -393,27 +393,28 @@ def get_user_groups_role_groupadmin(db: Session, username):
 
 
 def update_oidc_user_groups(db: Session, user):
-    oidc_groups = user.groups
-    user_groups = get_user_groups_role_user(db=db, username=user.username)
-    groupadmin_groups = get_user_groups_role_groupadmin(db=db,
-                                                        username=user.username)
+    if user:
+        oidc_groups = user.groups
+        user_groups = get_user_groups_role_user(db=db, username=user.username)
+        groupadmin_groups = get_user_groups_role_groupadmin(db=db,
+                                                            username=user.username)
 
-    for oidc_group in oidc_groups:
-        if not get_group_by_groupname(db=db, groupname=oidc_group):
-            create_group(db=db, groupname=oidc_group)
-        if oidc_group not in user_groups:
-            add_as_user_to_group(db=db, username=user.username,
-                                 groupname=oidc_group)
+        for oidc_group in oidc_groups:
+            if not get_group_by_groupname(db=db, groupname=oidc_group):
+                create_group(db=db, groupname=oidc_group)
+            if oidc_group not in user_groups:
+                add_as_user_to_group(db=db, username=user.username,
+                                     groupname=oidc_group)
 
-    for user_group in user_groups:
-        if user_group not in oidc_groups:
-            remove_as_user_from_group(db=db, username=user.username,
-                                      groupname=user_group)
+        for user_group in user_groups:
+            if user_group not in oidc_groups:
+                remove_as_user_from_group(db=db, username=user.username,
+                                          groupname=user_group)
 
-    for gradmin_group in groupadmin_groups:
-        if gradmin_group not in oidc_groups:
-            remove_as_groupadmin_from_group(db=db, username=user.username,
-                                            groupname=gradmin_group)
+        for gradmin_group in groupadmin_groups:
+            if gradmin_group not in oidc_groups:
+                remove_as_groupadmin_from_group(db=db, username=user.username,
+                                                groupname=gradmin_group)
 
     # user_groups = get_user_groups_role_user(db=db, username=user.username)
     # logger.info(user_groups)
