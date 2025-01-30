@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 import bcrypt
 from pydantic import BaseModel
+from keycloak import KeycloakOpenID
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.conf.base_conf import INSTRUMENT_AS_ADMIN
 from joeseln_backend.services.user.user_service import update_oidc_user, \
@@ -24,7 +25,14 @@ from starlette.status import (
 
 from joeseln_backend.services.sessiontoken.session_token_service import \
     TokenService
-from joeseln_backend.conf.base_conf import KEYCLOAK_BASEURL, STATIC_ADMIN_TOKEN
+from joeseln_backend.conf.base_conf import STATIC_ADMIN_TOKEN, \
+    KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, \
+    KEYCLOAK_SERVER_URL
+
+keycloak_openid = KeycloakOpenID(server_url=KEYCLOAK_SERVER_URL,
+                                 client_id=KEYCLOAK_CLIENT_ID,
+                                 realm_name=KEYCLOAK_REALM_NAME,
+                                 client_secret_key=KEYCLOAK_CLIENT_SECRET)
 
 from joeseln_backend.mylogging.root_logger import logger
 
@@ -204,17 +212,16 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         _jwt_error = e
 
     # try as oidc user
-    headers = {'Authorization': 'bearer ' + token}
-    r_user = requests.get(
-        KEYCLOAK_BASEURL + '/userinfo',
-        headers=headers,
-        verify=False
-    )
-    if r_user.status_code == HTTP_200_OK:
-        user = dict(r_user.json())
+
+    try:
+        token_info = keycloak_openid.introspect(token)
+    except:
+        return
+
+    if token_info['active']:
         # TODO for a better performance this could be called only at /users/me
         user = update_oidc_user(db=SessionLocal(),
-                                oidc_user=OIDCUserCreate.parse_obj(user))
+                                oidc_user=OIDCUserCreate.parse_obj(token_info))
         if user:
             update_oidc_user_groups(db=SessionLocal(), user=user)
             user = get_user_with_groups_by_uname(db=SessionLocal(),
@@ -223,11 +230,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             raise credentials_exception
         return user
 
-    elif r_user.status_code == HTTP_401_UNAUTHORIZED:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail=r_user.json()
-        )
+    elif not token_info['active']:
+        return None
     elif _jwt_error:
         raise credentials_exception
     else:
@@ -246,13 +250,11 @@ async def get_current_jwt_user_for_ws(token):
 
 
 async def get_current_keycloak_user_for_ws(token):
-    headers = {'Authorization': 'bearer ' + token}
-    r_user = requests.get(
-        KEYCLOAK_BASEURL + '/userinfo',
-        headers=headers,
-        verify=False
-    )
-    if r_user.status_code == HTTP_200_OK:
+    try:
+        token_info = keycloak_openid.introspect(token)
+    except:
+        return
+    if token_info['active']:
         return True
     return
 

@@ -9,7 +9,6 @@ DB_ADDR = 'localhost'
 INITIAL_ADMIN = 'admin'
 INSTRUMENT_AS_ADMIN = 'instrument'
 
-
 # token should be moved to external store for secrets
 STATIC_ADMIN_TOKEN = '#super_secret#'
 
@@ -37,9 +36,11 @@ ORIGINS = [
 ]
 
 # Keycloak Settings
-REALM = 'joe'
-KEYCLOAK_BASEURL = f'http://daphneopc01:8181/realms' \
-                   f'/{REALM}/protocol/openid-connect'
+
+KEYCLOAK_REALM_NAME = 'joe'
+KEYCLOAK_CLIENT_ID = 'client_backend'
+KEYCLOAK_CLIENT_SECRET = 'ZMqN0Fi4BNIFdcGvJsXL80hgCcv24jOr'
+KEYCLOAK_SERVER_URL = 'http://daphneopc01:8082/'
 
 STATIC_WS_TOKEN = '#super_ws_secret#'
 
