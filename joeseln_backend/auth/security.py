@@ -27,7 +27,7 @@ from joeseln_backend.services.sessiontoken.session_token_service import \
     TokenService
 from joeseln_backend.conf.base_conf import STATIC_ADMIN_TOKEN, \
     KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, \
-    KEYCLOAK_SERVER_URL
+    KEYCLOAK_SERVER_URL, KEYCLOAK_INTEGRATION
 
 keycloak_openid = KeycloakOpenID(server_url=KEYCLOAK_SERVER_URL,
                                  client_id=KEYCLOAK_CLIENT_ID,
@@ -213,32 +213,36 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 
     # try as oidc user
 
-    try:
-        token_info = keycloak_openid.introspect(token)
-    except:
-        return
+    if KEYCLOAK_INTEGRATION:
+        try:
+            token_info = keycloak_openid.introspect(token)
+        except:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail='Internal authentication error (our bad)'
+            )
 
-    if token_info['active']:
-        # TODO for a better performance this could be called only at /users/me
-        user = update_oidc_user(db=SessionLocal(),
-                                oidc_user=OIDCUserCreate.parse_obj(token_info))
-        if user:
-            update_oidc_user_groups(db=SessionLocal(), user=user)
-            user = get_user_with_groups_by_uname(db=SessionLocal(),
-                                                 username=user.username)
-        if user is None or user.deleted:
+        if token_info['active']:
+            # TODO for a better performance this could be called only at /users/me
+            user = update_oidc_user(db=SessionLocal(),
+                                    oidc_user=OIDCUserCreate.parse_obj(token_info))
+            if user:
+                update_oidc_user_groups(db=SessionLocal(), user=user)
+                user = get_user_with_groups_by_uname(db=SessionLocal(),
+                                                     username=user.username)
+            if user is None or user.deleted:
+                raise credentials_exception
+            return user
+
+        elif not token_info['active']:
+            return None
+        elif _jwt_error:
             raise credentials_exception
-        return user
-
-    elif not token_info['active']:
-        return None
-    elif _jwt_error:
-        raise credentials_exception
-    else:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail='Internal authentication error (our bad)'
-        )
+        else:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail='Internal authentication error (our bad)'
+            )
 
 
 async def get_current_jwt_user_for_ws(token):
@@ -250,12 +254,16 @@ async def get_current_jwt_user_for_ws(token):
 
 
 async def get_current_keycloak_user_for_ws(token):
-    try:
-        token_info = keycloak_openid.introspect(token)
-    except:
-        return
-    if token_info['active']:
-        return True
+    if KEYCLOAK_INTEGRATION:
+        try:
+            token_info = keycloak_openid.introspect(token)
+        except:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail='Internal authentication error (our bad)'
+            )
+        if token_info['active']:
+            return True
     return
 
 

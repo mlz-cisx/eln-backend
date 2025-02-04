@@ -54,7 +54,7 @@ from joeseln_backend.export import export_labbook, export_note, export_picture, 
     export_file
 from joeseln_backend.full_text_search import text_search
 from joeseln_backend.conf.base_conf import ORIGINS, JAEGER_HOST, JAEGER_PORT, \
-    JAEGER_SERVICE_NAME, STATIC_WS_TOKEN
+    JAEGER_SERVICE_NAME, STATIC_WS_TOKEN, KEYCLOAK_INTEGRATION
 from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
     get_current_user, authenticate_user, \
     ACCESS_TOKEN_EXPIRE_SECONDS, \
@@ -479,7 +479,8 @@ def restore_note(
     # DONE
 
 
-@app.get("/api/notes/{note_pk}/", response_model=note_schemas.NoteWithPrivileges)
+@app.get("/api/notes/{note_pk}/",
+         response_model=note_schemas.NoteWithPrivileges)
 def get_note(
         note_pk: UUID,
         db: Session = Depends(get_db),
@@ -682,7 +683,8 @@ async def UploadImage(request: Request,
     # DONE
 
 
-@app.get("/api/pictures/", response_model=list[picture_schemas.PictureWithLbTitle])
+@app.get("/api/pictures/",
+         response_model=list[picture_schemas.PictureWithLbTitle])
 def read_pictures(
         request: Request,
         db: Session = Depends(get_db),
@@ -1265,7 +1267,8 @@ async def websocket_endpoint(*, websocket: WebSocket):
                 del data['auth']
                 # message from internal ws client => no authentication needed
                 await manager.broadcast_json(message=data)
-            elif data['auth'] and '__zone_symbol__value' in json.loads(
+            elif KEYCLOAK_INTEGRATION and data[
+                'auth'] and '__zone_symbol__value' in json.loads(
                     json.dumps(data['auth'])):
                 # handling keycloak
                 token = json.loads(json.dumps(data['auth']))[
@@ -1452,7 +1455,8 @@ def get_admins(request: Request,
     return db_users
 
 
-@app.patch("/api/admin/admins/{user_id}/soft_delete/", response_model=AdminExtended)
+@app.patch("/api/admin/admins/{user_id}/soft_delete/",
+           response_model=AdminExtended)
 def soft_delete_admin(
         user_id: int,
         db: Session = Depends(get_db),

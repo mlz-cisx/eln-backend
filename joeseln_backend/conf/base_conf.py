@@ -22,7 +22,7 @@ PICTURES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/pictures/'
 FILES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/files/'
 
 # MLZ-ELN URL
-URL_BASE_PATH = 'http://172.25.74.236:8010/'
+URL_BASE_PATH = 'http://172.25.74.236:8010/api/'
 
 # WS ELN URL
 WS_URL = 'ws://172.25.74.236:8010/ws/'
@@ -41,6 +41,7 @@ KEYCLOAK_REALM_NAME = 'joe'
 KEYCLOAK_CLIENT_ID = 'client_backend'
 KEYCLOAK_CLIENT_SECRET = 'ZMqN0Fi4BNIFdcGvJsXL80hgCcv24jOr'
 KEYCLOAK_SERVER_URL = 'http://daphneopc01:8082/'
+KEYCLOAK_INTEGRATION = True
 
 STATIC_WS_TOKEN = '#super_ws_secret#'
 
