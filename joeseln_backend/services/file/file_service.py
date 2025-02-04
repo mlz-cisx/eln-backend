@@ -2,6 +2,7 @@ import pathlib
 from copy import deepcopy
 
 from fastapi.responses import FileResponse
+from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
@@ -40,10 +41,18 @@ def get_all_files(db: Session, params, user):
     if user.admin:
         if params.get('search'):
             search_text = params.get('search')
-            files = db.query(models.File).filter(
-                models.File.title.ilike(f'%{search_text}%')).filter_by(
-                deleted=bool(params.get('deleted'))).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
+            files = db.query(models.File).filter_by(
+                deleted=bool(params.get('deleted'))).join(
+                models.Labbookchildelement,
+                models.File.elem_id ==
+                models.Labbookchildelement.id).join(models.Labbook,
+                                                    models.Labbook.id ==
+                                                    models.Labbookchildelement.labbook_id). \
+                filter(or_
+                       (models.Labbook.title.ilike(f'%{search_text}%'),
+                        models.File.title.ilike(f'%{search_text}%'))).order_by(
+                text('file.' + order_params)).offset(
+                params.get('offset')).limit(
                 params.get('limit')).all()
         else:
             files = db.query(models.File).filter_by(
@@ -70,13 +79,18 @@ def get_all_files(db: Session, params, user):
 
     if params.get('search'):
         search_text = params.get('search')
-        files = db.query(models.File).filter(
-            models.File.title.ilike(f'%{search_text}%')).filter_by(
+        files = db.query(models.File).filter_by(
             deleted=bool(params.get('deleted'))). \
             join(models.Labbookchildelement,
                  models.File.elem_id ==
                  models.Labbookchildelement.id).filter(
-            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids)).join(
+            models.Labbook,
+            models.Labbook.id ==
+            models.Labbookchildelement.labbook_id). \
+            filter(or_
+                   (models.Labbook.title.ilike(f'%{search_text}%'),
+                    models.File.title.ilike(f'%{search_text}%'))).order_by(
             text('file.' + order_params)).offset(
             params.get('offset')).limit(
             params.get('limit')).all()
@@ -606,7 +620,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
         else:
             return None
 
-    # Third possibility: it's a note created by user
+    # Third possibility: it's a file created by user
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
     if lb_elem.labbook_id in labbook_ids:
@@ -739,7 +753,7 @@ def restore_file(db: Session, file_pk, user):
         else:
             return None
 
-    # Third possibility: it's a note created by user
+    # Third possibility: it's a file created by user
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
     if lb_elem.labbook_id in labbook_ids:

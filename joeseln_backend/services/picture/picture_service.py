@@ -2,6 +2,7 @@ import pathlib
 from copy import deepcopy
 import shutil
 from fastapi.responses import FileResponse
+from sqlalchemy import or_
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -40,8 +41,17 @@ def get_all_pictures(db: Session, params, user):
     if user.admin:
         if params.get('search'):
             search_text = params.get('search')
-            pics = db.query(models.Picture).filter(
-                models.Picture.title.ilike(f'%{search_text}%')).filter_by(
+            pics = db.query(models.Picture).join(
+                models.Labbookchildelement,
+                models.Picture.elem_id ==
+                models.Labbookchildelement.id).join(models.Labbook,
+                                                    models.Labbook.id ==
+                                                    models.Labbookchildelement.labbook_id). \
+                filter(or_
+                       (models.Labbook.title.ilike(f'%{search_text}%'),
+                        models.Picture.title.ilike(
+                            f'%{search_text}%'))).order_by(
+                text('picture.' + order_params)).filter_by(
                 deleted=bool(params.get('deleted'))).order_by(
                 text(order_params)).offset(params.get('offset')).limit(
                 params.get('limit')).all()
@@ -70,13 +80,18 @@ def get_all_pictures(db: Session, params, user):
 
     if params.get('search'):
         search_text = params.get('search')
-        pics = db.query(models.Picture).filter(
-            models.Picture.title.ilike(f'%{search_text}%')).filter_by(
-            deleted=bool(params.get('deleted'))). \
-            join(models.Labbookchildelement,
-                 models.Picture.elem_id ==
-                 models.Labbookchildelement.id).filter(
-            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+        pics = db.query(models.Picture).filter_by(
+            deleted=bool(params.get('deleted'))).join(
+            models.Labbookchildelement,
+            models.Picture.elem_id ==
+            models.Labbookchildelement.id).filter(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids)).join(
+            models.Labbook,
+            models.Labbook.id ==
+            models.Labbookchildelement.labbook_id). \
+            filter(or_
+                   (models.Labbook.title.ilike(f'%{search_text}%'),
+                    models.Picture.title.ilike(f'%{search_text}%'))).order_by(
             text('picture.' + order_params)).offset(
             params.get('offset')).limit(
             params.get('limit')).all()

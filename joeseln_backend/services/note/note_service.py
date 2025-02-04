@@ -1,3 +1,4 @@
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import text
@@ -36,10 +37,19 @@ def get_all_notes(db: Session, params, user):
     if user.admin:
         if params.get('search'):
             search_text = params.get('search')
-            notes = db.query(models.Note).filter(
-                models.Note.subject.ilike(f'%{search_text}%')).filter_by(
-                deleted=bool(params.get('deleted'))).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
+            notes = db.query(models.Note).filter_by(
+                deleted=bool(params.get('deleted'))).join(
+                models.Labbookchildelement,
+                models.Note.elem_id ==
+                models.Labbookchildelement.id).join(models.Labbook,
+                                                    models.Labbook.id ==
+                                                    models.Labbookchildelement.labbook_id). \
+                filter(or_
+                       (models.Labbook.title.ilike(f'%{search_text}%'),
+                        models.Note.subject.ilike(f'%{search_text}%'))). \
+                order_by(
+                text('note.' + order_params)).offset(
+                params.get('offset')).limit(
                 params.get('limit')).all()
         else:
             notes = db.query(models.Note).filter_by(
@@ -65,13 +75,18 @@ def get_all_notes(db: Session, params, user):
 
     if params.get('search'):
         search_text = params.get('search')
-        notes = db.query(models.Note).filter(
-            models.Note.subject.ilike(f'%{search_text}%')).filter_by(
+        notes = db.query(models.Note).filter_by(
             deleted=bool(params.get('deleted'))). \
             join(models.Labbookchildelement,
                  models.Note.elem_id ==
                  models.Labbookchildelement.id).filter(
-            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids)).join(
+            models.Labbook,
+            models.Labbook.id ==
+            models.Labbookchildelement.labbook_id). \
+            filter(or_
+                   (models.Labbook.title.ilike(f'%{search_text}%'),
+                    models.Note.subject.ilike(f'%{search_text}%'))).order_by(
             text('note.' + order_params)).offset(
             params.get('offset')).limit(
             params.get('limit')).all()
