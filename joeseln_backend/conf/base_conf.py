@@ -47,6 +47,10 @@ STATIC_WS_TOKEN = '#super_ws_secret#'
 
 STATIC_HISTORY_DEBOUNCE = 5
 
+CENTRIFUGO_API_KEY = "52QryUuch-oB2C46YLJHDRp5xbbwiAKICGhrxlnFaeqWB6a1DG6yIHNQrktgOPlUtbiAJBIFT6WJgjpuwbyTvA"
+CENTRIFUGO_JWT_KEY = "_j9kQduMpY9o26pMKe7T9nwg5BO7dD4tG9EFyskfnl6v2e0KdzitueCLEgbU4SIiRrNz_HtZuXYpuM3cPxtg1Q"
+CENTRIFUGO_CHANNEL = "default"
+
 # Jaeger Settings
 # docker
 # run - d - -name

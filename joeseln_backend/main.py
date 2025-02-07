@@ -54,8 +54,8 @@ from joeseln_backend.export import export_labbook, export_note, export_picture, 
     export_file
 from joeseln_backend.full_text_search import text_search
 from joeseln_backend.conf.base_conf import ORIGINS, JAEGER_HOST, JAEGER_PORT, \
-    JAEGER_SERVICE_NAME, STATIC_WS_TOKEN, KEYCLOAK_INTEGRATION
-from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
+    JAEGER_SERVICE_NAME, STATIC_WS_TOKEN, KEYCLOAK_INTEGRATION, CENTRIFUGO_JWT_KEY, CENTRIFUGO_CHANNEL
+from joeseln_backend.auth.security import ALGORITHM, Token, OAuth2PasswordBearer, \
     get_current_user, authenticate_user, \
     ACCESS_TOKEN_EXPIRE_SECONDS, \
     create_access_token, get_current_jwt_user_for_ws, \
@@ -72,6 +72,9 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+
+import jwt
+import time
 
 trace.set_tracer_provider(
     TracerProvider(
@@ -1249,6 +1252,16 @@ def create_comment(
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_comment
     # DONE
+
+@app.get("/api/contrifugo/token")
+def generate_contrifugo_jwt(user: User = Depends(get_current_user)):
+    claims = {"sub": str(user.id), "exp": int(time.time()) + 3600}
+    connect_token = jwt.encode(claims, CENTRIFUGO_JWT_KEY, algorithm='HS256').decode()
+
+    claims =  {"sub": str(user.id), "channel": CENTRIFUGO_CHANNEL, "exp": int(time.time()) + 3600}
+    subscribe_token = jwt.encode(claims, CENTRIFUGO_JWT_KEY, algorithm='HS256').decode()
+
+    return {"connect_token": connect_token, "subscribe_token": subscribe_token}
 
 
 @app.websocket("/ws/elements/")
