@@ -3,12 +3,13 @@ import websockets
 import asyncio
 
 from joeseln_backend.mylogging.root_logger import logger
-from joeseln_backend.conf.base_conf import WS_URL, STATIC_WS_TOKEN
+from joeseln_backend.conf.base_conf import _WS_URL, STATIC_WS_TOKEN
+
 
 def transmit(db_data):
     async def test(data):
         async with websockets.connect(
-                f'{WS_URL}elements/') as websocket:
+                f'{_WS_URL}') as websocket:
             try:
                 await websocket.send(json.dumps(data))
                 response = await websocket.recv()
