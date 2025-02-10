@@ -18,15 +18,13 @@ async def handle_client(websocket, path):
             # Broadcast the message to all connected clients
             message_as_dict = json.loads(message)
             print('conncted clients ', len(connected_clients))
-            await asyncio.wait(
-                [client.send(message) for client in connected_clients])
             if message_as_dict['auth'] == STATIC_WS_TOKEN:
                 # we don't want to transmit any token
                 del message_as_dict['auth']
                 message = json.dumps(message_as_dict)
                 print(message)
                 await asyncio.wait(
-                    [client.send(message) for client in connected_clients])
+                    [asyncio.create_task(client.send(message)) for client in connected_clients])
 
             elif KEYCLOAK_INTEGRATION and message_as_dict[
                 'auth'] and '__zone_symbol__value' in json.loads(
@@ -39,7 +37,7 @@ async def handle_client(websocket, path):
                     message = json.dumps(message_as_dict)
                     print(message)
                     await asyncio.wait(
-                        [client.send(message) for client in connected_clients])
+                        [asyncio.create_task(client.send(message)) for client in connected_clients])
 
             else:
                 # we don't want to transmit any token
@@ -49,7 +47,7 @@ async def handle_client(websocket, path):
                     message = json.dumps(message_as_dict)
                     print(message)
                     await asyncio.wait(
-                        [client.send(message) for client in connected_clients])
+                        [asyncio.create_task(client.send(message)) for client in connected_clients])
 
     finally:
         # Unregister the client
