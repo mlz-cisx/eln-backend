@@ -3,7 +3,6 @@ import sys, os
 # append path of parent dir to have joeseln_backend as module
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
-import json
 from sqlalchemy.orm import Session
 from uuid import UUID
 from pydantic import BaseModel
@@ -12,8 +11,7 @@ from datetime import timedelta
 
 from typing import Any
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import FastAPI, WebSocket, \
-    WebSocketDisconnect, Request, WebSocketException, Body, Depends, \
+from fastapi import FastAPI, Request, Body, Depends, \
     HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -54,13 +52,11 @@ from joeseln_backend.export import export_labbook, export_note, export_picture, 
     export_file
 from joeseln_backend.full_text_search import text_search
 from joeseln_backend.conf.base_conf import ORIGINS, JAEGER_HOST, JAEGER_PORT, \
-    JAEGER_SERVICE_NAME, STATIC_WS_TOKEN, KEYCLOAK_INTEGRATION, CENTRIFUGO_JWT_KEY, CENTRIFUGO_CHANNEL
-from joeseln_backend.auth.security import ALGORITHM, Token, OAuth2PasswordBearer, \
+    JAEGER_SERVICE_NAME, CENTRIFUGO_JWT_KEY, CENTRIFUGO_CHANNEL
+from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
     get_current_user, authenticate_user, \
     ACCESS_TOKEN_EXPIRE_SECONDS, \
-    create_access_token, get_current_jwt_user_for_ws, \
-    get_current_keycloak_user_for_ws
-from joeseln_backend.ws.connection_manager import manager
+    create_access_token
 
 # first logger
 from joeseln_backend.mylogging.root_logger import logger
@@ -140,7 +136,6 @@ def read_labbooks(request: Request,
                                                       params=request.query_params._dict,
                                                       user=user)
     return labbooks
-    # DONE
 
 
 @app.patch("/api/labbooks/{labbook_pk}", response_model=labbook_schemas.Labbook)
@@ -152,7 +147,6 @@ def patch_labbook(labbook: labbook_schemas.LabbookPatch,
     # only for admins and groupadmins
     return labbook_service.patch_labbook(db=db, labbook_pk=labbook_pk,
                                          labbook=labbook, user=user)
-    # DONE
 
 
 @app.get("/api/labbooks/{labbook_pk}",
@@ -167,7 +161,6 @@ def read_labbook(labbook_pk: UUID,
     if labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return labbook
-    # DONE
 
 
 @app.get("/api/labbooks/{labbook_pk}/export/", response_class=FileResponse)
@@ -181,7 +174,6 @@ def export_labbook_content(request: Request, labbook_pk: UUID,
     if dwldable_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_labbook
-    # DONE
 
 
 @app.get("/api/labbooks/{labbook_pk}/get_export_link/")
@@ -194,7 +186,6 @@ def export_link_labbook(labbook_pk: UUID,
     if export_link is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return export_link
-    # DONE
 
 
 @app.post("/api/labbooks/", response_model=labbook_schemas.Labbook)
@@ -208,7 +199,6 @@ def create_labbook(labbook: labbook_schemas.LabbookCreate,
         return new_lb
     else:
         raise HTTPException(status_code=404, detail="Labbook not found")
-    # DONE
 
 
 @app.patch("/api/labbooks/{labbook_pk}/soft_delete/",
@@ -224,7 +214,6 @@ def soft_delete_labbook(
     if db_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_labbook
-    # DONE
 
 
 @app.patch("/api/labbooks/{labbook_pk}/restore/",
@@ -240,7 +229,6 @@ def restore_labbook(
     if db_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_labbook
-    # DONE
 
 
 @app.get("/api/labbooks/{labbook_pk}/elements/",
@@ -256,7 +244,6 @@ def read_labbook_elems(labbook_pk: UUID,
     if lb_elements is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_elements
-    # DONE
 
 
 @app.post("/api/labbooks/{labbook_pk}/elements/",
@@ -274,7 +261,6 @@ async def create_labbook_elem(
     if lb_element is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_element
-    # DONE has to be integrated with post note, file, picture,
 
 
 @app.patch("/api/labbooks/{labbook_pk}/elements/{element_pk}/",
@@ -295,7 +281,6 @@ async def patch_labbook_elem(
     if lb_element is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_element
-    # DONE but it is not used actually
 
 
 @app.put("/api/labbooks/{labbook_pk}/elements/update_all/")
@@ -314,7 +299,6 @@ async def update_labbook_elements(
         return ['ok']
     else:
         raise HTTPException(status_code=404, detail="Labbook not found")
-    # DONE
 
 
 @app.get("/api/labbooks/{labbook_pk}/history/",
@@ -344,7 +328,6 @@ def get_labbook_versions(
     if versions is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return versions
-    # DONE
 
 
 @app.post("/api/labbooks/{labbook_pk}/versions/",
@@ -381,7 +364,6 @@ def restore_labbook_version(
     if lb_restored is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_restored
-    # DONE
 
 
 @app.get("/api/labbooks/{labbook_pk}/versions/{version_pk}/preview/",
@@ -401,7 +383,6 @@ def preview_labbook_version(
     if lb_metadata is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_metadata
-    # DONE
 
 
 @app.post("/api/notes/",
@@ -414,7 +395,6 @@ def create_note(
     # for all users
     db_note = note_service.create_note(db=db, note=elem, user=user)
     return db_note
-    # DONE
 
 
 @app.get("/api/notes/",
@@ -429,7 +409,6 @@ def read_notes(
                                           params=request.query_params._dict,
                                           user=user)
     return db_notes
-    # DONE
 
 
 @app.patch("/api/notes/{note_pk}/",
@@ -447,7 +426,6 @@ def patch_note(
     if db_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
-    # DONE
 
 
 @app.patch("/api/notes/{note_pk}/soft_delete/",
@@ -464,7 +442,6 @@ def soft_delete_note(
     if db_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
-    # DONE
 
 
 @app.patch("/api/notes/{note_pk}/restore/",
@@ -479,7 +456,6 @@ def restore_note(
     if db_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
-    # DONE
 
 
 @app.get("/api/notes/{note_pk}/",
@@ -494,7 +470,6 @@ def get_note(
     if db_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
-    # DONE
 
 
 @app.get("/api/notes/{note_pk}/export/",
@@ -511,7 +486,6 @@ def export_note_content(
     if dwldable_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_note
-    # DONE
 
 
 @app.get("/api/notes/{note_pk}/get_export_link/")
@@ -525,7 +499,6 @@ def export_link__note(
     if export_link is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return export_link
-    # DONE
 
 
 @app.get("/api/notes/{note_pk}/history/",
@@ -537,7 +510,6 @@ def get_note_history(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     return get_history(db=db, elem_id=note_pk, user=user)
-    # DONE not in use
 
 
 @app.get("/api/notes/{note_pk}/versions/",
@@ -553,7 +525,6 @@ async def get_note_versions(
     if note_versions is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return note_versions
-    # DONE
 
 
 @app.post("/api/notes/{note_pk}/versions/", response_model=note_schemas.Note)
@@ -570,7 +541,6 @@ def add_note_version(
     if db_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
-    # DONE
 
 
 @app.post("/api/notes/{note_pk}/versions/{version_pk}/restore/")
@@ -586,7 +556,6 @@ async def restore_note_version(
     if db_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
-    # DONE
 
 
 @app.get("/api/notes/{note_pk}/versions/{version_pk}/preview/",
@@ -605,7 +574,6 @@ async def preview_note_version(
     if version_metadata is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return version_metadata
-    # DONE
 
 
 @app.get("/api/notes/{note_pk}/relations/",
@@ -618,7 +586,6 @@ def get_note_relations(
     return note_service.get_note_relations(db=db, note_pk=note_pk,
                                            params=request.query_params._dict,
                                            user=user)
-    # DONE
 
 
 @app.post("/api/notes/{note_pk}/relations/")
@@ -658,7 +625,6 @@ def delete_note_relation(
     if note_rel is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return note_rel
-    # DONE
 
 
 @app.post("/api/pictures/", response_model=picture_schemas.Picture)
@@ -683,7 +649,6 @@ async def UploadImage(request: Request,
                                                                   user=user)
 
         return ret_vals
-    # DONE
 
 
 @app.get("/api/pictures/",
@@ -697,7 +662,6 @@ def read_pictures(
                                                    params=request.query_params._dict,
                                                    user=user)
     return db_pictures
-    # DONE
 
 
 @app.get("/api/pictures/{picture_pk}/",
@@ -711,10 +675,8 @@ def get_picture(
                                                              picture_pk=picture_pk,
                                                              user=user)
     return db_picture
-    # DONE
 
 
-# TODO check if this is secure: user auth will be done with request.query_params._dict
 @app.get("/api/pictures/{picture_pk}/bi_download/",
          response_class=FileResponse)
 def get_bi_picture(
@@ -729,10 +691,8 @@ def get_bi_picture(
     if bi_picture is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return bi_picture
-    # DONE
 
 
-# TODO check if this is secure: user auth will be done with request.query_params._dict
 @app.get("/api/pictures/{picture_pk}/ri_download/",
          response_class=FileResponse)
 def get_ri_picture(
@@ -747,10 +707,8 @@ def get_ri_picture(
     if ri_picture is None:
         raise HTTPException(status_code=404, detail="token expired")
     return ri_picture
-    # DONE
 
 
-# TODO check if this is secure: user auth will be done with request.query_params._dict
 @app.get("/api/pictures/{picture_pk}/shapes/",
          response_class=FileResponse)
 def get_shapes(
@@ -764,7 +722,6 @@ def get_shapes(
     if shapes is None:
         raise HTTPException(status_code=404, detail="token expired")
     return shapes
-    # DONE
 
 
 @app.get("/api/pictures/{picture_pk}/export/",
@@ -781,7 +738,6 @@ def export_picture_content(
     if dwldable_pic is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_pic
-    # DONE
 
 
 @app.get("/api/pictures/{picture_pk}/get_export_link/")
@@ -798,7 +754,6 @@ def export_link_picture(
         raise HTTPException(status_code=404, detail="Labbook not found")
 
     return export_link
-    # DONE
 
 
 @app.patch("/api/pictures/{picture_pk}/soft_delete/",
@@ -816,7 +771,6 @@ def soft_delete_picture(
         raise HTTPException(status_code=404, detail="Labbook not found")
 
     return db_pic
-    # DONE
 
 
 @app.patch("/api/pictures/{picture_pk}/restore/",
@@ -832,7 +786,6 @@ def restore_picture(
         raise HTTPException(status_code=404, detail="Labbook not found")
 
     return db_pic
-    # DONE
 
 
 @app.patch("/api/pictures/{picture_pk}/task/",
@@ -849,7 +802,6 @@ def restore_picture(
         raise HTTPException(status_code=404, detail="Labbook not found")
 
     return db_pic
-    # DONE
 
 
 @app.patch("/api/pictures/{picture_pk}/",
@@ -877,7 +829,6 @@ async def patch_picture(
             raise HTTPException(status_code=404, detail="Labbook not found")
 
         return db_picture
-    # DONE
 
 
 @app.get("/api/pictures/{picture_pk}/history/",
@@ -889,7 +840,6 @@ def get_picture_history(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     return get_history(db=db, elem_id=picture_pk, user=user)
-    # DONE not implemented
 
 
 @app.get("/api/pictures/{picture_pk}/versions/",
@@ -905,7 +855,6 @@ def get_picture_versions(
     if picture_versions is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return picture_versions
-    # DONE
 
 
 @app.post("/api/pictures/{picture_pk}/versions/",
@@ -925,7 +874,6 @@ def add_picture_version(
     if picture_version is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return picture_version
-    # DONE
 
 
 @app.post("/api/pictures/{picture_pk}/versions/{version_pk}/restore/")
@@ -943,7 +891,6 @@ def restore_picture_version(
     if db_picture is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_picture
-    # DONE
 
 
 @app.get("/api/pictures/{picture_pk}/versions/{version_pk}/preview/",
@@ -963,7 +910,6 @@ def preview_picture_version(
     if version_metadata is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return version_metadata
-    # DONE
 
 
 @app.get("/api/pictures/{picture_pk}/relations/",
@@ -976,7 +922,6 @@ def get_picture_relations(
     return picture_service.get_picture_relations(db=db, picture_pk=picture_pk,
                                                  params=request.query_params._dict,
                                                  user=user)
-    # DONE
 
 
 @app.delete("/api/pictures/{picture_pk}/relations/{relation_pk}/")
@@ -989,7 +934,6 @@ def delete_picture_relation(
     picture_service.delete_picture_relation(db=db, picture_pk=picture_pk,
                                             relation_pk=relation_pk, user=user)
     return ['ok']
-    # DONE
 
 
 @app.post("/api/files/", response_model=file_schemas.File)
@@ -1004,7 +948,6 @@ async def UploadFile(request: Request,
                                                          user=user)
 
         return ret_vals
-    # DONE
 
 
 @app.get("/api/files/",
@@ -1019,7 +962,6 @@ def read_files(
                                           user=user)
 
     return db_files
-    # DONE
 
 
 @app.patch("/api/files/{file_pk}", response_model=file_schemas.File)
@@ -1034,7 +976,6 @@ def patch_file(
     if file_reponse is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return file_reponse
-    # DONE
 
 
 @app.get("/api/files/{file_pk}", response_model=file_schemas.FileWithPrivileges)
@@ -1047,7 +988,6 @@ def get_file(
                                                           file_pk=file_pk,
                                                           user=user)
     return file_response
-    # DONE
 
 
 @app.get("/api/files/{file_pk}/download",
@@ -1067,7 +1007,6 @@ def download_file(
     if dwldable_file is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_file
-    # DONE
 
 
 @app.get("/api/files/{file_pk}/export",
@@ -1085,7 +1024,6 @@ def export_file_content(
         raise HTTPException(status_code=404, detail="Labbook not found")
 
     return dwldable_file
-    # DONE
 
 
 @app.get("/api/files/{file_pk}/get_export_link/")
@@ -1100,7 +1038,6 @@ def export_link_file(
     if export_link is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return export_link
-    # DONE
 
 
 @app.patch("/api/files/{file_pk}/soft_delete/",
@@ -1117,7 +1054,6 @@ def soft_delete_file(
     if db_file is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_file
-    # DONE
 
 
 @app.patch("/api/files/{file_pk}/restore/",
@@ -1131,7 +1067,6 @@ def restore_file(
     if db_file is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_file
-    # DONE
 
 
 @app.get("/api/files/{file_pk}/history/",
@@ -1143,7 +1078,6 @@ def get_file_history(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     return get_history(db=db, elem_id=file_pk, user=user)
-    # DONE not implemented
 
 
 @app.get("/api/files/{file_pk}/versions/",
@@ -1160,7 +1094,6 @@ def get_file_versions(
     if file_versions is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return file_versions
-    # DONE
 
 
 @app.post("/api/files/{file_pk}/versions/", response_model=file_schemas.File)
@@ -1176,7 +1109,6 @@ def add_file_version(
     if file_version is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return file_version
-    # DONE
 
 
 @app.post("/api/files/{file_pk}/versions/{version_pk}/restore/")
@@ -1192,7 +1124,6 @@ def restore_file_version(
     if db_file is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_file
-    # DONE
 
 
 @app.get("/api/files/{file_pk}/versions/{version_pk}/preview/",
@@ -1212,7 +1143,6 @@ def preview_file_version(
     if version_metadata is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return version_metadata
-    # DONE
 
 
 @app.get("/api/files/{file_pk}/relations/",
@@ -1225,7 +1155,6 @@ def get_file_relations(
     return file_service.get_file_relations(db=db, file_pk=file_pk,
                                            params=request.query_params._dict,
                                            user=user)
-    # DONE
 
 
 @app.delete("/api/files/{file_pk}/relations/{relation_pk}/")
@@ -1238,7 +1167,6 @@ def delete_file_relation(
     file_service.delete_file_relation(db=db, file_pk=file_pk,
                                       relation_pk=relation_pk, user=user)
     return ['ok']
-    # DONE
 
 
 @app.post("/api/comments/")
@@ -1251,62 +1179,20 @@ def create_comment(
     if db_comment is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_comment
-    # DONE
+
 
 @app.get("/api/contrifugo/token")
 def generate_contrifugo_jwt(user: User = Depends(get_current_user)):
     claims = {"sub": str(user.id), "exp": int(time.time()) + 3600}
-    connect_token = jwt.encode(claims, CENTRIFUGO_JWT_KEY, algorithm='HS256').decode()
+    connect_token = jwt.encode(claims, CENTRIFUGO_JWT_KEY,
+                               algorithm='HS256').decode()
 
-    claims =  {"sub": str(user.id), "channel": CENTRIFUGO_CHANNEL, "exp": int(time.time()) + 3600}
-    subscribe_token = jwt.encode(claims, CENTRIFUGO_JWT_KEY, algorithm='HS256').decode()
+    claims = {"sub": str(user.id), "channel": CENTRIFUGO_CHANNEL,
+              "exp": int(time.time()) + 3600}
+    subscribe_token = jwt.encode(claims, CENTRIFUGO_JWT_KEY,
+                                 algorithm='HS256').decode()
 
     return {"connect_token": connect_token, "subscribe_token": subscribe_token}
-
-
-@app.websocket("/ws/elements/")
-async def websocket_endpoint(*, websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            try:
-                # catch receiving after websocket close
-                data = await websocket.receive_json()
-            except RuntimeError:
-                break
-            # logger.info(data)
-            if data['auth'] == STATIC_WS_TOKEN:
-                # we don't want to transmit any token from backend !
-                del data['auth']
-                # message from internal ws client => no authentication needed
-                await manager.broadcast_json(message=data)
-            elif KEYCLOAK_INTEGRATION and data[
-                'auth'] and '__zone_symbol__value' in json.loads(
-                    json.dumps(data['auth'])):
-                # handling keycloak
-                token = json.loads(json.dumps(data['auth']))[
-                    '__zone_symbol__value']
-                if await get_current_keycloak_user_for_ws(token=token):
-                    # no message required
-                    await manager.broadcast_json(message='')
-                else:
-                    break
-            else:
-                # handling jwt auth
-                token = data['auth']
-                if await get_current_jwt_user_for_ws(token=token):
-                    # no message required
-                    await manager.broadcast_json(message='')
-                else:
-                    break
-
-
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        logger.info('ws elements disconnected')
-
-    except KeyError:
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
 
 @app.get('/api/users/me', response_model=User)
@@ -1360,7 +1246,6 @@ def eln_search(request: Request,
                                            request.query_params._dict[
                                                'search'], user=user)
     return result
-    # DONE
 
 
 @app.get("/api/admin/users", response_model=list[UserExtended])
