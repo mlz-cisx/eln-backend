@@ -3,51 +3,42 @@ import json
 import websockets
 from joeseln_backend.auth.security import get_current_keycloak_user_for_ws, \
     get_current_jwt_user_for_ws
-from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, \
-    KEYCLOAK_INTEGRATION, WS_PORT
+from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_PORT
 
 connected_clients = set()
 
 
 async def handle_client(websocket, path):
-    # Register the new client
-    connected_clients.add(websocket)
-    try:
+    # Register and authenticate  the new client
+    if path.startswith('/jwt_'):
+        token = path.split('/jwt_')[1]
+        # print('JWT ', token)
+        if await get_current_jwt_user_for_ws(token=token):
+            connected_clients.add(websocket)
 
+    if path.startswith('/oidc_'):
+        token = path.split('/oidc_')[1]
+        # print('OIDC ', token)
+        if await get_current_keycloak_user_for_ws(token=token):
+            connected_clients.add(websocket)
+
+    if path.startswith(f'/{STATIC_WS_TOKEN}'):
+        # print('BACKEND_CLIENT')
+        connected_clients.add(websocket)
+
+    try:
         async for message in websocket:
-            # Broadcast the message to all connected clients
+            # Broadcast the message from backend to all connected clients
             message_as_dict = json.loads(message)
-            print('conncted clients ', len(connected_clients))
+            # print('connected clients ', len(connected_clients))
             if message_as_dict['auth'] == STATIC_WS_TOKEN:
-                # we don't want to transmit any token
                 del message_as_dict['auth']
                 message = json.dumps(message_as_dict)
-                print(message)
+                # print(message)
                 await asyncio.wait(
-                    [asyncio.create_task(client.send(message)) for client in connected_clients])
+                    [asyncio.create_task(client.send(message)) for client in
+                     connected_clients])
 
-            elif KEYCLOAK_INTEGRATION and message_as_dict[
-                'auth'] and '__zone_symbol__value' in json.loads(
-                json.dumps(message_as_dict['auth'])):
-                # we don't want to transmit any token
-                token = json.loads(json.dumps(message_as_dict['auth']))[
-                    '__zone_symbol__value']
-                if await get_current_keycloak_user_for_ws(token=token):
-                    del message_as_dict['auth']
-                    message = json.dumps(message_as_dict)
-                    print(message)
-                    await asyncio.wait(
-                        [asyncio.create_task(client.send(message)) for client in connected_clients])
-
-            else:
-                # we don't want to transmit any token
-                token = message_as_dict['auth']
-                if await get_current_jwt_user_for_ws(token=token):
-                    del message_as_dict['auth']
-                    message = json.dumps(message_as_dict)
-                    print(message)
-                    await asyncio.wait(
-                        [asyncio.create_task(client.send(message)) for client in connected_clients])
 
     finally:
         # Unregister the client

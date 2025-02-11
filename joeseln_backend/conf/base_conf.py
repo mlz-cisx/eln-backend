@@ -45,7 +45,8 @@ KEYCLOAK_CLIENT_SECRET = 'ZMqN0Fi4BNIFdcGvJsXL80hgCcv24jOr'
 KEYCLOAK_SERVER_URL = 'http://daphneopc01:8082/'
 KEYCLOAK_INTEGRATION = True
 
-STATIC_WS_TOKEN = '#super_ws_secret#'
+# don't use Hashtags , it is a parameter of a path
+STATIC_WS_TOKEN = 'super_ws_secret'
 
 STATIC_HISTORY_DEBOUNCE = 5
 
