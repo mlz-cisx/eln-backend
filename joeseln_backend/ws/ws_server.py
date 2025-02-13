@@ -15,19 +15,19 @@ connected_clients = set()
 
 async def handle_client(websocket, path):
     # Register and authenticate  the new client
-    if path.startswith('/jwt_'):
-        token = path.split('/jwt_')[1]
+    if path.startswith('/ws/jwt_'):
+        token = path.split('/ws/jwt_')[1]
         # print('JWT ', token)
         if await get_current_jwt_user_for_ws(token=token):
             connected_clients.add(websocket)
 
-    if path.startswith('/oidc_'):
-        token = path.split('/oidc_')[1]
+    if path.startswith('/ws/oidc_'):
+        token = path.split('/ws/oidc_')[1]
         # print('OIDC ', token)
         if await get_current_keycloak_user_for_ws(token=token):
             connected_clients.add(websocket)
 
-    if path.startswith(f'/{STATIC_WS_TOKEN}'):
+    if path.startswith(f'/ws/{STATIC_WS_TOKEN}'):
         # print('BACKEND_CLIENT')
         connected_clients.add(websocket)
 
