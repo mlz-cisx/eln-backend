@@ -1,3 +1,8 @@
+import sys, os
+from pathlib import Path
+
+sys.path.append(os.path.abspath(Path(__file__).parent.parent.parent))
+
 import asyncio
 import json
 import websockets
