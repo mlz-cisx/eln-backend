@@ -47,7 +47,10 @@ async def handle_client(websocket, path):
 
     finally:
         # Unregister the client
-        connected_clients.remove(websocket)
+        try:
+            connected_clients.remove(websocket)
+        except KeyError:
+            pass
 
 
 async def main():
