@@ -31,8 +31,4 @@ VOLUME ["/data"]
 # backend port
 EXPOSE 8010
 
-# start backend application
-WORKDIR /app/joeseln_backend
-CMD ["uvicorn", "main:app", "--reload", "--port", "8010", "--host", "0.0.0.0", "--loop", "asyncio"]
-
 
