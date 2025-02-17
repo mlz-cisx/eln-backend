@@ -8,6 +8,7 @@ from joeseln_backend.conf.content_types import type2model, comment_content_type,
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.labbook.labbook_service import \
     check_for_labbook_access
+from joeseln_backend.ws.ws_client import transmit
 
 
 def create_comment(db: Session, comment: CreateComment, user):
@@ -64,5 +65,10 @@ def create_comment(db: Session, comment: CreateComment, user):
         except SQLAlchemyError as e:
             logger.error(e)
         db.refresh(db_relation)
+
+        try:
+            transmit({'model_name': 'labbook_patch', 'model_pk': str(lb_elem.labbook_id)})
+        except RuntimeError as e:
+            logger.error(e)
 
         return db_comment
