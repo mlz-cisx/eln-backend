@@ -311,12 +311,11 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
             old_labbook_title = db_labbook.title
             old_labbook_strict_mode = db_labbook.strict_mode
             db_labbook.title = labbook.title
-            # we borrow this flag for strict mode
-            db_labbook.strict_mode = labbook.is_template
+            db_labbook.strict_mode = labbook.strict_mode
 
             changerecords = [['title', old_labbook_title, labbook.title],
                              ['strict mode', old_labbook_strict_mode,
-                              labbook.is_template]]
+                              labbook.strict_mode]]
 
         # it is patched with description modal
         elif not labbook.title:

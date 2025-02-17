@@ -296,7 +296,6 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
     version_metadata = {
         'title': db_labbook.title,
         'description': db_labbook.description,
-        'is_template': False,
         'child_elements': child_elements,
         'metadata': [],
         'projects': [],

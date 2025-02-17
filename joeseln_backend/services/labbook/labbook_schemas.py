@@ -3,7 +3,6 @@ from typing import List, Any, Optional
 from pydantic import BaseModel, Field, Json
 from uuid import UUID
 
-
 from joeseln_backend.conf.content_types import *
 from joeseln_backend.services.privileges.privileges_schema import Privileges
 from joeseln_backend.services.user.user_schema import User
@@ -24,7 +23,6 @@ class Labbook(BaseModel):
     display: str = ''
     my_metadata: List[str] = []
     content_type_model: str = labbook_content_type_model
-    is_template: bool = False
     projects: List[str] = []
     url: str = ''
     last_modified_by: User
@@ -47,7 +45,7 @@ class LabbookCreate(BaseModel):
 
 class LabbookPatch(BaseModel):
     title: str | Optional[bool] = Field(None)
-    is_template: bool | Optional[bool] = Field(None)
+    strict_mode: bool | Optional[bool] = Field(None)
     projects: List[str] | Optional[bool] = Field(None)
     description: str | Optional[bool] = Field(None)
 
@@ -85,7 +83,6 @@ class LabbookVersion(BaseModel):
 class LabbookPreviewVersion(BaseModel):
     title: str
     description: str
-    is_template: bool
     child_elements: List[Any]
 
     metadata: List[Any]

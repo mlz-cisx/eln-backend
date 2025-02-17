@@ -225,7 +225,6 @@ class Version(Base):
     # Metadata axample labbook
     # {"title": "Exp012", "metadata": [],
     #  "description": "<p>Hallo</p>",
-    #  "is_template": false,
     #  "child_elements":
     #    [
     #     {"width": 10, "height": 10, "position_x": 3, "position_y": 1,
