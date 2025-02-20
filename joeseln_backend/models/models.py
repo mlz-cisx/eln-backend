@@ -14,7 +14,7 @@ from joeseln_backend.mylogging.root_logger import logger
 class User(Base):
     __tablename__ = 'user'
     id = Column(BigInteger, primary_key=True)
-    username = Column(Text, unique=True)
+    username = Column(Text, unique=True, index=True)
     email = Column(Text, unique=True)
     oidc_user = Column(Boolean, default=False)
     admin = Column(Boolean, default=False)
@@ -51,7 +51,7 @@ class Labbookchildelement(Base):
     labbook_id = Column(UUID(as_uuid=True), ForeignKey(Labbook.id))
     deleted = Column(Boolean, default=False)
     position_x = Column(Integer)
-    position_y = Column(Integer)
+    position_y = Column(Integer, index=True)
     width = Column(Integer)
     height = Column(Integer)
     child_object_id = Column(UUID(as_uuid=True))
@@ -194,7 +194,7 @@ class ChangesetChangeset(Base):
     changeset_type = Column(Text)
     date = Column(DateTime)
     # Labbook id, Note_id
-    object_uuid = Column(UUID(as_uuid=True))
+    object_uuid = Column(UUID(as_uuid=True), index=True)
     # Note content changed , Note title changed, ....
     object_type_id = Column(Integer)
     # for now with fake users
@@ -272,9 +272,9 @@ class Relation(Base):
     __tablename__ = 'relation'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     # comment id
-    left_object_id = Column(UUID(as_uuid=True))
+    left_object_id = Column(UUID(as_uuid=True), index=True)
     # note id, ...
-    right_object_id = Column(UUID(as_uuid=True))
+    right_object_id = Column(UUID(as_uuid=True), index=True)
     private = Column(Boolean, default=False)
     # comment
     left_content_type = Column(Integer)
