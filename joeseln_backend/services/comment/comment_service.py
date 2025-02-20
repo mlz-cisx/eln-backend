@@ -66,9 +66,5 @@ def create_comment(db: Session, comment: CreateComment, user):
             logger.error(e)
         db.refresh(db_relation)
 
-        try:
-            transmit({'model_name': 'labbook_patch', 'model_pk': str(lb_elem.labbook_id)})
-        except RuntimeError as e:
-            logger.error(e)
 
         return db_comment

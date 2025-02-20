@@ -262,11 +262,7 @@ def delete_file_relation(db: Session, file_pk, relation_pk, user):
             return
         db.refresh(db_relation)
 
-        try:
-            transmit({'model_name': 'labbook_patch',
-                      'model_pk': str(lb_elem.labbook_id)})
-        except RuntimeError as e:
-            logger.error(e)
+
 
         return get_file_relations(db=db, file_pk=file_pk, params='', user=user)
     return None

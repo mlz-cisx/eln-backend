@@ -247,11 +247,6 @@ def delete_note_relation(db: Session, note_pk, relation_pk, user):
             return
         db.refresh(db_relation)
 
-        try:
-            transmit({'model_name': 'labbook_patch',
-                      'model_pk': str(lb_elem.labbook_id)})
-        except RuntimeError as e:
-            logger.error(e)
 
         return get_note_relations(db=db, note_pk=note_pk, params='', user=user)
     return None
