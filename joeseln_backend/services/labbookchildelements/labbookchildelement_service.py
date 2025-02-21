@@ -172,11 +172,6 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
             db=db,
             file_pk=db_labbook_elem.child_object_id, user=user)
 
-    try:
-        transmit({'model_name': 'labbook_patch', 'model_pk': str(labbook_pk)})
-    except RuntimeError as e:
-        logger.error(e)
-
     return db_labbook_elem
 
 
