@@ -8,7 +8,8 @@ import json
 import websockets
 from joeseln_backend.auth.security import get_current_keycloak_user_for_ws, \
     get_current_jwt_user_for_ws
-from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_PORT
+from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_PORT, \
+    WS_INTERNAL_IP
 
 connected_clients = set()
 
@@ -54,7 +55,7 @@ async def handle_client(websocket, path):
 
 
 async def main():
-    server = await websockets.serve(handle_client, "0.0.0.0", WS_PORT)
+    server = await websockets.serve(handle_client, WS_INTERNAL_IP, WS_PORT)
     await server.wait_closed()
 
 

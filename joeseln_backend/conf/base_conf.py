@@ -27,6 +27,7 @@ URL_BASE_PATH = 'http://172.25.74.236:8010/api/'
 # WS ELN URL
 WS_URL = 'ws://172.25.74.236:4501/ws/'
 WS_PORT = 4501
+WS_INTERNAL_IP = '0.0.0.0'
 
 # CORS  settings
 ORIGINS = [
