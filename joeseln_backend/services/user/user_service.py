@@ -32,8 +32,12 @@ def update_oidc_user(db: Session, oidc_user: OIDCUserCreate):
         db.refresh(db_user)
         db_user.groups = oidc_user.realm_access['roles']
         return db_user
-    elif db_user.email != oidc_user.email:
+    elif db_user.email != oidc_user.email or \
+            db_user.first_name != oidc_user.given_name or \
+            db_user.last_name != oidc_user.family_name:
         db_user.email = oidc_user.email
+        db_user.first_name = oidc_user.given_name
+        db_user.last_name = oidc_user.family_name
         try:
             db.commit()
         except SQLAlchemyError as e:
