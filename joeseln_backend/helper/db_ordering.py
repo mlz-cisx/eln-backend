@@ -57,6 +57,10 @@ def get_order_params(ordering):
             return 'email asc'
         case '-email':
             return 'email desc'
+        case 'oidc_user':
+            return 'oidc_user asc'
+        case '-oidc_user':
+            return 'oidc_user desc'
         case None:
             return 'created_at desc'
         case _:
