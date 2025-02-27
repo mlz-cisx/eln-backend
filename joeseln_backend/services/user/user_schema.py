@@ -38,6 +38,15 @@ class UserExtended(BaseModel):
         from_attributes = True
 
 
+class UserExtendedWithGroups(UserExtended):
+    groups: Any | None = None
+    admin_groups: Any | None = None
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
+
+
 class AdminExtended(BaseModel):
     id: int | str | UUID
     username: str
@@ -71,12 +80,12 @@ class GuiUserCreate(BaseModel):
     password: str
     password_confirmed: str
 
+
 class GuiUserPatch(BaseModel):
     username: str
     user_email: str
     first_name: str
     last_name: str
-
 
 
 class OIDCUserCreate(BaseModel):
@@ -94,11 +103,13 @@ class OIDCUserCreate(BaseModel):
 class PasswordChange(BaseModel):
     password: str
 
+
 class PasswordPatch(BaseModel):
     password_patch: str
 
+
 class UserWithPrivileges(BaseModel):
-    user: UserExtended | None
+    user: UserExtendedWithGroups | None
     privileges: Privileges | None
 
 
@@ -110,7 +121,7 @@ class GroupUserExtended(BaseModel):
     first_name: str
     last_name: str
     deleted: bool
-    in_group : bool
+    in_group: bool
     created_at: datetime.datetime
     last_modified_at: datetime.datetime
 

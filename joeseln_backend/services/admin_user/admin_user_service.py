@@ -12,6 +12,8 @@ from joeseln_backend.services.privileges.admin_privileges.privileges_service imp
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
 from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
+from joeseln_backend.services.user_to_group.user_to_group_service import \
+    get_user_groups, get_user_groups_role_groupadmin
 
 
 def get_all_users(db: Session, params, user):
@@ -144,5 +146,12 @@ def remove_as_admin(db: Session, user_id, user):
 def get_user_by_id(db: Session, user, user_id):
     if user.admin:
         db_user = db.query(models.User).get(user_id)
+
+        groups = get_user_groups(db=db, username=db_user.username)
+        admin_groups = get_user_groups_role_groupadmin(db=db,
+                                                       username=db_user.username)
+        db_user.groups = groups
+        db_user.admin_groups = admin_groups
+
         return {'privileges': ADMIN, 'user': db_user}
     return
