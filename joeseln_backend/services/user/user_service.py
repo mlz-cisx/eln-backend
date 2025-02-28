@@ -30,7 +30,10 @@ def update_oidc_user(db: Session, oidc_user: OIDCUserCreate):
             db.close()
             return
         db.refresh(db_user)
-        db_user.groups = oidc_user.realm_access['roles']
+        try:
+            db_user.groups = oidc_user.realm_access['roles']
+        except TypeError as e:
+            db_user.groups = []
         return db_user
     elif db_user.email != oidc_user.email or \
             db_user.first_name != oidc_user.given_name or \
@@ -44,20 +47,18 @@ def update_oidc_user(db: Session, oidc_user: OIDCUserCreate):
             logger.error(e)
             db.close()
             return db_user
-
         db.refresh(db_user)
         try:
             db_user.groups = oidc_user.realm_access['roles']
         except TypeError as e:
             logger.error(str(e))
-            return None
+            db_user.groups = []
         return db_user
     else:
         try:
             db_user.groups = oidc_user.realm_access['roles']
         except TypeError as e:
-            logger.error(str(e))
-            return None
+            db_user.groups = []
         return db_user
 
 
