@@ -41,7 +41,8 @@ def get_all_pictures(db: Session, params, user):
     if user.admin:
         if params.get('search'):
             search_text = params.get('search')
-            pics = db.query(models.Picture).join(
+            pics = db.query(models.Picture).filter_by(
+            deleted=bool(params.get('deleted'))).join(
                 models.Labbookchildelement,
                 models.Picture.elem_id ==
                 models.Labbookchildelement.id).join(models.Labbook,
@@ -51,9 +52,8 @@ def get_all_pictures(db: Session, params, user):
                        (models.Labbook.title.ilike(f'%{search_text}%'),
                         models.Picture.title.ilike(
                             f'%{search_text}%'))).order_by(
-                text('picture.' + order_params)).filter_by(
-                deleted=bool(params.get('deleted'))).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
+                text('picture.' + order_params)).offset(
+                params.get('offset')).limit(
                 params.get('limit')).all()
         else:
             pics = db.query(models.Picture).filter_by(
