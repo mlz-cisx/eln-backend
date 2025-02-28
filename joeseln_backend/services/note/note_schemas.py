@@ -28,6 +28,10 @@ class Note(BaseModel):
     is_favourite: bool = False
     projects: List[Any] = []
 
+    # for jumping
+    position_y: int = 0
+    labbook_id: int | UUID = 0
+
     class Config:
         populate_by_name = True
         from_attributes = True

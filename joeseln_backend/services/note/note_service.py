@@ -135,11 +135,16 @@ def get_note_with_privileges(db: Session, note_pk, user):
             db_note.last_modified_by_id)
         db_note.created_by = db_user_created
         db_note.last_modified_by = db_user_modified
+
+        lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+        if lb_elem:
+            db_note.labbook_id = lb_elem.labbook_id
+            db_note.position_y = lb_elem.position_y
+
         if user.admin:
             return {'privileges': ADMIN,
                     'note': db_note}
 
-        lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
         if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                         user=user):
             return None
