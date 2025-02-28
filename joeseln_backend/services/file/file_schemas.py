@@ -45,6 +45,10 @@ class File(BaseModel):
     projects: List[Any] = []
     url: str = ''
 
+    # for jumping function
+    position_y: int = 0
+    labbook_id: int | UUID = 0
+
     class Config:
         populate_by_name = True
         from_attributes = True

@@ -154,11 +154,14 @@ def get_file_with_privileges(db: Session, file_pk, user):
         file_content.created_by = db_user_created
         file_content.last_modified_by = db_user_modified
 
+        lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+        file_content.position_y = lb_elem.position_y
+        file_content.labbook_id = lb_elem.labbook_id
+
         if user.admin:
             return {'privileges': ADMIN,
                     'file': file_content}
 
-        lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
         if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                         user=user):
             return None
