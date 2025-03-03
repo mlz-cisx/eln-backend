@@ -11,8 +11,10 @@ from joeseln_backend.auth.security import get_current_keycloak_user_for_ws, \
 from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_PORT, \
     WS_INTERNAL_IP
 
-connected_clients = set()
+from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.models.models import ActiveUserCount
 
+connected_clients = set()
 
 async def handle_client(websocket, path):
     # Register and authenticate  the new client
@@ -21,12 +23,14 @@ async def handle_client(websocket, path):
         # print('JWT ', token)
         if await get_current_jwt_user_for_ws(token=token):
             connected_clients.add(websocket)
+            update_user_count(len(connected_clients))
 
     if path.startswith('/ws/oidc_'):
         token = path.split('/ws/oidc_')[1]
         # print('OIDC ', token)
         if await get_current_keycloak_user_for_ws(token=token):
             connected_clients.add(websocket)
+            update_user_count(len(connected_clients))
 
     if path.startswith(f'/ws/{STATIC_WS_TOKEN}'):
         # print('BACKEND_CLIENT')
@@ -50,11 +54,28 @@ async def handle_client(websocket, path):
         # Unregister the client
         try:
             connected_clients.remove(websocket)
+            update_user_count(len(connected_clients))
         except KeyError:
             pass
 
 
+def update_user_count(count):
+    try:
+        active_user_count = session.query(ActiveUserCount).first()
+        if active_user_count:
+            active_user_count.count = count
+            session.commit()
+        else:
+            active_user_count = ActiveUserCount(count=0)
+            session.add(active_user_count)
+            active_user_count.count = count
+            session.commit()
+    finally:
+        pass
+
 async def main():
+    global session
+    session = SessionLocal()
     server = await websockets.serve(handle_client, WS_INTERNAL_IP, WS_PORT)
     await server.wait_closed()
 

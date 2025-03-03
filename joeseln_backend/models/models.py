@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import  relationship
 
 from uuid import uuid4
+from datetime import datetime
 
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.database.database import Base
@@ -300,6 +301,15 @@ class Comment(Base):
     created_by_id = Column(BigInteger, ForeignKey(User.id))
     last_modified_at = Column(DateTime)
     last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
+
+class ActiveUserCount(Base):
+    __tablename__ = 'active_user_count'
+    id = Column(Integer, primary_key=True)
+    count = Column(Integer, nullable=False, default=0)
+    last_updated = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<ActiveUserCount(count={self.count}, last_updated={self.last_updated})>"
 
 
 @event.listens_for(Note, "after_insert")
