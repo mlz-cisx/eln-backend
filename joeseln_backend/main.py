@@ -47,6 +47,10 @@ from joeseln_backend.services.user.user_schema import User, PasswordChange, \
     GroupUserExtended, GuiUserPatch, PasswordPatch
 from joeseln_backend.services.user.user_password import gui_password_change, \
     gui_patch_user_password, guicreate_user
+
+from joeseln_backend.services.admin_stat.admin_stat_service import get_stat
+from joeseln_backend.services.admin_stat.admin_stat_schemas import StatResponse
+
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
     export_file
@@ -124,6 +128,11 @@ oauth2_scheme_alter = OAuth2PasswordBearer(tokenUrl="token")
 @app.get("/api/health/")
 def get_health():
     return ['ok']
+
+@app.get("/api/stat", response_model=StatResponse)
+def read_stat(db: Session = Depends(get_db),
+             user: User = Depends(get_current_user)):
+    return get_stat(db, user)
 
 
 @app.get("/api/labbooks/", response_model=list[labbook_schemas.LabbookWithLen])
