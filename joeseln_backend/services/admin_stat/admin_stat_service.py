@@ -19,6 +19,13 @@ def get_stat(db: Session, user):
         return None
 
     total_users = db.query(models.User).count()
+
+    # let's discuss that
+    active_users_with_names = db.query(
+        models.UserConnectedWs.username).filter_by(
+        connected=True).all()
+    print(active_users_with_names)
+
     active_users = db.query(models.UserConnectedWs).filter_by(
         connected=True).count()
 
