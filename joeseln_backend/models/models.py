@@ -1,7 +1,7 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, \
     Text, event, BigInteger, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import  relationship
+from sqlalchemy.orm import relationship
 
 from uuid import uuid4
 from datetime import datetime
@@ -202,7 +202,8 @@ class ChangesetChangeset(Base):
     user_id = Column(BigInteger, ForeignKey(User.id))
     # Not implemented
     object_id = Column(Integer)
-    change_records = relationship("ChangesetChangerecord", backref="changeset_changeset")
+    change_records = relationship("ChangesetChangerecord",
+                                  backref="changeset_changeset")
 
 
 class ChangesetChangerecord(Base):
@@ -302,6 +303,8 @@ class Comment(Base):
     last_modified_at = Column(DateTime)
     last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
 
+
+# not in use anymore
 class ActiveUserCount(Base):
     __tablename__ = 'active_user_count'
     id = Column(Integer, primary_key=True)
@@ -310,6 +313,15 @@ class ActiveUserCount(Base):
 
     def __repr__(self):
         return f"<ActiveUserCount(count={self.count}, last_updated={self.last_updated})>"
+
+
+class UserConnectedWs(Base):
+    __tablename__ = 'user_connected_ws'
+    id = Column(Integer, primary_key=True)
+    username = Column(Text, unique=True, index=True)
+    ws_id = Column(UUID(as_uuid=True), index=True)
+    connected = Column(Boolean, default=False)
+    last_updated = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 @event.listens_for(Note, "after_insert")

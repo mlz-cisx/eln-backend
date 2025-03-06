@@ -248,8 +248,9 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 
 async def get_current_jwt_user_for_ws(token):
     try:
-        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return True
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        uname: str = payload.get("sub")
+        return uname
     except jwt.exceptions.PyJWTError:
         return
 
@@ -264,7 +265,8 @@ async def get_current_keycloak_user_for_ws(token):
                 detail='Internal authentication error (our bad)'
             )
         if token_info['active']:
-            return True
+            uname = (OIDCUserCreate.parse_obj(token_info)).preferred_username
+            return uname
     return
 
 
