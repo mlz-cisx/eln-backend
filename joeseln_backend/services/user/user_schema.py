@@ -38,6 +38,10 @@ class UserExtended(BaseModel):
         from_attributes = True
 
 
+class UserExtendedConnected(UserExtended):
+    connected: bool
+
+
 class UserExtendedWithGroups(UserExtended):
     groups: Any | None = None
     admin_groups: Any | None = None

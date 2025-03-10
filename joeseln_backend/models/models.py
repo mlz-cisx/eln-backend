@@ -304,17 +304,6 @@ class Comment(Base):
     last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
 
 
-# not in use anymore
-class ActiveUserCount(Base):
-    __tablename__ = 'active_user_count'
-    id = Column(Integer, primary_key=True)
-    count = Column(Integer, nullable=False, default=0)
-    last_updated = Column(DateTime, nullable=False, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f"<ActiveUserCount(count={self.count}, last_updated={self.last_updated})>"
-
-
 class UserConnectedWs(Base):
     __tablename__ = 'user_connected_ws'
     id = Column(Integer, primary_key=True)

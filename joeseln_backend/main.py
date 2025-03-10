@@ -44,7 +44,7 @@ from joeseln_backend.services.role.basic_roles_creator import \
 
 from joeseln_backend.services.user.user_schema import User, PasswordChange, \
     UserExtended, UserWithPrivileges, GuiUserCreate, AdminExtended, \
-    GroupUserExtended, GuiUserPatch, PasswordPatch
+    GroupUserExtended, GuiUserPatch, PasswordPatch, UserExtendedConnected
 from joeseln_backend.services.user.user_password import gui_password_change, \
     gui_patch_user_password, guicreate_user
 
@@ -129,9 +129,10 @@ oauth2_scheme_alter = OAuth2PasswordBearer(tokenUrl="token")
 def get_health():
     return ['ok']
 
+
 @app.get("/api/stat", response_model=StatResponse)
 def read_stat(db: Session = Depends(get_db),
-             user: User = Depends(get_current_user)):
+              user: User = Depends(get_current_user)):
     return get_stat(db, user)
 
 
@@ -1257,7 +1258,7 @@ def eln_search(request: Request,
     return result
 
 
-@app.get("/api/admin/users", response_model=list[UserExtended])
+@app.get("/api/admin/users", response_model=list[UserExtendedConnected])
 def get_users(
         request: Request,
         db: Session = Depends(get_db),

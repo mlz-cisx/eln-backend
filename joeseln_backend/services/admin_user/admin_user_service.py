@@ -18,6 +18,8 @@ from joeseln_backend.services.user_to_group.user_to_group_service import \
 
 def get_all_users(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
+    cleared_order_params = order_params if not order_params.startswith(
+        'connected') else 'created_at asc'
 
     if user.admin:
         if params.get('search'):
@@ -29,15 +31,26 @@ def get_all_users(db: Session, params, user):
             )).filter_by(
                 deleted=bool(params.get('deleted'))).filter_by(
                 admin=False).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
+                text(cleared_order_params)).offset(params.get('offset')).limit(
                 params.get('limit')).all()
         else:
             users = db.query(models.User).filter_by(
                 deleted=bool(params.get('deleted'))).filter_by(
                 admin=False).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
+                text(cleared_order_params)).offset(params.get('offset')).limit(
                 params.get('limit')).all()
 
+        for user in users:
+            user.connected = False if not db.query(
+                models.UserConnectedWs).filter_by(
+                username=user.username).first() else \
+                db.query(models.UserConnectedWs.connected).filter_by(
+                    username=user.username).first()[0]
+
+        if order_params == 'connected asc':
+            users.sort(key=lambda x: x.connected, reverse=True)
+        if order_params == 'connected desc':
+            users.sort(key=lambda x: x.connected)
         return users
     return
 

@@ -61,8 +61,11 @@ def get_order_params(ordering):
             return 'oidc_user asc'
         case '-oidc_user':
             return 'oidc_user desc'
+        case 'connected':
+            return 'connected asc'
+        case '-connected':
+            return 'connected desc'
         case None:
             return 'created_at desc'
         case _:
             return 'created_at desc'
-
