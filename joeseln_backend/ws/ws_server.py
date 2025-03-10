@@ -15,7 +15,7 @@ from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_PORT, \
     WS_INTERNAL_IP
 
 from joeseln_backend.database.database import SessionLocal
-from joeseln_backend.models.models import ActiveUserCount, UserConnectedWs
+from joeseln_backend.models.models import UserConnectedWs
 
 connected_clients = set()
 
@@ -65,22 +65,6 @@ async def handle_client(websocket, path):
             pass
 
 
-# not in use anymore
-def update_user_count(count):
-    try:
-        active_user_count = session.query(ActiveUserCount).first()
-        if active_user_count:
-            active_user_count.count = count
-            session.commit()
-        else:
-            active_user_count = ActiveUserCount(count=0)
-            session.add(active_user_count)
-            active_user_count.count = count
-            session.commit()
-    finally:
-        pass
-
-
 def add_user_connected_ws(uname, ws_id):
     ws_user = session.query(UserConnectedWs).filter_by(username=uname).first()
     if not ws_user:
@@ -111,6 +95,17 @@ def delete_user_connected_ws(ws_id):
             logger.error(e)
 
 
+def reset_user_connected_ws():
+    init_session = SessionLocal()
+    ws_users = init_session.query(UserConnectedWs).all()
+    for ws_user in ws_users:
+        ws_user.connected = False
+    try:
+        init_session.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+
+
 async def main():
     global session
     session = SessionLocal()
@@ -119,4 +114,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    reset_user_connected_ws()
     asyncio.run(main())
