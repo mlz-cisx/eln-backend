@@ -74,6 +74,7 @@ services:
       WS_URL: "ws://wojians-macbook.local/ws/"
       WS_PORT: 8011
       ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
+      WS_INTERNAL_IP: "0.0.0.0"
     command: ["python", "-m", "joeseln_backend.ws.ws_server"]
 
   eln-frontend:
@@ -88,6 +89,7 @@ services:
         KEYCLOAK_REALM: "joe"
         KEYCLOAK_CLIENT_ID: "client_frontend"
         KEYCLOAK_INTEGRATION: "true"
+        NOTE_MAX_SIZE: "5000"
     ports:
       - "80:80"
 

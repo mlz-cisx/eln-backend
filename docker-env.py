@@ -27,6 +27,8 @@ URL_BASE_PATH = os.getenv("URL_BASE_PATH")
 WS_URL = os.getenv("WS_URL")
 WS_PORT = os.getenv("WS_PORT")
 
+WS_INTERNAL_IP = os.getenv("WS_INTERNAL_IP")
+
 # CORS settings
 ORIGINS = os.getenv("ORIGINS", "").split(",")
 
@@ -47,4 +49,3 @@ JAEGER_PORT = int(os.getenv("JAEGER_PORT", "6831"))
 JAEGER_SERVICE_NAME = os.getenv("JAEGER_SERVICE_NAME", "MLZ-ELN")
 
 STATIC_HISTORY_DEBOUNCE = int(os.getenv("STATIC_HISTORY_DEBOUNCE", "5"))
-
