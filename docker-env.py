@@ -19,8 +19,8 @@ STATIC_WS_TOKEN = os.getenv("STATIC_WS_TOKEN")
 LABBOOK_QUERY_MODE = os.getenv("LABBOOK_QUERY_MODE", "match")
 
 # Folder paths
-PICTURES_BASE_PATH = os.getenv("PICTURES_BASE_PATH", "/data/pictures")
-FILES_BASE_PATH = os.getenv("FILES_BASE_PATH", "/data/files")
+PICTURES_BASE_PATH = os.getenv("PICTURES_BASE_PATH", "/data/pictures/")
+FILES_BASE_PATH = os.getenv("FILES_BASE_PATH", "/data/files/")
 
 # Base URL
 URL_BASE_PATH = os.getenv("URL_BASE_PATH")
