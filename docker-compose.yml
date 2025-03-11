@@ -82,6 +82,7 @@ services:
     build:
       context: ./frontend/joeselnfrontend/
     environment:
+      SERVER_NAME: "wojians-macbook.local" # optional
       API_URL: "http://wojians-macbook.local/api" # without tailing slash
       WS_URL: "ws://wojians-macbook.local/ws"
       KEYCLOAK_URL: "http://wojians-macbook.local:8080/"
@@ -90,6 +91,11 @@ services:
       KEYCLOAK_INTEGRATION: "true"
     ports:
       - "80:80"
+      - "443:443"
+    # bind certificates if enable HTTPS
+    # volumes:
+    #   - "/path/to/cert:/etc/nginx/certs/server.crt"
+    #   - "/path/to/key:/etc/nginx/certs/server.key"
 
   eln-postgres:
     image: postgres:13
