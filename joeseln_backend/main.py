@@ -133,7 +133,10 @@ def get_health():
 @app.get("/api/stat", response_model=StatResponse)
 def read_stat(db: Session = Depends(get_db),
               user: User = Depends(get_current_user)):
-    return get_stat(db, user)
+    stats = get_stat(db, user)
+    if stats is None:
+        raise HTTPException(status_code=404, detail="Not Authorized")
+    return stats
 
 
 @app.get("/api/labbooks/", response_model=list[labbook_schemas.LabbookWithLen])
