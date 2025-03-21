@@ -135,7 +135,7 @@ def read_stat(db: Session = Depends(get_db),
               user: User = Depends(get_current_user)):
     stats = get_stat(db, user)
     if stats is None:
-        raise HTTPException(status_code=404, detail="Not Authorized")
+        raise HTTPException(status_code=204, detail="Not Authorized")
     return stats
 
 
