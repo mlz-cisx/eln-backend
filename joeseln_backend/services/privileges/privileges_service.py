@@ -7,6 +7,8 @@ from joeseln_backend.services.privileges.groupadmin_privileges.privileges_servic
 from joeseln_backend.services.privileges.user_privileges.privileges_service import \
     LABBOOK_USER, USER_NOTES_USER, ADMIN_NOTES_USER, USER_PICS_USER, \
     ADMIN_PICS_USER, USER_FILES_USER, ADMIN_FILES_USER
+from joeseln_backend.services.privileges.guest_privileges.privileges_service import \
+    GUEST
 
 
 # TODO factorization necessary
@@ -20,6 +22,8 @@ def retrieve_lb_privileges(rolename):
             return LABBOOK_GROUPADMIN
         case 'user':
             return LABBOOK_USER
+        case 'guest':
+            return GUEST
 
 
 def retrieve_user_note_privileges(rolename):
@@ -30,6 +34,8 @@ def retrieve_user_note_privileges(rolename):
             return USER_NOTES_GROUPADMIN
         case 'user':
             return USER_NOTES_USER
+        case 'guest':
+            return GUEST
 
 
 def retrieve_admin_note_privileges(rolename):
@@ -40,6 +46,8 @@ def retrieve_admin_note_privileges(rolename):
             return ADMIN_NOTES_GROUPADMIN
         case 'user':
             return ADMIN_NOTES_USER
+        case 'guest':
+            return GUEST
 
 
 def retrieve_user_pic_privileges(rolename):
@@ -50,6 +58,8 @@ def retrieve_user_pic_privileges(rolename):
             return USER_PICS_GROUPADMIN
         case 'user':
             return USER_PICS_USER
+        case 'guest':
+            return GUEST
 
 
 def retrieve_admin_pic_privileges(rolename):
@@ -60,6 +70,8 @@ def retrieve_admin_pic_privileges(rolename):
             return ADMIN_PICS_GROUPADMIN
         case 'user':
             return ADMIN_PICS_USER
+        case 'guest':
+            return GUEST
 
 
 def retrieve_user_file_privileges(rolename):
@@ -70,6 +82,8 @@ def retrieve_user_file_privileges(rolename):
             return USER_FILES_GROUPADMIN
         case 'user':
             return USER_FILES_USER
+        case 'guest':
+            return GUEST
 
 
 def retrieve_admin_file_privileges(rolename):
@@ -80,6 +94,8 @@ def retrieve_admin_file_privileges(rolename):
             return ADMIN_FILES_GROUPADMIN
         case 'user':
             return ADMIN_FILES_USER
+        case 'guest':
+            return GUEST
 
 
 def create_labbook_privileges(user_roles):
