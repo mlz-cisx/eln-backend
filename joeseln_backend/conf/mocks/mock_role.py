@@ -18,3 +18,12 @@ ROLE_GROUPADMIN = {
                    'read access on all elements coming from instrument'
                    'put shapes on images coming from instrument'
 }
+
+ROLE_GUEST = {
+    'rolename': 'guest',
+    'description': 'user has rights on all routes touching labbooks referring to groupname'
+                   'Rights in detail: '
+                   'read access on all elements created by groupmembers'
+                   'read access on all elements coming from instrument'
+}
+
