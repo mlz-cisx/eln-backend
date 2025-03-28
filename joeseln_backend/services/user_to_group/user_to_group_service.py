@@ -4,6 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import text
 from sqlalchemy import or_
 
+from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
 from joeseln_backend.services.role.role_service import get_role_by_rolename
@@ -312,6 +313,37 @@ def get_all_groupguests(db: Session, group_pk, params, authed_user):
 
 def get_group_by_groupname(db: Session, groupname):
     return db.query(models.Group).filter_by(groupname=groupname).first()
+
+
+def check_for_guest_role(db: Session, labbook_pk, user):
+    labbook = None
+    if LABBOOK_QUERY_MODE == 'match':
+        labbook = db.query(models.Labbook).join(models.Group,
+                                                models.Labbook.title.contains(
+                                                    models.Group.groupname)).join(
+            models.UserToGroupRole,
+            models.Group.id == models.UserToGroupRole.group_id).join(
+            models.User,
+            models.UserToGroupRole.user_id == models.User.id).join(
+            models.Role,
+            models.Role.id == models.UserToGroupRole.user_group_role).filter(
+            models.Role.rolename == 'guest').filter(
+            models.User.username == user.username).filter(
+            models.Labbook.id == labbook_pk).all()
+    elif LABBOOK_QUERY_MODE == 'equal':
+        labbook = db.query(models.Labbook).join(models.Group,
+                                                models.Group.groupname == models.Labbook.title).join(
+            models.UserToGroupRole,
+            models.Group.id == models.UserToGroupRole.group_id).join(
+            models.User,
+            models.UserToGroupRole.user_id == models.User.id).join(
+            models.Role,
+            models.Role.id == models.UserToGroupRole.user_group_role).filter(
+            models.Role.rolename == 'guest').filter(
+            models.User.username == user.username).filter(
+            models.Labbook.id == labbook_pk).all()
+
+    return labbook
 
 
 def get_groupname(db: Session, group_pk, user):
@@ -797,7 +829,7 @@ def gui_add_as_guest_to_group(db: Session, authed_user, user_id, group_pk):
 
 
 def gui_remove_as_guest_from_group(db: Session, authed_user, user_id,
-                                        group_pk):
+                                   group_pk):
     if authed_user.admin:
         user = db.query(models.User).get(user_id)
         group = db.query(models.Group).get(group_pk)

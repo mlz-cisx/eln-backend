@@ -19,7 +19,7 @@ from joeseln_backend.services.comment.comment_schemas import Comment
 
 from joeseln_backend.services.user_to_group.user_to_group_service import \
     get_user_group_roles, get_user_group_roles_with_match, \
-    check_for_admin_role_with_user_id
+    check_for_admin_role_with_user_id, check_for_guest_role
 
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
@@ -251,7 +251,6 @@ def delete_note_relation(db: Session, note_pk, relation_pk, user):
             db.close()
             return
         db.refresh(db_relation)
-
 
         return get_note_relations(db=db, note_pk=note_pk, params='', user=user)
     return None
@@ -602,6 +601,9 @@ def restore_note(db: Session, note_pk, user):
             return note_to_update
         else:
             return None
+
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+        return None
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 

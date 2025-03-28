@@ -24,7 +24,7 @@ from joeseln_backend.services.privileges.privileges_service import \
     create_file_privileges, create_strict_privileges
 from joeseln_backend.services.user_to_group.user_to_group_service import \
     get_user_group_roles_with_match, get_user_group_roles, \
-    check_for_admin_role_with_user_id
+    check_for_admin_role_with_user_id, check_for_guest_role
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.base_conf import FILES_BASE_PATH, URL_BASE_PATH, \
@@ -758,6 +758,8 @@ def restore_file(db: Session, file_pk, user):
         else:
             return None
 
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+        return None
     # Third possibility: it's a file created by user
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 

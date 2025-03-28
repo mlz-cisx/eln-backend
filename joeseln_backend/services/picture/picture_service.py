@@ -20,7 +20,7 @@ from joeseln_backend.services.privileges.privileges_service import \
     create_pic_privileges, create_strict_privileges
 from joeseln_backend.services.user_to_group.user_to_group_service import \
     get_user_group_roles_with_match, get_user_group_roles, \
-    check_for_admin_role_with_user_id
+    check_for_admin_role_with_user_id, check_for_guest_role
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.auth import security
 from joeseln_backend.models import models
@@ -42,7 +42,7 @@ def get_all_pictures(db: Session, params, user):
         if params.get('search'):
             search_text = params.get('search')
             pics = db.query(models.Picture).filter_by(
-            deleted=bool(params.get('deleted'))).join(
+                deleted=bool(params.get('deleted'))).join(
                 models.Labbookchildelement,
                 models.Picture.elem_id ==
                 models.Labbookchildelement.id).join(models.Labbook,
@@ -328,7 +328,6 @@ def delete_picture_relation(db: Session, picture_pk, relation_pk, user):
             db.close()
             return
         db.refresh(db_relation)
-
 
         return get_picture_relations(db=db, picture_pk=picture_pk, params='',
                                      user=user)
@@ -902,6 +901,8 @@ def restore_picture(db: Session, picture_pk, user):
         else:
             return None
 
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+        return None
     # Third possibility: it's a note created by user
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
