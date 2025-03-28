@@ -170,8 +170,19 @@ def get_all_groupadmins(db: Session, group_pk, params, authed_user):
 
             if not group_groupadmin:
 
-                all_other_users = db.query(models.User).filter_by(
-                    admin=False).filter(or_(
+               # all non-guest member in this group
+                subquery = db.query(models.UserToGroupRole.user_id).join(
+                    models.Role, models.Role.id == models.UserToGroupRole.user_group_role
+                ).filter(
+                    models.UserToGroupRole.group_id == group_pk,
+                    models.Role.rolename != 'guest'
+                ).subquery()
+ 
+                # all search-qualified non-guest member in the group but not groupdomain
+                all_other_users = db.query(models.User).filter(
+                        models.User.admin==False, 
+                        models.User.id.in_(subquery)) \
+                    .filter(or_(
                     models.User.username.ilike(f'%{search_text}%'),
                     models.User.first_name.ilike(f'%{search_text}%'),
                     models.User.last_name.ilike(f'%{search_text}%'),
@@ -205,8 +216,20 @@ def get_all_groupadmins(db: Session, group_pk, params, authed_user):
                 params.get('limit')).all()
 
             if not group_groupadmin:
-                all_other_users = db.query(models.User).filter_by(
-                    admin=False).order_by(
+
+                # all non-guest member in this group
+                subquery = db.query(models.UserToGroupRole.user_id).join(
+                    models.Role, models.Role.id == models.UserToGroupRole.user_group_role) \
+                .filter(
+                    models.UserToGroupRole.group_id == group_pk,
+                    models.Role.rolename != 'guest'
+                ).subquery()
+ 
+                # all non-guest member in the group but not groupdomain
+                all_other_users = db.query(models.User).filter(
+                        models.User.admin==False, 
+                        models.User.id.in_(subquery)) \
+                    .order_by(
                     text(order_params)).offset(params.get('offset')).limit(
                     params.get('limit')).all()
                 for user_elem in users:
@@ -259,18 +282,22 @@ def get_all_groupguests(db: Session, group_pk, params, authed_user):
 
             if not group_groupguest:
 
-                all_other_users = db.query(models.User).filter_by(
-                    admin=False).filter(or_(
+                # all users in this group
+                subquery = db.query(models.UserToGroupRole.user_id).filter(
+                    models.UserToGroupRole.group_id == group_pk
+                ).subquery()
+
+                # all matched users outside this group
+                all_other_users = db.query(models.User).filter(
+                    models.User.id.notin_(subquery),
+                    models.User.admin == False
+                ).filter(or_(
                     models.User.username.ilike(f'%{search_text}%'),
                     models.User.first_name.ilike(f'%{search_text}%'),
                     models.User.last_name.ilike(f'%{search_text}%'),
                 )).order_by(
                     text(order_params)).offset(params.get('offset')).limit(
                     params.get('limit')).all()
-
-                for user_elem in users:
-                    if user_elem in all_other_users:
-                        all_other_users.remove(user_elem)
 
                 for user_elem in all_other_users:
                     user_elem.in_group = False
@@ -294,13 +321,22 @@ def get_all_groupguests(db: Session, group_pk, params, authed_user):
                 params.get('limit')).all()
 
             if not group_groupguest:
-                all_other_users = db.query(models.User).filter_by(
-                    admin=False).order_by(
-                    text(order_params)).offset(params.get('offset')).limit(
-                    params.get('limit')).all()
-                for user_elem in users:
-                    if user_elem in all_other_users:
-                        all_other_users.remove(user_elem)
+               
+                # all users in this group
+                subquery = db.query(models.UserToGroupRole.user_id).filter(
+                    models.UserToGroupRole.group_id == group_pk
+                ).subquery()
+
+                # all users outside this group
+                all_other_users = db.query(models.User).filter(
+                    models.User.id.notin_(subquery),
+                    models.User.admin == False
+                ).order_by(
+                    text(order_params)
+                ).offset(params.get('offset')).limit(
+                    params.get('limit')
+                ).all()
+                
                 for user_elem in all_other_users:
                     user_elem.in_group = False
                 return all_other_users
@@ -394,6 +430,7 @@ def create_user_to_group(db: Session, user_to_group: UserToGroup_Create):
     db_group = models.UserToGroupRole(user_id=user_to_group.user_id,
                                       group_id=user_to_group.group_id,
                                       user_group_role=user_to_group.user_group_role,
+                                      external=user_to_group.external,
                                       created_at=datetime.datetime.now(),
                                       last_modified_at=datetime.datetime.now()
                                       )
@@ -414,7 +451,8 @@ def delete_user_to_group(db: Session, user_to_group: UserToGroup_Create):
         result = db.query(models.UserToGroupRole).filter(
             models.UserToGroupRole.user_group_role == user_to_group.user_group_role,
             models.UserToGroupRole.user_id == user_to_group.user_id,
-            models.UserToGroupRole.group_id == user_to_group.group_id).delete()
+            models.UserToGroupRole.group_id == user_to_group.group_id,
+            models.UserToGroupRole.external == user_to_group.external).delete()
         db.commit()
     except SQLAlchemyError as e:
         logger.error(e)
@@ -525,17 +563,21 @@ def update_oidc_user_groups(db: Session, user):
                 create_group(db=db, groupname=oidc_group)
             if oidc_group not in user_groups:
                 add_as_user_to_group(db=db, username=user.username,
+                                     groupname=oidc_group, external=True)
+            # change internal binding to external if user already exist
+            if oidc_group not in user_groups:
+                remove_as_user_from_group(db=db, username=user.username,
+                                          groupname=oidc_group)
+                add_as_user_to_group(db=db, username=user.username,
                                      groupname=oidc_group)
 
         for user_group in user_groups:
             if user_group not in oidc_groups:
-                remove_as_user_from_group(db=db, username=user.username,
-                                          groupname=user_group)
+                if remove_as_user_from_group(db=db, username=user.username,
+                                             groupname=user_group, external=True):
+                    # also remove groupadmin role if user role is removed
+                    remove_as_groupadmin_from_group(db, user.username, user_group)
 
-        for gradmin_group in groupadmin_groups:
-            if gradmin_group not in oidc_groups:
-                remove_as_groupadmin_from_group(db=db, username=user.username,
-                                                groupname=gradmin_group)
 
     # user_groups = get_user_groups_role_user(db=db, username=user.username)
     # logger.info(user_groups)
@@ -608,7 +650,7 @@ def remove_all_group_roles(db: Session, username, groupname):
     logger.info(result)
 
 
-def add_as_user_to_group(db: Session, username, groupname):
+def add_as_user_to_group(db: Session, username, groupname, external=True):
     user = get_user_by_uname(db=db, username=username)
     group = get_group_by_groupname(db=db, groupname=groupname)
     role = get_role_by_rolename(db=db, rolename='user')
@@ -617,8 +659,13 @@ def add_as_user_to_group(db: Session, username, groupname):
         user_role_group = {
             'user_id': get_user_by_uname(db=db, username=username).id,
             'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
-            'user_group_role': get_role_by_rolename(db=db, rolename='user').id
+            'user_group_role': get_role_by_rolename(db=db, rolename='user').id,
+            'external': external
         }
+
+        # remove user's guest role before adding
+        remove_as_guest_from_group(db, user.id ,group.id)
+
         db_user_to_group = create_user_to_group(db=db,
                                                 user_to_group=UserToGroup_Create.parse_obj(
                                                     user_role_group))
@@ -629,7 +676,7 @@ def add_as_user_to_group(db: Session, username, groupname):
     return
 
 
-def gui_add_as_user_to_group(db: Session, authed_user, user_id, group_pk):
+def gui_add_as_user_to_group(db: Session, authed_user, user_id, group_pk, external=False):
     if authed_user.admin:
         user = db.query(models.User).get(user_id)
         group = db.query(models.Group).get(group_pk)
@@ -640,8 +687,13 @@ def gui_add_as_user_to_group(db: Session, authed_user, user_id, group_pk):
                 'user_id': user_id,
                 'group_id': group_pk,
                 'user_group_role': get_role_by_rolename(db=db,
-                                                        rolename='user').id
+                                                        rolename='user').id,
+                'external': external
             }
+
+            # remove user's guest role before adding
+            remove_as_guest_from_group(db, user_id, group_pk)
+
             db_user_to_group = create_user_to_group(db=db,
                                                     user_to_group=UserToGroup_Create.parse_obj(
                                                         user_role_group))
@@ -650,8 +702,8 @@ def gui_add_as_user_to_group(db: Session, authed_user, user_id, group_pk):
         return
     return
 
-
-def remove_as_user_from_group(db: Session, username, groupname):
+# external: remove external binding or internal binding
+def remove_as_user_from_group(db: Session, username, groupname, external=False):
     user = get_user_by_uname(db=db, username=username)
     group = get_group_by_groupname(db=db, groupname=groupname)
     role = get_role_by_rolename(db=db, rolename='user')
@@ -660,15 +712,17 @@ def remove_as_user_from_group(db: Session, username, groupname):
         user_role_group = {
             'user_id': get_user_by_uname(db=db, username=username).id,
             'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
-            'user_group_role': get_role_by_rolename(db=db, rolename='user').id
+            'user_group_role': get_role_by_rolename(db=db, rolename='user').id,
+            'external': external
         }
+
         return delete_user_to_group(db=db,
                                     user_to_group=UserToGroup_Create.parse_obj(
                                         user_role_group))
     return
 
 
-def gui_remove_as_user_from_group(db: Session, authed_user, user_id, group_pk):
+def gui_remove_as_user_from_group(db: Session, authed_user, user_id, group_pk, external=False):
     if authed_user.admin:
         user = db.query(models.User).get(user_id)
         group = db.query(models.Group).get(group_pk)
@@ -679,8 +733,11 @@ def gui_remove_as_user_from_group(db: Session, authed_user, user_id, group_pk):
                 'user_id': user_id,
                 'group_id': group_pk,
                 'user_group_role': get_role_by_rolename(db=db,
-                                                        rolename='user').id
+                                                        rolename='user').id,
+                'external': external
             }
+            # a non-user cannot be admin
+            remove_as_groupadmin_from_group(db, user.username, group.groupname)
             return delete_user_to_group(db=db,
                                         user_to_group=UserToGroup_Create.parse_obj(
                                             user_role_group))
@@ -688,7 +745,7 @@ def gui_remove_as_user_from_group(db: Session, authed_user, user_id, group_pk):
     return
 
 
-def add_as_groupadmin_to_group(db: Session, username, groupname):
+def add_as_groupadmin_to_group(db: Session, username, groupname, external=False):
     user = get_user_by_uname(db=db, username=username)
     group = get_group_by_groupname(db=db, groupname=groupname)
     role = get_role_by_rolename(db=db, rolename='groupadmin')
@@ -698,7 +755,8 @@ def add_as_groupadmin_to_group(db: Session, username, groupname):
             'user_id': get_user_by_uname(db=db, username=username).id,
             'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
             'user_group_role': get_role_by_rolename(db=db,
-                                                    rolename='groupadmin').id
+                                                    rolename='groupadmin').id,
+            'external': external
         }
         db_user_to_group = create_user_to_group(db=db,
                                                 user_to_group=UserToGroup_Create.parse_obj(
@@ -710,7 +768,7 @@ def add_as_groupadmin_to_group(db: Session, username, groupname):
     return False
 
 
-def gui_add_as_groupadmin_to_group(db: Session, authed_user, user_id, group_pk):
+def gui_add_as_groupadmin_to_group(db: Session, authed_user, user_id, group_pk, external=False):
     if authed_user.admin:
         user = db.query(models.User).get(user_id)
         group = db.query(models.Group).get(group_pk)
@@ -721,7 +779,8 @@ def gui_add_as_groupadmin_to_group(db: Session, authed_user, user_id, group_pk):
                 'user_id': user_id,
                 'group_id': group_pk,
                 'user_group_role': get_role_by_rolename(db=db,
-                                                        rolename='groupadmin').id
+                                                        rolename='groupadmin').id,
+                'external': external
             }
             db_user_to_group = create_user_to_group(db=db,
                                                     user_to_group=UserToGroup_Create.parse_obj(
@@ -742,7 +801,8 @@ def remove_as_groupadmin_from_group(db: Session, username, groupname):
             'user_id': get_user_by_uname(db=db, username=username).id,
             'group_id': get_group_by_groupname(db=db, groupname=groupname).id,
             'user_group_role': get_role_by_rolename(db=db,
-                                                    rolename='groupadmin').id
+                                                    rolename='groupadmin').id,
+            'external': False
         }
         return delete_user_to_group(db=db,
                                     user_to_group=UserToGroup_Create.parse_obj(
@@ -763,7 +823,8 @@ def gui_remove_as_groupadmin_from_group(db: Session, authed_user, user_id,
                 'user_id': user_id,
                 'group_id': group_pk,
                 'user_group_role': get_role_by_rolename(db=db,
-                                                        rolename='groupadmin').id
+                                                        rolename='groupadmin').id,
+                'external': False
             }
             return delete_user_to_group(db=db,
                                         user_to_group=UserToGroup_Create.parse_obj(
@@ -817,7 +878,8 @@ def gui_add_as_guest_to_group(db: Session, authed_user, user_id, group_pk):
                 'user_id': user_id,
                 'group_id': group_pk,
                 'user_group_role': get_role_by_rolename(db=db,
-                                                        rolename='guest').id
+                                                        rolename='guest').id,
+                'external': False
             }
             db_user_to_group = create_user_to_group(db=db,
                                                     user_to_group=UserToGroup_Create.parse_obj(
@@ -827,6 +889,24 @@ def gui_add_as_guest_to_group(db: Session, authed_user, user_id, group_pk):
         return
     return
 
+def remove_as_guest_from_group(db: Session, user_id,group_pk):
+
+    user = db.query(models.User).get(user_id)
+    group = db.query(models.Group).get(group_pk)
+    role = get_role_by_rolename(db=db, rolename='guest')
+
+    if user is not None and group is not None and role is not None:
+        user_role_group = {
+            'user_id': user_id,
+            'group_id': group_pk,
+            'user_group_role': get_role_by_rolename(db=db,
+                                                        rolename='guest').id,
+            'external': False
+            }
+        return delete_user_to_group(db=db,
+                                    user_to_group=UserToGroup_Create.parse_obj(
+                                    user_role_group))
+    return
 
 def gui_remove_as_guest_from_group(db: Session, authed_user, user_id,
                                    group_pk):
@@ -840,7 +920,8 @@ def gui_remove_as_guest_from_group(db: Session, authed_user, user_id,
                 'user_id': user_id,
                 'group_id': group_pk,
                 'user_group_role': get_role_by_rolename(db=db,
-                                                        rolename='guest').id
+                                                        rolename='guest').id,
+                'external': False
             }
             return delete_user_to_group(db=db,
                                         user_to_group=UserToGroup_Create.parse_obj(

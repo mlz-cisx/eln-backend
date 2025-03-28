@@ -187,6 +187,8 @@ class UserToGroupRole(Base):
     user_group_role = Column(UUID(as_uuid=True), ForeignKey(Role.id))
     created_at = Column(DateTime)
     last_modified_at = Column(DateTime)
+    # user-group relation is configured by SSO or internal user management
+    external = Column(Boolean)
 
 
 class ChangesetChangeset(Base):

@@ -34,6 +34,7 @@ class UserToGroup_Create(BaseModel):
     user_id: int | str | UUID
     group_id: int | str | UUID
     user_group_role: int | str | UUID
+    external: bool
 
     class Config:
         populate_by_name = True
