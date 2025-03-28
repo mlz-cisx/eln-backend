@@ -221,6 +221,95 @@ def get_all_groupadmins(db: Session, group_pk, params, authed_user):
     return
 
 
+def get_all_groupguests(db: Session, group_pk, params, authed_user):
+    order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
+
+    if 'id' in order_params:
+        modified_order_params = 'user_to_group_role.user_id asc'
+    elif 'created_at asc' in order_params:
+        modified_order_params = 'user_to_group_role.created_at asc asc'
+    elif 'created_at desc' in order_params:
+        modified_order_params = 'user_to_group_role.created_at desc'
+    elif 'last_modified_at asc' in order_params:
+        modified_order_params = 'user_to_group_role.last_modified_at asc'
+    elif 'last_modified_at desc' in order_params:
+        modified_order_params = 'user_to_group_role.last_modified_at desc'
+    else:
+        modified_order_params = order_params
+
+    group_groupguest = not bool(params.get('deleted'))
+
+    if authed_user.admin:
+        if params.get('search'):
+            search_text = params.get('search')
+            users = db.query(models.User).join(models.UserToGroupRole,
+                                               models.User.id == models.UserToGroupRole.user_id) \
+                .join(
+                models.Role,
+                models.Role.id == models.UserToGroupRole.user_group_role).filter(
+                models.UserToGroupRole.group_id == group_pk,
+                models.Role.rolename == 'guest').filter(or_(
+                models.User.username.ilike(f'%{search_text}%'),
+                models.User.first_name.ilike(f'%{search_text}%'),
+                models.User.last_name.ilike(f'%{search_text}%'),
+            )).filter(models.User.admin == False).order_by(
+                text(modified_order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+
+            if not group_groupguest:
+
+                all_other_users = db.query(models.User).filter_by(
+                    admin=False).filter(or_(
+                    models.User.username.ilike(f'%{search_text}%'),
+                    models.User.first_name.ilike(f'%{search_text}%'),
+                    models.User.last_name.ilike(f'%{search_text}%'),
+                )).order_by(
+                    text(order_params)).offset(params.get('offset')).limit(
+                    params.get('limit')).all()
+
+                for user_elem in users:
+                    if user_elem in all_other_users:
+                        all_other_users.remove(user_elem)
+
+                for user_elem in all_other_users:
+                    user_elem.in_group = False
+                return all_other_users
+
+            for user_elem in users:
+                user_elem.in_group = True
+            return users
+
+
+        else:
+            users = db.query(models.User).join(models.UserToGroupRole,
+                                               models.User.id == models.UserToGroupRole.user_id) \
+                .join(
+                models.Role,
+                models.Role.id == models.UserToGroupRole.user_group_role).filter(
+                models.UserToGroupRole.group_id == group_pk,
+                models.Role.rolename == 'guest') \
+                .filter(models.User.admin == False).order_by(
+                text(modified_order_params)).offset(params.get('offset')).limit(
+                params.get('limit')).all()
+
+            if not group_groupguest:
+                all_other_users = db.query(models.User).filter_by(
+                    admin=False).order_by(
+                    text(order_params)).offset(params.get('offset')).limit(
+                    params.get('limit')).all()
+                for user_elem in users:
+                    if user_elem in all_other_users:
+                        all_other_users.remove(user_elem)
+                for user_elem in all_other_users:
+                    user_elem.in_group = False
+                return all_other_users
+
+            for user_elem in users:
+                user_elem.in_group = True
+            return users
+    return
+
+
 def get_group_by_groupname(db: Session, groupname):
     return db.query(models.Group).filter_by(groupname=groupname).first()
 
@@ -683,3 +772,46 @@ def add_as_admin_to_group(db: Session, username, groupname):
                                                 user_role_group))
 
     logger.info(db_user_to_group)
+
+
+def gui_add_as_guest_to_group(db: Session, authed_user, user_id, group_pk):
+    if authed_user.admin:
+        user = db.query(models.User).get(user_id)
+        group = db.query(models.Group).get(group_pk)
+        role = get_role_by_rolename(db=db, rolename='guest')
+
+        if user is not None and group is not None and role is not None:
+            user_role_group = {
+                'user_id': user_id,
+                'group_id': group_pk,
+                'user_group_role': get_role_by_rolename(db=db,
+                                                        rolename='guest').id
+            }
+            db_user_to_group = create_user_to_group(db=db,
+                                                    user_to_group=UserToGroup_Create.parse_obj(
+                                                        user_role_group))
+
+            return db_user_to_group
+        return
+    return
+
+
+def gui_remove_as_guest_from_group(db: Session, authed_user, user_id,
+                                        group_pk):
+    if authed_user.admin:
+        user = db.query(models.User).get(user_id)
+        group = db.query(models.Group).get(group_pk)
+        role = get_role_by_rolename(db=db, rolename='guest')
+
+        if user is not None and group is not None and role is not None:
+            user_role_group = {
+                'user_id': user_id,
+                'group_id': group_pk,
+                'user_group_role': get_role_by_rolename(db=db,
+                                                        rolename='guest').id
+            }
+            return delete_user_to_group(db=db,
+                                        user_to_group=UserToGroup_Create.parse_obj(
+                                            user_role_group))
+        return
+    return
