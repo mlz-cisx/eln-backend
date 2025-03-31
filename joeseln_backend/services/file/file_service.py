@@ -265,8 +265,6 @@ def delete_file_relation(db: Session, file_pk, relation_pk, user):
             return
         db.refresh(db_relation)
 
-
-
         return get_file_relations(db=db, file_pk=file_pk, params='', user=user)
     return None
 
@@ -397,6 +395,9 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
         return None
 
     if lb_to_update.strict_mode and user.id != db_file.created_by_id:
+        return None
+
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
         return None
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
@@ -624,6 +625,9 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             return file_to_update
         else:
             return None
+
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+        return None
 
     # Third possibility: it's a file created by user
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)

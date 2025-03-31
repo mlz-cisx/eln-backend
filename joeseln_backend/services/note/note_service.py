@@ -368,6 +368,9 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
     if lb_to_update.strict_mode and user.id != note_to_update.created_by_id:
         return None
 
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+        return None
+
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
     # Third possibility: consider a note created by non admin
@@ -497,6 +500,8 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
         else:
             return None
 
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+        return None
     # Third possibility: it's a note created by user
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 

@@ -773,6 +773,9 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
         else:
             return None
 
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+        return None
+
     # Third possibility: it's a note created by user
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
