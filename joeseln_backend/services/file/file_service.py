@@ -287,7 +287,8 @@ def get_lb_pk_from_file(db: Session, file_pk):
 def create_file(db: Session, title: str,
                 name: str, file_size: int, description: str, mime_type: str,
                 user):
-    if sys.getsizeof(description) / 1024 > NOTE_MAXIMUM_SIZE:
+    if file_size / 1024 > NOTE_MAXIMUM_SIZE or sys.getsizeof(
+            description) / 1024 > NOTE_MAXIMUM_SIZE:
         return
 
     file_path = f'{create_path(db=db)}'

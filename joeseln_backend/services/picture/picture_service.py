@@ -29,7 +29,7 @@ from joeseln_backend.services.entry_path.entry_path_service import create_path, 
     create_entry
 from joeseln_backend.services.picture.picture_schemas import *
 from joeseln_backend.conf.base_conf import PICTURES_BASE_PATH, URL_BASE_PATH, \
-    LABBOOK_QUERY_MODE
+    LABBOOK_QUERY_MODE, NOTE_MAXIMUM_SIZE
 from joeseln_backend.services.comment.comment_schemas import Comment
 
 from joeseln_backend.mylogging.root_logger import logger
@@ -416,6 +416,9 @@ def copy_and_update_picture(db: Session, picture_pk, restored_ri=None,
 
 def create_picture(db: Session, title: str, display: str,
                    width: int, height: int, size: int, user):
+    if size / 1024 > NOTE_MAXIMUM_SIZE:
+        return
+
     bi_file_path = f'{create_path(db=db)}'
     ri_file_path = f'{create_path(db=db)}'
     shapes_path = f'{create_path(db=db)}.json'
@@ -468,6 +471,9 @@ def process_picture_upload_form(form, db, contents, user):
                                 display=form['background_image'].filename,
                                 width=form['width'], height=form['height'],
                                 size=form['background_image'].size, user=user)
+
+    if not db_picture:
+        return None
 
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
     ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
