@@ -407,6 +407,8 @@ def create_note(
     # logger.info(user)
     # for all users
     db_note = note_service.create_note(db=db, note=elem, user=user)
+    if db_note is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
 
 

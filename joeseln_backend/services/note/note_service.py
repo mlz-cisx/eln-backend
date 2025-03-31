@@ -1,3 +1,5 @@
+import sys
+
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,7 +14,7 @@ from joeseln_backend.services.note.note_schemas import *
 from joeseln_backend.services.history.history_service import \
     create_history_entry, create_note_update_history_entry
 from joeseln_backend.helper import db_ordering
-from joeseln_backend.conf.base_conf import URL_BASE_PATH
+from joeseln_backend.conf.base_conf import URL_BASE_PATH, NOTE_MAXIMUM_SIZE
 
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.comment.comment_schemas import Comment
@@ -274,6 +276,9 @@ def get_note_related_comments_count(db: Session, note_pk, user):
 
 
 def create_note(db: Session, note: NoteCreate, user):
+    if sys.getsizeof(note.content) / 1024 > NOTE_MAXIMUM_SIZE:
+        return
+
     db_note = models.Note(version_number=0,
                           subject=note.subject,
                           content=note.content,
@@ -312,6 +317,9 @@ def create_note(db: Session, note: NoteCreate, user):
 
 
 def update_note(db: Session, note_pk, note: NoteCreate, user):
+    if sys.getsizeof(note.content) / 1024 > NOTE_MAXIMUM_SIZE:
+        return
+
     note_to_update = db.query(models.Note).get(note_pk)
     old_subject = note_to_update.subject
     old_content = note_to_update.content
