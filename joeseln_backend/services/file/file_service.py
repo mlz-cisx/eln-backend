@@ -29,7 +29,7 @@ from joeseln_backend.services.user_to_group.user_to_group_service import \
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.conf.base_conf import FILES_BASE_PATH, URL_BASE_PATH, \
-    LABBOOK_QUERY_MODE, NOTE_MAXIMUM_SIZE
+    LABBOOK_QUERY_MODE, ELEM_MAXIMUM_SIZE
 from joeseln_backend.services.comment.comment_schemas import Comment
 
 from joeseln_backend.mylogging.root_logger import logger
@@ -287,8 +287,8 @@ def get_lb_pk_from_file(db: Session, file_pk):
 def create_file(db: Session, title: str,
                 name: str, file_size: int, description: str, mime_type: str,
                 user):
-    if file_size / 1024 > NOTE_MAXIMUM_SIZE or sys.getsizeof(
-            description) / 1024 > NOTE_MAXIMUM_SIZE:
+    if file_size / 1024 > ELEM_MAXIMUM_SIZE or sys.getsizeof(
+            description) / 1024 > ELEM_MAXIMUM_SIZE:
         return
 
     file_path = f'{create_path(db=db)}'
@@ -340,7 +340,7 @@ def create_file(db: Session, title: str,
 
 
 def update_file(file_pk, db: Session, elem: FilePatch, user):
-    if sys.getsizeof(elem.description) / 1024 > NOTE_MAXIMUM_SIZE:
+    if sys.getsizeof(elem.description) / 1024 > ELEM_MAXIMUM_SIZE:
         return None
 
     db_file = db.query(models.File).get(file_pk)
