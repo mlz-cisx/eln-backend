@@ -1473,6 +1473,8 @@ def soft_delete_groupadmin(
         group_pk=group_pk,
         user_id=user_id,
         authed_user=user)
+    if db_user_to_group == 0:
+        raise HTTPException(status_code=204)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_user_to_group
@@ -1520,6 +1522,8 @@ def soft_delete_group_user(
         group_pk=group_pk,
         user_id=user_id,
         authed_user=user)
+    if db_user_to_group == 0:
+        raise HTTPException(status_code=204)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_user_to_group
@@ -1539,16 +1543,17 @@ def restore_group_user(
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_user_to_group
 
+
 @app.get("/api/admin/group/groupguests/{group_pk}",
          response_model=list[GroupUserExtended])
 def get_group_guests(request: Request,
-                    group_pk: UUID,
-                    db: Session = Depends(get_db),
-                    user: User = Depends(get_current_user)):
+                     group_pk: UUID,
+                     db: Session = Depends(get_db),
+                     user: User = Depends(get_current_user)):
     db_groups = user_to_group_service.get_all_groupguests(db=db,
-                                                         group_pk=group_pk,
-                                                         params=request.query_params._dict,
-                                                         authed_user=user)
+                                                          group_pk=group_pk,
+                                                          params=request.query_params._dict,
+                                                          authed_user=user)
     if db_groups is None:
         raise HTTPException(status_code=404, detail="Group not found")
     return db_groups
@@ -1565,6 +1570,8 @@ def soft_delete_group_guest(
         group_pk=group_pk,
         user_id=user_id,
         authed_user=user)
+    if db_user_to_group == 0:
+        raise HTTPException(status_code=204)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Group not found")
     return db_user_to_group
@@ -1577,9 +1584,9 @@ def add_group_guests(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     db_user_to_group = user_to_group_service.gui_add_as_guest_to_group(db=db,
-                                                                      group_pk=group_pk,
-                                                                      user_id=user_id,
-                                                                      authed_user=user)
+                                                                       group_pk=group_pk,
+                                                                       user_id=user_id,
+                                                                       authed_user=user)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Group not found")
     return db_user_to_group
