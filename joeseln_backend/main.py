@@ -962,6 +962,10 @@ async def UploadFile(request: Request,
                                                          contents=contents,
                                                          user=user)
 
+        if ret_vals is None:
+            raise HTTPException(status_code=404, detail="Labbook not found")
+
+
         return ret_vals
 
 
