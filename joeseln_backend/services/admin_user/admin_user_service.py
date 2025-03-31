@@ -85,6 +85,13 @@ def soft_delete_user(db: Session, user_id, user):
     if user.admin:
         db_user = db.query(models.User).get(user_id)
         if db_user and not db_user.deleted:
+            # remove all user group roles
+            try:
+                db.query(models.UserToGroupRole).filter(
+                    models.UserToGroupRole.user_id == user_id).delete()
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
             db_user.deleted = True
             db_user.last_modified_at = datetime.datetime.now()
             try:
