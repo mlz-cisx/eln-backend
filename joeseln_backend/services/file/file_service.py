@@ -156,6 +156,10 @@ def get_file_with_privileges(db: Session, file_pk, user):
         file_content.last_modified_by = db_user_modified
 
         lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+
+        if not lb_elem:
+            return None
+
         file_content.position_y = lb_elem.position_y
         file_content.labbook_id = lb_elem.labbook_id
 

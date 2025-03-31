@@ -222,6 +222,10 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
                     'picture': pic}
 
         lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+
+        if not lb_elem:
+            return None
+
         if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                         user=user):
             return None

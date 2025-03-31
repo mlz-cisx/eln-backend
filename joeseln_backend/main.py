@@ -692,6 +692,9 @@ def get_picture(
     db_picture = picture_service.get_picture_with_privileges(db=db,
                                                              picture_pk=picture_pk,
                                                              user=user)
+
+    if db_picture is None:
+        raise HTTPException(status_code=204)
     return db_picture
 
 
@@ -1008,6 +1011,10 @@ def get_file(
     file_response = file_service.get_file_with_privileges(db=db,
                                                           file_pk=file_pk,
                                                           user=user)
+
+    if file_response is None:
+        raise HTTPException(status_code=204)
+
     return file_response
 
 
