@@ -467,7 +467,7 @@ def restore_note(
     # admin notes can only be restored  by admins or groupadmins
     db_note = note_service.restore_note(db=db, note_pk=note_pk, user=user)
     if db_note is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
+        raise HTTPException(status_code=204, detail="Labbook not found")
     return db_note
 
 
@@ -796,7 +796,7 @@ def restore_picture(
     db_pic = picture_service.restore_picture(db=db, picture_pk=picture_pk,
                                              user=user)
     if db_pic is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
+        raise HTTPException(status_code=204, detail="Labbook not found")
 
     return db_pic
 
@@ -1078,7 +1078,7 @@ def restore_file(
     # logger.info(user)
     db_file = file_service.restore_file(db=db, file_pk=file_pk, user=user)
     if db_file is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
+        raise HTTPException(status_code=204, detail="Labbook not found")
     return db_file
 
 
