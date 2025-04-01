@@ -291,8 +291,8 @@ def get_lb_pk_from_file(db: Session, file_pk):
 def create_file(db: Session, title: str,
                 name: str, file_size: int, description: str, mime_type: str,
                 user):
-    if file_size / 1024 > ELEM_MAXIMUM_SIZE or sys.getsizeof(
-            description) / 1024 > ELEM_MAXIMUM_SIZE:
+    if file_size > ELEM_MAXIMUM_SIZE << 10 or sys.getsizeof(
+            description) > ELEM_MAXIMUM_SIZE << 10:
         return
 
     file_path = f'{create_path(db=db)}'
@@ -344,7 +344,7 @@ def create_file(db: Session, title: str,
 
 
 def update_file(file_pk, db: Session, elem: FilePatch, user):
-    if sys.getsizeof(elem.description) / 1024 > ELEM_MAXIMUM_SIZE:
+    if sys.getsizeof(elem.description) > ELEM_MAXIMUM_SIZE << 10:
         return None
 
     db_file = db.query(models.File).get(file_pk)

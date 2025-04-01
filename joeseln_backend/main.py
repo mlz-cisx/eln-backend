@@ -483,7 +483,7 @@ def get_note(
     db_note = note_service.get_note_with_privileges(db=db, note_pk=note_pk,
                                                     user=user)
     if db_note is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
+        raise HTTPException(status_code=204)
     return db_note
 
 

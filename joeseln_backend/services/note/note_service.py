@@ -280,7 +280,7 @@ def get_note_related_comments_count(db: Session, note_pk, user):
 
 
 def create_note(db: Session, note: NoteCreate, user):
-    if sys.getsizeof(note.content) / 1024 > ELEM_MAXIMUM_SIZE:
+    if sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10:
         return
 
     db_note = models.Note(version_number=0,
@@ -321,7 +321,7 @@ def create_note(db: Session, note: NoteCreate, user):
 
 
 def update_note(db: Session, note_pk, note: NoteCreate, user):
-    if sys.getsizeof(note.content) / 1024 > ELEM_MAXIMUM_SIZE:
+    if sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10:
         return
 
     note_to_update = db.query(models.Note).get(note_pk)

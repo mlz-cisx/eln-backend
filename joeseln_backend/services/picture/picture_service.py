@@ -420,7 +420,7 @@ def copy_and_update_picture(db: Session, picture_pk, restored_ri=None,
 
 def create_picture(db: Session, title: str, display: str,
                    width: int, height: int, size: int, user):
-    if size / 1024 > ELEM_MAXIMUM_SIZE:
+    if size > ELEM_MAXIMUM_SIZE << 10:
         return
 
     bi_file_path = f'{create_path(db=db)}'
