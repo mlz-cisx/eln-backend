@@ -28,21 +28,25 @@ maps the Linux rights system.
 - Users with role USER can be promoted to GROUPADMIN.
 - Only empty groups can be deleted.
 - (Soft) Deleting a user deletes all of their group roles.
+  
+  ````
+         │                           
+         │ Manual Manage             
+    ┌────┴────┐                      
+    │         │                      
+    │         │                      
+    ▼         ▼    Manual            
+                  Promote            
+  Guest      User ───────► Groupadmin
+                                     
+               ▲                     
+               │                     
+               │ External            
+               │   Managed           
+               ▼                     
+                                     
+             Keycloak                
+               Roles
 
-       │                           
-       │ Manual Manage             
-  ┌────┴────┐                      
-  │         │                      
-  │         │                      
-  ▼         ▼    Manual            
-                Promote            
-Guest      User ───────► Groupadmin
-                                   
-             ▲                     
-             │                     
-             │ External            
-             │   Managed           
-             ▼                     
-                                   
-           Keycloak                
-             Roles
+  ````
+  
