@@ -371,13 +371,13 @@ def get_picture_in_lb_init(db: Session, picture_pk, access_token, as_export):
 
     picture = deepcopy(db_picture)
 
-    picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     if as_export:
         picture.rendered_image = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
     else:
-        picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+        picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
-    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
     return picture
 
@@ -618,9 +618,9 @@ def build_download_url_with_token(picture, user):
 
     access_token = security.build_download_token(user)
 
-    picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-    picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
     return picture
 
