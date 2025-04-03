@@ -344,7 +344,8 @@ def create_file(db: Session, title: str,
 
 
 def update_file(file_pk, db: Session, elem: FilePatch, user):
-    if sys.getsizeof(elem.description) > ELEM_MAXIMUM_SIZE << 10:
+    if (sys.getsizeof(elem.description) + sys.getsizeof(
+            elem.title)) > ELEM_MAXIMUM_SIZE << 10:
         return None
 
     db_file = db.query(models.File).get(file_pk)

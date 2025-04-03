@@ -545,6 +545,8 @@ def process_sketch_upload_form(form, db, contents, user):
 def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
                    shapes_contents, user):
     db_picture = db.query(models.Picture).get(pk)
+    if db_picture.background_image_size > ELEM_MAXIMUM_SIZE << 10:
+        return
     db_picture.width = form['width']
     db_picture.height = form['height']
     db_picture.last_modified_at = datetime.datetime.now()

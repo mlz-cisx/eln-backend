@@ -408,7 +408,7 @@ def create_note(
     # for all users
     db_note = note_service.create_note(db=db, note=elem, user=user)
     if db_note is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
+        raise HTTPException(status_code=204)
     return db_note
 
 
@@ -439,7 +439,7 @@ def patch_note(
                                        user=user)
 
     if db_note is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
+        raise HTTPException(status_code=204)
     return db_note
 
 
@@ -664,7 +664,7 @@ async def UploadImage(request: Request,
                                                                   user=user)
 
         if ret_vals is None:
-            raise HTTPException(status_code=404, detail="Labbook not found")
+            raise HTTPException(status_code=204)
 
         return ret_vals
 
@@ -847,7 +847,7 @@ async def patch_picture(
                                                     user=user)
 
         if db_picture is None:
-            raise HTTPException(status_code=404, detail="Labbook not found")
+            raise HTTPException(status_code=404)
 
         return db_picture
 
@@ -969,7 +969,7 @@ async def UploadFile(request: Request,
                                                          user=user)
 
         if ret_vals is None:
-            raise HTTPException(status_code=404, detail="Labbook not found")
+            raise HTTPException(status_code=204)
 
         return ret_vals
 
@@ -998,7 +998,7 @@ def patch_file(
     file_reponse = file_service.update_file(file_pk=file_pk, db=db, elem=elem,
                                             user=user)
     if file_reponse is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
+        raise HTTPException(status_code=204)
     return file_reponse
 
 
