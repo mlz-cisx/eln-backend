@@ -658,7 +658,7 @@ def build_ri_download_response(picture_pk, db, jwt, request):
     value = FileResponse(ri_img_path, headers={
         "ETag": etag,
         "Last-Modified": last_modified.strftime("%a, %d %b %Y %H:%M:%S GMT"),
-        "Cache-Control": "private, max-age=3600"
+        "Cache-Control": "private, max-age=86400"
     })
 
     return value

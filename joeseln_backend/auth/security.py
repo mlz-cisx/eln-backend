@@ -41,6 +41,7 @@ SECRET_KEY = "b014bc552ecfc62a46b6c4bea9d35d6d7e5ff6f0244eff28a3f5ad4be1d3015d"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 20
 ACCESS_TOKEN_EXPIRE_SECONDS = 1000
+DOWNLOAD_TOKEN_EXPIRE_MINUTES = 60 * 24
 
 
 class Token(BaseModel):
@@ -129,7 +130,7 @@ def build_download_token(user):
     # Generate a new token if none exists or the existing one is expired
     if not access_token:
         access_token_expires = timedelta(
-            minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            minutes=DOWNLOAD_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
         )
