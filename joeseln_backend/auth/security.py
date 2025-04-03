@@ -1,3 +1,4 @@
+from cachetools import cached, TTLCache
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 import bcrypt
@@ -194,8 +195,8 @@ def get_user_from_jwt(token: Annotated[str, Depends(oauth2_scheme)]):
         logger.error(f'PyJWTError: {e}')
         return
 
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+@cached(cache=TTLCache(maxsize=1024, ttl=120))
+def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
