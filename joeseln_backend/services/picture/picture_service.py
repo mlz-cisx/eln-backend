@@ -1,7 +1,9 @@
 import pathlib
 from copy import deepcopy
 import shutil
-from fastapi.responses import FileResponse
+from fastapi import Request
+from fastapi.exceptions import HTTPException
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -205,9 +207,14 @@ def get_all_deleted_pics(db: Session):
     return pics
 
 
-def get_picture_with_privileges(db: Session, picture_pk, user):
+def get_picture_with_privileges(db: Session, picture_pk, user, request: Request):
     db_picture = db.query(models.Picture).get(picture_pk)
     if db_picture:
+
+        etag = f'{db_picture.id}-{db_picture.last_modified_at}'
+        if request.headers.get("If-None-Match") == etag:
+            raise HTTPException(status_code=304) 
+
         db_user_created = db.query(models.User).get(db_picture.created_by_id)
         db_user_modified = db.query(models.User).get(
             db_picture.last_modified_by_id)
@@ -218,8 +225,9 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
             picture=deepcopy(db_picture), user=user)
 
         if user.admin:
-            return {'privileges': ADMIN,
-                    'picture': pic}
+            return {'content': {'privileges': ADMIN,
+                                'picture': pic},
+                    'etag': etag}
 
         lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
 
@@ -254,18 +262,16 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
                     created_by=picture_created_by,
                     user_roles=user_roles)
 
-            return {'privileges': privileges, 'picture': pic}
-
+            return {'content':{'privileges': privileges, 'picture': pic}, 'etag': etag} 
         if db_lb and db_lb.strict_mode and user.id == db_pic_creator.id:
             privileges = create_strict_privileges(
                 created_by='SELF')
-            return {'privileges': privileges, 'picture': pic}
+            return {'content':{'privileges': privileges, 'picture': pic}, 'etag': etag}
 
         if db_lb and db_lb.strict_mode and user.id != db_pic_creator.id:
             privileges = create_strict_privileges(
                 created_by='ANOTHER')
-            return {'privileges': privileges, 'picture': pic}
-
+            return {'content':{'privileges': privileges, 'picture': pic}, 'etag': etag}
         return None
     return None
 
@@ -371,13 +377,13 @@ def get_picture_in_lb_init(db: Session, picture_pk, access_token, as_export):
 
     picture = deepcopy(db_picture)
 
-    picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     if as_export:
         picture.rendered_image = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
     else:
-        picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+        picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
-    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
     return picture
 
@@ -605,6 +611,9 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
         db.close()
 
         transmit({'model_name': 'picture', 'model_pk': str(pk)})
+
+        # refresh download token
+        security.invalidate_download_token(user)
         pic = build_download_url_with_token(
             picture=deepcopy(db_picture), user=user)
 
@@ -614,15 +623,12 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
 
 
 def build_download_url_with_token(picture, user):
-    access_token_expires = security.timedelta(
-        minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
 
-    picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-    picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    access_token = security.build_download_token(user)
+
+    picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
     return picture
 
@@ -638,13 +644,30 @@ def build_bi_download_response(picture_pk, db, jwt):
     return value
 
 
-def build_ri_download_response(picture_pk, db, jwt):
+def build_ri_download_response(picture_pk, db, jwt, request):
     user = get_user_from_jwt(token=jwt)
     if user is None:
         return
     db_picture = db.query(models.Picture).get(picture_pk)
     ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
-    value = FileResponse(ri_img_path)
+    last_modified = db_picture.last_modified_at
+    etag = f'{db_picture.id}-{last_modified.timestamp()}'
+
+    if request.headers.get('If-None-Match') == etag:
+        return Response(status_code=304)
+
+    if request.headers.get('If-Modified-Since'):
+        if_modified_since = datetime.datetime.strptime(
+            request.headers.get('If-Modified-Since'), "%a, %d %b %Y %H:%M:%S GMT"
+        )
+        if last_modified <= if_modified_since:
+            return Response(status_code=304)
+
+    value = FileResponse(ri_img_path, headers={
+        "ETag": etag,
+        "Last-Modified": last_modified.strftime("%a, %d %b %Y %H:%M:%S GMT"),
+        "Cache-Control": "private, max-age=86400"
+    })
 
     return value
 

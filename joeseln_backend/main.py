@@ -12,7 +12,7 @@ from datetime import timedelta
 from typing import Any
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import FastAPI, Request, Body, Depends, \
-    HTTPException, status
+    HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -685,17 +685,22 @@ def read_pictures(
 @app.get("/api/pictures/{picture_pk}/",
          response_model=picture_schemas.PictureWithPrivileges)
 def get_picture(
+        request: Request,
+        response: Response,
         picture_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     db_picture = picture_service.get_picture_with_privileges(db=db,
                                                              picture_pk=picture_pk,
-                                                             user=user)
+                                                             user=user,
+                                                             request=request)
 
     if db_picture is None:
         raise HTTPException(status_code=204)
-    return db_picture
+
+    response.headers["ETag"] = db_picture["etag"]
+    return db_picture['content']
 
 
 @app.get("/api/pictures/{picture_pk}/bi_download/",
@@ -714,8 +719,7 @@ def get_bi_picture(
     return bi_picture
 
 
-@app.get("/api/pictures/{picture_pk}/ri_download/",
-         response_class=FileResponse)
+@app.get("/api/pictures/{picture_pk}/ri_download/")
 def get_ri_picture(
         request: Request,
         picture_pk: UUID,
@@ -724,7 +728,7 @@ def get_ri_picture(
     ri_picture = picture_service.build_ri_download_response(
         picture_pk=picture_pk,
         db=db,
-        jwt=request.query_params._dict['jwt'])
+        jwt=request.query_params._dict['jwt'], request=request)
     if ri_picture is None:
         raise HTTPException(status_code=404, detail="token expired")
     return ri_picture

@@ -82,11 +82,7 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
         labbook_id=labbook_pk, deleted=False).order_by(
         models.Labbookchildelement.position_y).all()
 
-    access_token_expires = security.timedelta(
-        minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+    access_token = security.build_download_token(user)
 
     for elem in query:
         if elem.child_object_content_type == 30:
