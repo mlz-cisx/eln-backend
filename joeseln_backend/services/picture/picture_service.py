@@ -1,6 +1,8 @@
 import pathlib
 from copy import deepcopy
 import shutil
+from fastapi import Request
+from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_
 
@@ -205,9 +207,14 @@ def get_all_deleted_pics(db: Session):
     return pics
 
 
-def get_picture_with_privileges(db: Session, picture_pk, user):
+def get_picture_with_privileges(db: Session, picture_pk, user, request: Request):
     db_picture = db.query(models.Picture).get(picture_pk)
     if db_picture:
+
+        etag = f'{db_picture.id}-{db_picture.last_modified_at}'
+        if request.headers.get("If-None-Match") == etag:
+            raise HTTPException(status_code=304) 
+
         db_user_created = db.query(models.User).get(db_picture.created_by_id)
         db_user_modified = db.query(models.User).get(
             db_picture.last_modified_by_id)
@@ -218,8 +225,9 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
             picture=deepcopy(db_picture), user=user)
 
         if user.admin:
-            return {'privileges': ADMIN,
-                    'picture': pic}
+            return {'content': {'privileges': ADMIN,
+                                'picture': pic},
+                    'etag': etag}
 
         lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
 
@@ -254,18 +262,16 @@ def get_picture_with_privileges(db: Session, picture_pk, user):
                     created_by=picture_created_by,
                     user_roles=user_roles)
 
-            return {'privileges': privileges, 'picture': pic}
-
+            return {'content':{'privileges': privileges, 'picture': pic}, 'etag': etag} 
         if db_lb and db_lb.strict_mode and user.id == db_pic_creator.id:
             privileges = create_strict_privileges(
                 created_by='SELF')
-            return {'privileges': privileges, 'picture': pic}
+            return {'content':{'privileges': privileges, 'picture': pic}, 'etag': etag}
 
         if db_lb and db_lb.strict_mode and user.id != db_pic_creator.id:
             privileges = create_strict_privileges(
                 created_by='ANOTHER')
-            return {'privileges': privileges, 'picture': pic}
-
+            return {'content':{'privileges': privileges, 'picture': pic}, 'etag': etag}
         return None
     return None
 
