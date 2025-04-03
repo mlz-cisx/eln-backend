@@ -714,8 +714,7 @@ def get_bi_picture(
     return bi_picture
 
 
-@app.get("/api/pictures/{picture_pk}/ri_download/",
-         response_class=FileResponse)
+@app.get("/api/pictures/{picture_pk}/ri_download/")
 def get_ri_picture(
         request: Request,
         picture_pk: UUID,
@@ -724,7 +723,7 @@ def get_ri_picture(
     ri_picture = picture_service.build_ri_download_response(
         picture_pk=picture_pk,
         db=db,
-        jwt=request.query_params._dict['jwt'])
+        jwt=request.query_params._dict['jwt'], request=request)
     if ri_picture is None:
         raise HTTPException(status_code=404, detail="token expired")
     return ri_picture

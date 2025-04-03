@@ -14,6 +14,7 @@ from joeseln_backend.services.user_to_group.user_to_group_service import \
 from typing import Annotated, Any
 from datetime import datetime, timedelta, timezone
 import jwt
+import time
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 import requests
@@ -104,6 +105,38 @@ def authenticate_user(db: Session, username: str, password: str):
     if not verify_password(password, user.password):
         return False
     return user
+
+# token used to donwload picture and file
+token_cache = {}
+def invalidate_download_token(user):
+    cache_key = user.username
+    if cache_key in token_cache:
+        del token_cache[cache_key]
+
+def build_download_token(user):
+    current_time = time.time()
+    cache_key = user.username
+    access_token = None
+
+    # Check if a valid token exists in the cache
+    if cache_key in token_cache:
+        token, expires_at = token_cache[cache_key]
+        if current_time < expires_at:
+            access_token = token
+        else:
+            del token_cache[cache_key]
+
+    # Generate a new token if none exists or the existing one is expired
+    if not access_token:
+        access_token_expires = timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username}, expires_delta=access_token_expires
+        )
+        expires_at = current_time + access_token_expires.total_seconds()
+        token_cache[cache_key] = (access_token, expires_at)
+
+    return access_token
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):

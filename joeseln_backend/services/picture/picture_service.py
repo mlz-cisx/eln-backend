@@ -1,7 +1,7 @@
 import pathlib
 from copy import deepcopy
 import shutil
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -603,6 +603,9 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
         db.close()
 
         transmit({'model_name': 'picture', 'model_pk': str(pk)})
+
+        # refresh download token
+        security.invalidate_download_token(user)
         pic = build_download_url_with_token(
             picture=deepcopy(db_picture), user=user)
 
@@ -612,11 +615,8 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
 
 
 def build_download_url_with_token(picture, user):
-    access_token_expires = security.timedelta(
-        minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+
+    access_token = security.build_download_token(user)
 
     picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
@@ -636,13 +636,30 @@ def build_bi_download_response(picture_pk, db, jwt):
     return value
 
 
-def build_ri_download_response(picture_pk, db, jwt):
+def build_ri_download_response(picture_pk, db, jwt, request):
     user = get_user_from_jwt(token=jwt)
     if user is None:
         return
     db_picture = db.query(models.Picture).get(picture_pk)
     ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
-    value = FileResponse(ri_img_path)
+    last_modified = db_picture.last_modified_at
+    etag = f'{db_picture.id}-{last_modified.timestamp()}'
+
+    if request.headers.get('If-None-Match') == etag:
+        return Response(status_code=304)
+
+    if request.headers.get('If-Modified-Since'):
+        if_modified_since = datetime.datetime.strptime(
+            request.headers.get('If-Modified-Since'), "%a, %d %b %Y %H:%M:%S GMT"
+        )
+        if last_modified <= if_modified_since:
+            return Response(status_code=304)
+
+    value = FileResponse(ri_img_path, headers={
+        "ETag": etag,
+        "Last-Modified": last_modified.strftime("%a, %d %b %Y %H:%M:%S GMT"),
+        "Cache-Control": "private, max-age=3600"
+    })
 
     return value
 
