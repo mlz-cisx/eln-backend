@@ -477,14 +477,18 @@ def restore_note(
 @app.get("/api/notes/{note_pk}/",
          response_model=note_schemas.NoteWithPrivileges)
 def get_note(
+        request: Request,
+        response: Response,
         note_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     db_note = note_service.get_note_with_privileges(db=db, note_pk=note_pk,
-                                                    user=user)
+                                                    user=user, etag=request.headers.get("If-None-Match"))
     if db_note is None:
         raise HTTPException(status_code=204)
+
+    response.headers['ETag'] = f"{db_note['note'].id}-{db_note['note'].last_modified_at}"
     return db_note
 
 

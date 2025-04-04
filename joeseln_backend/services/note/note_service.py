@@ -1,5 +1,7 @@
 import sys
 
+from fastapi.exceptions import HTTPException
+
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -133,9 +135,12 @@ def get_note(db: Session, note_pk):
     return db_note
 
 
-def get_note_with_privileges(db: Session, note_pk, user):
+def get_note_with_privileges(db: Session, note_pk, user, etag):
     db_note = db.query(models.Note).get(note_pk)
     if db_note:
+        if etag == f'{db_note.id}-{db_note.last_modified_at}':
+            raise HTTPException(status_code=304)
+
         db_user_created = db.query(models.User).get(db_note.created_by_id)
         db_user_modified = db.query(models.User).get(
             db_note.last_modified_by_id)
