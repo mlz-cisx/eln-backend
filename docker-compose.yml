@@ -37,6 +37,10 @@ services:
       KEYCLOAK_SERVER_URL: "http://wojians-macbook.local/auth"
       KEYCLOAK_CLIENT_ID: "client_backend"
       KEYCLOAK_CLIENT_SECRET: "cfAAazDMTwst5JgVVbtLjO5hsXQlTziL"
+      # typesense
+      TYPESENSE_HOST: "eln-typesense"
+      TYPESENSE_PORT: 8108
+      TYPESENSE_API_KEY: "#super_secret#"
       # url
       URL_BASE_PATH: "http://wojians-macbook.local/api/"  # with tailing slash
       WS_URL: "ws://wojians-macbook.local/ws/"
@@ -137,4 +141,13 @@ services:
     image: quay.io/keycloak/keycloak:26.1.4
     volumes:
         - ./data/keycloak_data:/opt/keycloak/data
-    command: start-dev --http-relative-path /auth --proxy-headers xforwarded --http-enabled=true
+    command: start-dev --http-relative-path /keycloak --proxy-headers xforwarded --http-enabled=true
+
+  typesense:
+    image: typesense/typesense:27.1
+    ports:
+      - "8108:8108"
+    volumes:
+      - ./data/typesense_data:/data
+    command: --data-dir /data --api-key="#super_secret#" --enable-cors
+
