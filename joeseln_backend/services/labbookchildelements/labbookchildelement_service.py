@@ -2,6 +2,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 
+from typesense.client import Client
+from typesense.exceptions import TypesenseClientError
+from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
+
 from joeseln_backend.models import models
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import *
 
@@ -172,7 +176,7 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
 
 
 def create_lb_childelement(db: Session, labbook_pk,
-                           labbook_childelem: Labbookchildelement_Create, user):
+                           labbook_childelem: Labbookchildelement_Create, user, typesense: Client):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return None
 
@@ -213,11 +217,24 @@ def create_lb_childelement(db: Session, labbook_pk,
     db.refresh(db_labbook_elem)
 
     if db_labbook_elem.child_object_content_type == 30:
-        db_labbook_elem.child_object = get_note(db=db,
-                                                note_pk=db_labbook_elem.child_object_id)
+        note = get_note(db=db, note_pk=db_labbook_elem.child_object_id)
+        db_labbook_elem.child_object = note
         db_labbook_elem.num_related_comments = get_note_related_comments_count(
             db=db,
             note_pk=db_labbook_elem.child_object_id, user=user)
+        try:
+            # insert note to typesense for searching purpose
+            stripped_content = strip_html_and_binary(note.content)
+            typesense.collections['notes'].documents.upsert({'id': str(note.id),
+                                                            'elem_id': str(db_labbook_elem.id),
+                                                            'subject': note.subject, 
+                                                            'content': stripped_content, 
+                                                            'last_modified_at': int(note.last_modified_at.timestamp()),
+                                                            'labbook_id': str(labbook_pk),
+                                                            'soft_delete': False})
+        except TypesenseClientError as e:
+            logger.error(e)
+
     if db_labbook_elem.child_object_content_type == 40:
         db_labbook_elem.child_object = picture_service.get_picture(db=db,
                                                                    picture_pk=db_labbook_elem.child_object_id,

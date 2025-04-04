@@ -56,7 +56,7 @@ from joeseln_backend.export import export_labbook, export_note, export_picture, 
     export_file
 from joeseln_backend.full_text_search import text_search
 from joeseln_backend.conf.base_conf import ORIGINS, JAEGER_HOST, JAEGER_PORT, \
-    JAEGER_SERVICE_NAME, CENTRIFUGO_JWT_KEY, CENTRIFUGO_CHANNEL
+    JAEGER_SERVICE_NAME
 from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
     get_current_user, authenticate_user, \
     ACCESS_TOKEN_EXPIRE_SECONDS, \
@@ -73,8 +73,9 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
-import jwt
-import time
+from joeseln_backend.full_text_search.typesense_service import create_typesense_client, create_typesense_collection
+typesense_client = create_typesense_client()
+create_typesense_collection(typesense_client)
 
 trace.set_tracer_provider(
     TracerProvider(
@@ -270,7 +271,7 @@ async def create_labbook_elem(
     # all groupmembers
     lb_element = labbookchildelement_service. \
         create_lb_childelement(db=db, labbook_pk=labbook_pk,
-                               labbook_childelem=elem, user=user)
+                               labbook_childelem=elem, user=user, typesense=typesense_client)
     if lb_element is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_element
@@ -436,7 +437,7 @@ def patch_note(
     # logger.info(user)
     # admin notes can only be patched by admins
     db_note = note_service.update_note(db=db, note_pk=note_pk, note=elem,
-                                       user=user)
+                                       user=user, typesense=typesense_client)
 
     if db_note is None:
         raise HTTPException(status_code=204)
@@ -453,7 +454,7 @@ def soft_delete_note(
     # admin notes can only be deleted  by admins or groupadmins
     db_note = note_service.soft_delete_note(db=db, note_pk=note_pk,
                                             labbook_data=labbook_data,
-                                            user=user)
+                                            user=user, typesense=typesense_client)
     if db_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_note
@@ -467,7 +468,7 @@ def restore_note(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # admin notes can only be restored  by admins or groupadmins
-    db_note = note_service.restore_note(db=db, note_pk=note_pk, user=user)
+    db_note = note_service.restore_note(db=db, note_pk=note_pk, user=user, typesense=typesense_client)
     if db_note is None:
         raise HTTPException(status_code=204, detail="Labbook not found")
     return db_note
@@ -1213,20 +1214,6 @@ def create_comment(
     return db_comment
 
 
-@app.get("/api/contrifugo/token")
-def generate_contrifugo_jwt(user: User = Depends(get_current_user)):
-    claims = {"sub": str(user.id), "exp": int(time.time()) + 3600}
-    connect_token = jwt.encode(claims, CENTRIFUGO_JWT_KEY,
-                               algorithm='HS256').decode()
-
-    claims = {"sub": str(user.id), "channel": CENTRIFUGO_CHANNEL,
-              "exp": int(time.time()) + 3600}
-    subscribe_token = jwt.encode(claims, CENTRIFUGO_JWT_KEY,
-                                 algorithm='HS256').decode()
-
-    return {"connect_token": connect_token, "subscribe_token": subscribe_token}
-
-
 @app.get('/api/users/me', response_model=User)
 async def user_me(user: User = Depends(get_current_user)):
     return user
@@ -1276,7 +1263,7 @@ def eln_search(request: Request,
                                                'model'],
                                            search_text=
                                            request.query_params._dict[
-                                               'search'], user=user)
+                                               'search'], user=user, typesense=typesense_client)
     return result
 
 

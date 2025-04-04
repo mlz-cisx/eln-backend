@@ -5,6 +5,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import text
 
+from typesense.client import Client
+from typesense.exceptions import TypesenseClientError
+from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
+
 from joeseln_backend.auth import security
 from joeseln_backend.services.privileges.privileges_service import \
     create_note_privileges, create_strict_privileges
@@ -319,8 +323,18 @@ def create_note(db: Session, note: NoteCreate, user):
 
     return db_note
 
+def update_note_typesense(note: Note, typesense: Client):
+    stripped_content = strip_html_and_binary(note.content)
+    try:
+        document = {
+                'subject': note.subject, 
+                'content': stripped_content, 
+                'last_modified_at': int(note.last_modified_at.timestamp())}
+        typesense.collections['notes'].documents[str(note.id)].update(document)
+    except TypesenseClientError as e:
+        logger.error(e)
 
-def update_note(db: Session, note_pk, note: NoteCreate, user):
+def update_note(db: Session, note_pk, note: NoteCreate, user, typesense: Client):
     if sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10:
         return
 
@@ -370,6 +384,7 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
                                          changeset_type='U',
                                          changerecords=changerecords)
 
+        update_note_typesense(note_to_update, typesense)
         return note_to_update
 
     # Second possibility: note is created by admin und user is now not admin
@@ -413,13 +428,19 @@ def update_note(db: Session, note_pk, note: NoteCreate, user):
                                          changeset_type='U',
                                          changerecords=changerecords)
 
+        update_note_typesense(note_to_update, typesense)
         return note_to_update
 
     return None
 
+def soft_delete_note_typesense(note: Note, typesense: Client):
+    try:
+        typesense.collections["notes"].documents[str(note.id)].update({"soft_delete": True})
+    except TypesenseClientError as e:
+        logger.error(e)
 
 # needs to be heavily factorized
-def soft_delete_note(db: Session, note_pk, labbook_data, user):
+def soft_delete_note(db: Session, note_pk, labbook_data, user, typesense: Client):
     note_to_update = db.query(models.Note).get(note_pk)
     note_to_update.deleted = True
     note_to_update.last_modified_at = datetime.datetime.now()
@@ -468,6 +489,7 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
                              object_type_id=30,
                              changeset_type='S',
                              changerecords=[])
+        soft_delete_note_typesense(note_to_update, typesense)
         return note_to_update
 
     if lb_to_update.strict_mode and user.id != note_to_update.created_by_id:
@@ -508,6 +530,7 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
                                  changeset_type='S',
                                  changerecords=[])
 
+            soft_delete_note_typesense(note_to_update, typesense)
             return note_to_update
         else:
             return None
@@ -545,13 +568,18 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user):
                              object_type_id=30,
                              changeset_type='S',
                              changerecords=[])
-
+        soft_delete_note_typesense(note_to_update, typesense)
         return note_to_update
 
     return None
 
+def restore_note_typesense(note: Note, typesense: Client):
+    try:
+        typesense.collections["notes"].documents[str(note.id)].update({"soft_delete": False})
+    except TypesenseClientError as e:
+        logger.error(e)
 
-def restore_note(db: Session, note_pk, user):
+def restore_note(db: Session, note_pk, user, typesense: Client):
     note_to_update = db.query(models.Note).get(note_pk)
     note_to_update.deleted = False
     note_to_update.last_modified_at = datetime.datetime.now()
@@ -587,7 +615,7 @@ def restore_note(db: Session, note_pk, user):
                              object_type_id=30,
                              changeset_type='R',
                              changerecords=[])
-
+        restore_note_typesense(note_to_update, typesense)
         return note_to_update
 
     # Second possibility: it's a note created by admin
@@ -614,7 +642,7 @@ def restore_note(db: Session, note_pk, user):
                                  object_type_id=30,
                                  changeset_type='R',
                                  changerecords=[])
-
+            restore_note_typesense(note_to_update, typesense)
             return note_to_update
         else:
             return None
@@ -643,7 +671,7 @@ def restore_note(db: Session, note_pk, user):
                              object_type_id=30,
                              changeset_type='R',
                              changerecords=[])
-
+        restore_note_typesense(note_to_update, typesense)
         return note_to_update
 
     return None
