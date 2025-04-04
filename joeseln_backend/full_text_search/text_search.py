@@ -47,7 +47,7 @@ def search_with_model(db, model, search_text, user, typesense: Client):
                 models.File.description.like(f'%{search_text}%'))).all()
         for result in results:
             lb_elem = db.query(models.Labbookchildelement).get(result.elem_id)
-            if lb_elem.labbook_id in labbook_ids:
+            if str(lb_elem.labbook_id) in labbook_ids:
                 created_by = db.query(models.User).get(
                     lb_elem.created_by_id)
                 res_dic = {'content_type_model': 'shared_elements.file',
@@ -63,7 +63,7 @@ def search_with_model(db, model, search_text, user, typesense: Client):
             or_(models.Picture.title.like(f'%{search_text}%'))).all()
         for result in results:
             lb_elem = db.query(models.Labbookchildelement).get(result.elem_id)
-            if lb_elem.labbook_id in labbook_ids:
+            if str(lb_elem.labbook_id) in labbook_ids:
                 created_by = db.query(models.User).get(
                     lb_elem.created_by_id)
                 res_dic = {'content_type_model': 'pictures.picture',
@@ -79,8 +79,7 @@ def search_with_model(db, model, search_text, user, typesense: Client):
             or_(models.Labbook.title.like(f'%{search_text}%'),
                 models.Labbook.description.like(f'%{search_text}%'))).all()
         for result in results:
-            if check_for_labbook_access(db=db, labbook_pk=result.id,
-                                        user=user):
+            if str(result.id) in labbook_ids:
                 created_by = db.query(models.User).get(
                     result.created_by_id)
                 res_dic = {'content_type_model': 'labbooks.labbook',
