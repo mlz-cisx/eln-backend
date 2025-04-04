@@ -1,6 +1,9 @@
+import sys
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
+from joeseln_backend.conf.base_conf import ELEM_MAXIMUM_SIZE
 from joeseln_backend.models import models
 from joeseln_backend.services.comment.comment_schemas import *
 from joeseln_backend.conf.content_types import type2model, comment_content_type, \
@@ -12,6 +15,9 @@ from joeseln_backend.ws.ws_client import transmit
 
 
 def create_comment(db: Session, comment: CreateComment, user):
+    if sys.getsizeof(comment.content) > ELEM_MAXIMUM_SIZE << 10:
+        return None
+
     if comment.relates_to_content_type_id == 30:
         db_note = db.query(models.Note).get(comment.relates_to_pk)
         lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
@@ -65,6 +71,5 @@ def create_comment(db: Session, comment: CreateComment, user):
         except SQLAlchemyError as e:
             logger.error(e)
         db.refresh(db_relation)
-
 
         return db_comment
