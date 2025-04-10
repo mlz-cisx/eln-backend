@@ -56,7 +56,7 @@ from joeseln_backend.export import export_labbook, export_note, export_picture, 
     export_file
 from joeseln_backend.full_text_search import text_search
 from joeseln_backend.conf.base_conf import ORIGINS, JAEGER_HOST, JAEGER_PORT, \
-    JAEGER_SERVICE_NAME
+    JAEGER_SERVICE_NAME, PICTURES_BASE_PATH, FILES_BASE_PATH
 from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
     get_current_user, authenticate_user, \
     ACCESS_TOKEN_EXPIRE_SECONDS, \
@@ -97,6 +97,15 @@ table_creator()
 create_basic_roles()
 create_inital_admin()
 
+# check the existence of picture/file folder and r/w pemission
+if not os.path.isdir(PICTURES_BASE_PATH):
+    raise RuntimeError("Application cannot start: picture directory does not exist")
+elif not os.access(PICTURES_BASE_PATH, os.R_OK | os.W_OK):
+    raise RuntimeError("Application cannot start: picture directory is not readable/writable")
+if not os.path.isdir(FILES_BASE_PATH):
+    raise RuntimeError("Application cannot start: file directory does not exist")
+elif not os.access(FILES_BASE_PATH, os.R_OK | os.W_OK):
+    raise RuntimeError("Application cannot start: file directory is not readable/writable")
 
 def get_db():
     db = SessionLocal()
