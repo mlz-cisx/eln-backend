@@ -66,29 +66,28 @@ from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
 from joeseln_backend.mylogging.root_logger import logger
 
 # second logger
-from opentelemetry import trace
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+# from opentelemetry import trace
+# from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+# from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+# from opentelemetry.sdk.trace import TracerProvider
+# from opentelemetry.sdk.trace.export import BatchSpanProcessor
+# from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
 from joeseln_backend.full_text_search.typesense_service import create_typesense_client, create_typesense_collection
 typesense_client = create_typesense_client()
 create_typesense_collection(typesense_client)
 
-trace.set_tracer_provider(
-    TracerProvider(
-        resource=Resource.create({SERVICE_NAME: JAEGER_SERVICE_NAME})))
-tracer_provider = trace.get_tracer_provider()
-jaeger_exporter = JaegerExporter(agent_host_name=JAEGER_HOST,
-                                 agent_port=JAEGER_PORT)
-tracer_provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
+# trace.set_tracer_provider(
+#     TracerProvider(
+#         resource=Resource.create({SERVICE_NAME: JAEGER_SERVICE_NAME})))
+# tracer_provider = trace.get_tracer_provider()
+# jaeger_exporter = JaegerExporter(agent_host_name=JAEGER_HOST,
+#                                  agent_port=JAEGER_PORT)
+# tracer_provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
 
 # third logger
-from joeseln_backend.mylogging.jaeger_logger import jaeger_tracer
-
-jaeger_tracer = jaeger_tracer()
+# from joeseln_backend.mylogging.jaeger_logger import jaeger_tracer
+# jaeger_tracer = jaeger_tracer()
 
 # will create all tables if not exist
 from joeseln_backend.models.table_creator import table_creator
@@ -116,7 +115,7 @@ def get_db():
 
 
 app = FastAPI()
-FastAPIInstrumentor.instrument_app(app)
+# FastAPIInstrumentor.instrument_app(app)
 
 origins = ORIGINS
 app.add_middleware(
@@ -153,8 +152,8 @@ def read_stat(db: Session = Depends(get_db),
 def read_labbooks(request: Request,
                   db: Session = Depends(get_db),
                   user: User = Depends(get_current_user)):
-    with jaeger_tracer.start_span('GET /labbooks/ user') as span:
-        span.log_kv({'user': user.username})
+    # with jaeger_tracer.start_span('GET /labbooks/ user') as span:
+    #     span.log_kv({'user': user.username})
     labbooks = labbook_service.get_labbooks_from_user(db=db,
                                                       params=request.query_params._dict,
                                                       user=user)
