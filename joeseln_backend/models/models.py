@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, \
-    Text, event, BigInteger, UniqueConstraint
+    Text, event, BigInteger, UniqueConstraint, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
@@ -274,6 +274,9 @@ class SessionToken(Base):
 
 class Relation(Base):
     __tablename__ = 'relation'
+    __table_args__ = (
+        Index('comment_count', 'right_object_id', 'deleted', 'left_content_type'),
+    )
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     # comment id
     left_object_id = Column(UUID(as_uuid=True), index=True)
