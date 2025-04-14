@@ -11,7 +11,8 @@
 - main.py creates tables and initial admins 
 - because of nested async calls with websockets we need *--loop asyncio*, you can start from directory where the main.py is located with:
   ```uvicorn main:app --reload --port 8010 --host 0.0.0.0 --loop asyncio```
-- see also: https://www.uvicorn.org/#command-line-options
+- see also: https://www.uvicorn.org/#command-line-options, e.g.:
+ ``` uvicorn main:app --workers 3 --port 8010 --host 0.0.0.0 --loop asyncio ```
 
 ### Weasyprint install notes
 
