@@ -23,6 +23,7 @@ from joeseln_backend.services.note.note_service import get_note_relations, \
 from joeseln_backend.services.file.file_service import get_file_relations, \
     get_file_related_comments_count
 
+from threading import Thread
 from joeseln_backend.services.picture.picture_service import \
     get_picture_relations, \
     get_picture_related_comments_count
@@ -358,22 +359,19 @@ def update_all_lb_childelements(db: Session,
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return
 
-    for lb_childelem in labbook_childelems:
-        elem = db.query(models.Labbookchildelement).get(lb_childelem.id)
-        elem.position_x = lb_childelem.position_x
-        elem.position_y = lb_childelem.position_y
-        elem.width = lb_childelem.width
-        elem.height = lb_childelem.height
-        elem.last_modified_at = datetime.datetime.now()
-        elem.last_modified_by_id = user.id
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
-            db.close()
-            return
-    # event listener not working with bulk
-    # db.bulk_update_mappings(models.Labbookchildelement(), labbook_childelems)
+    now = datetime.datetime.now()
+    update_data = [{
+        'id': lb_childelem.id,
+        'position_x': lb_childelem.position_x,
+        'position_y': lb_childelem.position_y,
+        'width': lb_childelem.width,
+        'height': lb_childelem.height,
+        'last_modified_at': now,
+        'last_modified_by_id': user.id
+    } for lb_childelem in labbook_childelems]
+
+    db.bulk_update_mappings(models.Labbookchildelement, update_data)
+
     try:
         db.commit()
     except SQLAlchemyError as e:
@@ -381,10 +379,7 @@ def update_all_lb_childelements(db: Session,
         db.close()
         return
 
-    try:
-        transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
-    except RuntimeError as e:
-        logger.error(e)
+    Thread(target=transmit, args=({'model_name': 'labbook', 'model_pk': str(labbook_pk)},)).start()
 
     return True
 
