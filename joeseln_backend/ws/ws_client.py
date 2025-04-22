@@ -6,18 +6,40 @@ from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.conf.base_conf import WS_URL, STATIC_WS_TOKEN
 
 
-def transmit(db_data):
-    async def test(data):
-        async with websockets.connect(
-                f'{WS_URL}{STATIC_WS_TOKEN}') as websocket:
+class WebSocketClient:
+    def __init__(self, url, token):
+        self.url = url
+        self.token = token
+        self.websocket = None
+
+    async def connect(self):
+        try:
+            self.websocket = await websockets.connect(f'{self.url}{self.token}')
+        except Exception as e:
+            logger.error(f"Failed to connect: {e}")
+
+    async def transmit(self, db_data):
+        if self.websocket is None or self.websocket.closed:
+            await self.connect()
+
+        if self.websocket is not None:
             try:
-                await websocket.send(json.dumps(data))
-                response = await websocket.recv()
+                merged_data = {**{'action': 'transmit', 'auth': self.token}, **db_data}
+                await self.websocket.send(json.dumps(merged_data))
+                response = await self.websocket.recv()
                 # print('transmitted to eln ', response)
             except websockets.exceptions.ConnectionClosedError as e:
                 logger.error(e)
+                await self.connect()
+            except Exception as e:
+                logger.error(e)
 
-    merged_data = {**{'action': 'transmit', 'auth': STATIC_WS_TOKEN},
-                   **db_data}
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(test(merged_data))
+    async def close(self):
+        if self.websocket is not None:
+            await self.websocket.close()
+
+
+ws_client = WebSocketClient(WS_URL, STATIC_WS_TOKEN)
+
+def transmit(db_data):
+    asyncio.run(ws_client.transmit(db_data))

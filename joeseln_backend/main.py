@@ -5,7 +5,6 @@ sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
 from sqlalchemy.orm import Session
 from uuid import UUID
-from pydantic import BaseModel
 from typing import Annotated
 from datetime import timedelta
 
@@ -51,7 +50,7 @@ from joeseln_backend.services.user.user_password import gui_password_change, \
 from joeseln_backend.services.admin_stat.admin_stat_service import get_stat
 from joeseln_backend.services.admin_stat.admin_stat_schemas import StatResponse
 
-from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.database.database import get_db
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
     export_file
 from joeseln_backend.full_text_search import text_search
@@ -74,8 +73,6 @@ from joeseln_backend.mylogging.root_logger import logger
 # from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
 from joeseln_backend.full_text_search.typesense_service import create_typesense_client, create_typesense_collection
-typesense_client = create_typesense_client()
-create_typesense_collection(typesense_client)
 
 # trace.set_tracer_provider(
 #     TracerProvider(
@@ -92,47 +89,50 @@ create_typesense_collection(typesense_client)
 # will create all tables if not exist
 from joeseln_backend.models.table_creator import table_creator
 
-table_creator()
-create_basic_roles()
-create_inital_admin()
+from joeseln_backend.ws.ws_client import ws_client
 
-# check the existence of picture/file folder and r/w pemission
-if not os.path.isdir(PICTURES_BASE_PATH):
-    raise RuntimeError("Application cannot start: picture directory does not exist")
-elif not os.access(PICTURES_BASE_PATH, os.R_OK | os.W_OK):
-    raise RuntimeError("Application cannot start: picture directory is not readable/writable")
-if not os.path.isdir(FILES_BASE_PATH):
-    raise RuntimeError("Application cannot start: file directory does not exist")
-elif not os.access(FILES_BASE_PATH, os.R_OK | os.W_OK):
-    raise RuntimeError("Application cannot start: file directory is not readable/writable")
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+from contextlib import asynccontextmanager
 
 
-app = FastAPI()
-# FastAPIInstrumentor.instrument_app(app)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # check the existence of picture/file folder and r/w pemission
+    if not os.path.isdir(PICTURES_BASE_PATH):
+        raise RuntimeError("Application cannot start: picture directory does not exist")
+    elif not os.access(PICTURES_BASE_PATH, os.R_OK | os.W_OK):
+        raise RuntimeError("Application cannot start: picture directory is not readable/writable")
+    if not os.path.isdir(FILES_BASE_PATH):
+        raise RuntimeError("Application cannot start: file directory does not exist")
+    elif not os.access(FILES_BASE_PATH, os.R_OK | os.W_OK):
+        raise RuntimeError("Application cannot start: file directory is not readable/writable")
 
-origins = ORIGINS
+    # init database
+    table_creator()
+    create_basic_roles()
+    create_inital_admin()
+
+    # connect typesense
+    global typesense_client
+    typesense_client = create_typesense_client()
+    create_typesense_collection(typesense_client)
+
+    # connect websocket
+    await ws_client.connect()
+
+    yield
+
+    # close websocket
+    await ws_client.close()
+
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-class Test(BaseModel):
-    test: str
-
-
-oauth2_scheme_alter = OAuth2PasswordBearer(tokenUrl="token")
-
 
 @app.get("/api/health/")
 def get_health():

@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session, aliased
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select, func, and_, or_
 
+import datetime
+
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
 from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
@@ -23,7 +25,6 @@ from joeseln_backend.services.note.note_service import get_note_relations, \
 from joeseln_backend.services.file.file_service import get_file_relations, \
     get_file_related_comments_count
 
-from threading import Thread
 from joeseln_backend.services.picture.picture_service import \
     get_picture_relations, \
     get_picture_related_comments_count
@@ -379,7 +380,7 @@ def update_all_lb_childelements(db: Session,
         db.close()
         return
 
-    Thread(target=transmit, args=({'model_name': 'labbook', 'model_pk': str(labbook_pk)},)).start()
+    transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
 
     return True
 
