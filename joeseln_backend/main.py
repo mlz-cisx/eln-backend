@@ -72,7 +72,8 @@ from joeseln_backend.mylogging.root_logger import logger
 # from opentelemetry.sdk.trace.export import BatchSpanProcessor
 # from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
-from joeseln_backend.full_text_search.typesense_service import create_typesense_client, create_typesense_collection
+from joeseln_backend.full_text_search.typesense_service import typesense_client, \
+                                                               get_typesense_client
 
 # trace.set_tracer_provider(
 #     TracerProvider(
@@ -112,9 +113,8 @@ async def lifespan(app: FastAPI):
     create_inital_admin()
 
     # connect typesense
-    global typesense_client
-    typesense_client = create_typesense_client()
-    create_typesense_collection(typesense_client)
+    typesense_client.connect_typesense_client()
+    typesense_client.create_collection()
 
     # connect websocket
     await ws_client.connect()
@@ -274,6 +274,7 @@ async def create_labbook_elem(
         labbook_pk: UUID,
         elem: labbookchildelement_schemas.Labbookchildelement_Create,
         db: Session = Depends(get_db),
+        typesense_client = Depends(get_typesense_client),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # all groupmembers
@@ -441,6 +442,7 @@ def patch_note(
         note_pk: UUID,
         elem: note_schemas.NoteCreate,
         db: Session = Depends(get_db),
+        typesense_client = Depends(get_typesense_client),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # admin notes can only be patched by admins
@@ -458,6 +460,7 @@ def soft_delete_note(
         note_pk: UUID,
         labbook_data: labbookchildelement_schemas.Labbookchildelement_Delete,
         db: Session = Depends(get_db),
+        typesense_client = Depends(get_typesense_client),
         user: User = Depends(get_current_user)):
     # admin notes can only be deleted  by admins or groupadmins
     db_note = note_service.soft_delete_note(db=db, note_pk=note_pk,
@@ -473,6 +476,7 @@ def soft_delete_note(
 def restore_note(
         note_pk: UUID,
         db: Session = Depends(get_db),
+        typesense_client = Depends(get_typesense_client),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # admin notes can only be restored  by admins or groupadmins
@@ -1268,6 +1272,7 @@ async def login_for_access_token(
 @app.get("/api/search/")
 def eln_search(request: Request,
                db: Session = Depends(get_db),
+               typesense_client = Depends(get_typesense_client),
                user: User = Depends(get_current_user)):
     # logger.info(user)
     result = text_search.search_with_model(db=db,
