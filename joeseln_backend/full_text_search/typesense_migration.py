@@ -6,12 +6,14 @@ sys.path.append(os.path.abspath(Path(__file__).parent.parent.parent))
 
 from joeseln_backend.models import models
 from joeseln_backend.database.database import SessionLocal
-from joeseln_backend.full_text_search.typesense_service import \
-    get_typesense_client
+from joeseln_backend.full_text_search.typesense_service import TypesenseService
 from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
 from joeseln_backend.services.note.note_service import get_note
 
-typesense = get_typesense_client()
+typesense_client = TypesenseService()
+typesense_client.connect_typesense_client()
+typesense = typesense_client.get_client()
+
 db = SessionLocal()
 
 try:
