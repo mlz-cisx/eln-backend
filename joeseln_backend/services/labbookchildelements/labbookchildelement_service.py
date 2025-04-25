@@ -208,7 +208,9 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
         for item in results
     ]
 
-    return notes + pictures + files
+    elems= notes + pictures + files
+    elems = sorted(elems, key=lambda elem: elem['position_y'])
+    return elems
 
 
 def check_for_version_edit_access_on_lb_elem(db: Session, lb_elem, user):
