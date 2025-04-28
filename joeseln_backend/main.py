@@ -210,6 +210,18 @@ def export_link_labbook(labbook_pk: UUID,
     return export_link
 
 
+@app.get("/api/labbooks/{labbook_pk}/export_as_zip/", )
+def export_labbook_content(labbook_pk: UUID,
+                           db: Session = Depends(get_db),
+                           user: User = Depends(get_current_user)):
+    zipped_labbook = export_labbook.create_export_zip_file(db=db,
+                                                           labbook_pk=labbook_pk,
+                                                           user=user)
+    if zipped_labbook is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return zipped_labbook
+
+
 @app.post("/api/labbooks/", response_model=labbook_schemas.Labbook)
 def create_labbook(labbook: labbook_schemas.LabbookCreate,
                    db: Session = Depends(get_db),

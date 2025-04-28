@@ -387,6 +387,20 @@ def get_picture_in_lb_init(db: Session, picture_pk, access_token, as_export):
 
     return picture
 
+def get_picture_for_zip_export(db: Session, picture_pk):
+    db_picture = db.query(models.Picture).get(picture_pk)
+
+    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+    db_picture.created_by = db_user_created
+    db_picture.last_modified_by = db_user_modified
+
+    db_picture.rendered_image = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
+    db_picture.background_image = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
+    db_picture.shapes_image = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
+
+    return db_picture
+
 
 def get_lb_pk_from_picture(db: Session, picture_pk):
     pic = db.query(models.Picture).get(picture_pk)

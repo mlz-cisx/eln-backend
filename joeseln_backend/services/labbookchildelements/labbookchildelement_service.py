@@ -82,6 +82,42 @@ def get_lb_childelements_for_export(db: Session, labbook_pk, access_token, user,
     return query
 
 
+def get_lb_childelements_for_zip_export(db: Session, labbook_pk, user,
+                                        as_export):
+    query = db.query(models.Labbookchildelement).filter_by(
+        labbook_id=labbook_pk, deleted=False).order_by(
+        models.Labbookchildelement.position_y).all()
+
+    for elem in query:
+        if elem.child_object_content_type == 30:
+            elem.child_object = db.query(models.Note).get(elem.child_object_id)
+            elem.relations = get_note_relations(db=db,
+                                                note_pk=elem.child_object_id,
+                                                params='',
+                                                user=user)
+
+        if elem.child_object_content_type == 40:
+            elem.child_object = picture_service.get_picture_for_zip_export(
+                db=db,
+                picture_pk=elem.child_object_id)
+
+            elem.relations = get_picture_relations(db=db,
+                                                   picture_pk=elem.child_object_id,
+                                                   params='',
+                                                   user=user)
+
+        if elem.child_object_content_type == 50:
+            elem.child_object = file_service.get_file_for_zip_export(db=db,
+                                                                     file_pk=elem.child_object_id,
+                                                                     user=user)
+
+            elem.relations = get_file_relations(db=db,
+                                                file_pk=elem.child_object_id,
+                                                params='', user=user)
+
+    return query
+
+
 def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return None

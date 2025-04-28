@@ -136,6 +136,19 @@ def get_file(db: Session, file_pk, user):
     return file_content
 
 
+def get_file_for_zip_export(db: Session, file_pk, user):
+    db_file = db.query(models.File).get(file_pk)
+    db_user_created = db.query(models.User).get(db_file.created_by_id)
+    db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
+
+    file_content = build_download_url_with_token_for_zip_export(
+        file_to_process=db_file)
+    file_content.created_by = db_user_created
+    file_content.last_modified_by = db_user_modified
+
+    return file_content
+
+
 def get_all_deleted_files(db: Session):
     files = db.query(models.File).filter_by(
         deleted=True).order_by(text('display asc')).all()
@@ -497,6 +510,11 @@ def build_download_url_with_token(file_to_process, user):
     )
 
     file_to_process.path = f'{URL_BASE_PATH}files/{file_to_process.id}/download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
+    return file_to_process
+
+
+def build_download_url_with_token_for_zip_export(file_to_process):
+    file_to_process.path = f'{FILES_BASE_PATH}{file_to_process.path}'
     return file_to_process
 
 
