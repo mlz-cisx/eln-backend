@@ -96,8 +96,6 @@ def create_export_zip_file(db: Session, labbook_pk, user):
     ) as zip_archive:
         zip_archive.writestr(zinfo_or_arcname='pictures/', data='')
         zip_archive.writestr(zinfo_or_arcname='files/', data='')
-        zip_archive.writestr(zinfo_or_arcname=f'{lb.title}.json',
-                             data=json.dumps(elems))
 
         for elem in elems:
             if elem[
@@ -107,6 +105,7 @@ def create_export_zip_file(db: Session, labbook_pk, user):
                     'application/', '.')
                 zip_archive.write(filename=elem['child_object']['path'],
                                   arcname=f'files/{name}{suffix}')
+                del elem['child_object']['path']
 
             if elem['child_object_content_type_model'] == 'pictures.picture':
                 name = elem['child_object_id']
@@ -118,6 +117,14 @@ def create_export_zip_file(db: Session, labbook_pk, user):
                     arcname=f'pictures/ri_{name}.png')
                 zip_archive.write(filename=elem['child_object']['shapes_image'],
                                   arcname=f'pictures/shapes_{name}.json')
+
+                del elem['child_object']['background_image']
+                del elem['child_object']['rendered_image']
+                del elem['child_object']['shapes_image']
+
+        zip_archive.writestr(zinfo_or_arcname=f'{lb.title}.json',
+                             data=json.dumps(elems))
+
 
     zip_buffer.seek(0)
 
