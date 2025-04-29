@@ -100,31 +100,38 @@ def create_export_zip_file(db: Session, labbook_pk, user):
         for elem in elems:
             if elem[
                 'child_object_content_type_model'] == 'shared_elements.file':
-                name = elem['child_object_id']
-                suffix = elem['child_object']['mime_type'].replace(
-                    'application/', '.')
-                zip_archive.write(filename=elem['child_object']['path'],
-                                  arcname=f'files/{name}{suffix}')
-                del elem['child_object']['path']
+                dirname = elem['child_object_id']
+                filename = elem['child_object']['original_filename']
+                try:
+                    zip_archive.write(
+                        filename=elem['child_object']['path'],
+                        arcname=f'files/{dirname}/{filename}')
+                except FileNotFoundError:
+                    del elem
+                else:
+                    del elem['child_object']['path']
 
-            if elem['child_object_content_type_model'] == 'pictures.picture':
-                name = elem['child_object_id']
-                zip_archive.write(
-                    filename=elem['child_object']['background_image'],
-                    arcname=f'pictures/bi_{name}.png')
-                zip_archive.write(
-                    filename=elem['child_object']['rendered_image'],
-                    arcname=f'pictures/ri_{name}.png')
-                zip_archive.write(filename=elem['child_object']['shapes_image'],
-                                  arcname=f'pictures/shapes_{name}.json')
-
-                del elem['child_object']['background_image']
-                del elem['child_object']['rendered_image']
-                del elem['child_object']['shapes_image']
+            elif elem['child_object_content_type_model'] == 'pictures.picture':
+                dirname = elem['child_object_id']
+                try:
+                    zip_archive.write(
+                        filename=elem['child_object']['background_image'],
+                        arcname=f'pictures/{dirname}/bi.png')
+                    zip_archive.write(
+                        filename=elem['child_object']['rendered_image'],
+                        arcname=f'pictures/{dirname}/ri.png')
+                    zip_archive.write(
+                        filename=elem['child_object']['shapes_image'],
+                        arcname=f'pictures/{dirname}/shapes.json')
+                except FileNotFoundError:
+                    del elem
+                else:
+                    del elem['child_object']['background_image']
+                    del elem['child_object']['rendered_image']
+                    del elem['child_object']['shapes_image']
 
         zip_archive.writestr(zinfo_or_arcname=f'{lb.title}.json',
                              data=json.dumps(elems))
-
 
     zip_buffer.seek(0)
 
