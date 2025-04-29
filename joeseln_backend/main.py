@@ -232,7 +232,7 @@ def create_labbook(labbook: labbook_schemas.LabbookCreate,
     if new_lb:
         return new_lb
     else:
-        raise HTTPException(status_code=404, detail="Labbook not found")
+        raise HTTPException(status_code=204)
 
 
 @app.patch("/api/labbooks/{labbook_pk}/soft_delete/",
