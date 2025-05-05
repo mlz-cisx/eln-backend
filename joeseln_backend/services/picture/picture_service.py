@@ -490,6 +490,41 @@ def create_picture(db: Session, title: str, display: str,
     return db_picture
 
 
+def clone_picture( db, bi_img_contents, ri_img_contents,
+                  shapes_contents, user):
+    db_picture = create_picture(db=db, title='cloned_title',
+                                display='cloned_filename',
+                                width=1, height=1,
+                                size=1, user=user)
+
+    if not db_picture:
+        return None
+
+    bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
+    ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
+    shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
+
+    with open(bi_img_path, 'wb') as image:
+        image.write(bi_img_contents)
+        image.close()
+
+    with open(ri_img_path, 'wb') as image:
+        image.write(ri_img_contents)
+        image.close()
+
+    with open(shapes_path, 'wb') as shapes:
+        shapes.write(shapes_contents)
+        shapes.close()
+
+    pic = build_download_url_with_token(
+        picture=deepcopy(db_picture), user=user)
+
+    pic.created_by = user
+    pic.last_modified_by = user
+
+    return pic
+
+
 def process_picture_upload_form(form, db, contents, user):
     db_picture = create_picture(db=db, title=form['title'],
                                 display=form['background_image'].filename,

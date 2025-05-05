@@ -709,6 +709,27 @@ async def UploadImage(request: Request,
         return ret_vals
 
 
+@app.post("/api/pictures/clone/", response_model=picture_schemas.Picture)
+async def CloneImage(request: Request,
+                     db: Session = Depends(get_db),
+                     user: User = Depends(get_current_user)):
+    # logger.info(user)
+    async with request.form() as form:
+        bi_img_contents = await form['background_image'].read()
+        ri_img_contents = await form['rendered_image'].read()
+        shapes_contents = await form['shapes_image'].read()
+        db_picture = picture_service.clone_picture(db=db,
+                                                   bi_img_contents=bi_img_contents,
+                                                   ri_img_contents=ri_img_contents,
+                                                   shapes_contents=shapes_contents,
+                                                   user=user)
+
+        if db_picture is None:
+            raise HTTPException(status_code=404)
+
+        return db_picture
+
+
 @app.get("/api/pictures/",
          response_model=list[picture_schemas.PictureWithLbTitle])
 def read_pictures(
