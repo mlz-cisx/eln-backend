@@ -1,3 +1,4 @@
+import json
 import pathlib
 import sys
 from copy import deepcopy
@@ -168,6 +169,10 @@ def get_file_with_privileges(db: Session, file_pk, user):
         file_content.created_by = db_user_created
         file_content.last_modified_by = db_user_modified
 
+        if user.admin:
+            return {'privileges': ADMIN,
+                    'file': file_content}
+
         lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
 
         if not lb_elem:
@@ -175,10 +180,6 @@ def get_file_with_privileges(db: Session, file_pk, user):
 
         file_content.position_y = lb_elem.position_y
         file_content.labbook_id = lb_elem.labbook_id
-
-        if user.admin:
-            return {'privileges': ADMIN,
-                    'file': file_content}
 
         if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                         user=user):
@@ -482,6 +483,34 @@ def process_file_upload_form(form, db, contents, user):
                           description=form[
                               'description'] if 'description' in form.keys() else None,
                           mime_type=form['path'].content_type,
+                          user=user)
+    if not db_file:
+        return None
+    file_path = f'{FILES_BASE_PATH}{db_file.path}'
+
+    with open(file_path, 'wb') as file:
+        file.write(contents)
+        file.close()
+
+    db.close()
+
+    ret_file = build_download_url_with_token(file_to_process=deepcopy(db_file),
+                                             user=user)
+
+    ret_file.created_by = user
+    ret_file.last_modified_by = user
+
+    return ret_file
+
+
+def clone_file(db, contents, info, user):
+    info = json.loads(info)
+    db_file = create_file(db=db,
+                          title=info['title'],
+                          name=info['name'],
+                          file_size=info['file_size'],
+                          description=info['description'],
+                          mime_type=info['mime_type'],
                           user=user)
     if not db_file:
         return None

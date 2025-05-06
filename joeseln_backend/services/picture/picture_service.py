@@ -1,3 +1,4 @@
+import json
 import pathlib
 from copy import deepcopy
 import shutil
@@ -490,12 +491,16 @@ def create_picture(db: Session, title: str, display: str,
     return db_picture
 
 
-def clone_picture( db, bi_img_contents, ri_img_contents,
-                  shapes_contents, user):
-    db_picture = create_picture(db=db, title='cloned_title',
-                                display='cloned_filename',
-                                width=1, height=1,
-                                size=1, user=user)
+def clone_picture(db, bi_img_contents, ri_img_contents,
+                  shapes_contents, info, user):
+    info = json.loads(info)
+    db_picture = create_picture(db=db,
+                                title=info['title'],
+                                display=info['display'],
+                                width=info['width'],
+                                height=info['height'],
+                                size=info['size'],
+                                user=user)
 
     if not db_picture:
         return None

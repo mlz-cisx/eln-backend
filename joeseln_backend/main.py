@@ -722,6 +722,7 @@ async def CloneImage(request: Request,
                                                    bi_img_contents=bi_img_contents,
                                                    ri_img_contents=ri_img_contents,
                                                    shapes_contents=shapes_contents,
+                                                   info = form['info'],
                                                    user=user)
 
         if db_picture is None:
@@ -1032,6 +1033,24 @@ async def UploadFile(request: Request,
         ret_vals = file_service.process_file_upload_form(form=form, db=db,
                                                          contents=contents,
                                                          user=user)
+
+        if ret_vals is None:
+            raise HTTPException(status_code=204)
+
+        return ret_vals
+
+
+@app.post("/api/files/clone/", response_model=file_schemas.File)
+async def CloneFile(request: Request,
+                    db: Session = Depends(get_db),
+                    user: User = Depends(get_current_user)):
+    # logger.info(user)
+    async with request.form() as form:
+        contents = await form['path'].read()
+        ret_vals = file_service.clone_file(db=db,
+                                           contents=contents,
+                                           info=form['info'],
+                                           user=user)
 
         if ret_vals is None:
             raise HTTPException(status_code=204)

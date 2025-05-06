@@ -110,6 +110,19 @@ def create_export_zip_file(db: Session, labbook_pk, user):
                     del elem
                 else:
                     del elem['child_object']['path']
+                    info = {'title': elem['child_object']['title'],
+                            'name': elem['child_object']['name'],
+                            'file_size': elem['child_object']['file_size'],
+                            'description': elem['child_object']['description'],
+                            'mime_type': elem['child_object']['mime_type']}
+
+                    zip_archive.writestr(
+                        zinfo_or_arcname=f'files/{dirname}/info.json',
+                        data=json.dumps(info))
+
+
+
+
 
             elif elem['child_object_content_type_model'] == 'pictures.picture':
                 dirname = elem['child_object_id']
@@ -129,6 +142,17 @@ def create_export_zip_file(db: Session, labbook_pk, user):
                     del elem['child_object']['background_image']
                     del elem['child_object']['rendered_image']
                     del elem['child_object']['shapes_image']
+
+                    info = {'title': elem['child_object']['title'],
+                            'display': elem['child_object']['display'],
+                            'width': elem['child_object']['width'],
+                            'height': elem['child_object']['height'],
+                            'size': elem['child_object'][
+                                'background_image_size']}
+
+                    zip_archive.writestr(
+                        zinfo_or_arcname=f'pictures/{dirname}/info.json',
+                        data=json.dumps(info))
 
         zip_archive.writestr(zinfo_or_arcname=f'{lb.title}.json',
                              data=json.dumps(elems))
