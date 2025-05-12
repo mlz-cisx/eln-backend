@@ -493,6 +493,8 @@ def create_picture(db: Session, title: str, display: str,
 
 def clone_picture(db, bi_img_contents, ri_img_contents,
                   shapes_contents, info, user):
+    if not user.admin:
+        return
     info = json.loads(info)
     db_picture = create_picture(db=db,
                                 title=info['title'],

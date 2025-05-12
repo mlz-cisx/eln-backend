@@ -504,6 +504,8 @@ def process_file_upload_form(form, db, contents, user):
 
 
 def clone_file(db, contents, info, user):
+    if not user.admin:
+        return
     info = json.loads(info)
     db_file = create_file(db=db,
                           title=info['title'],

@@ -715,7 +715,7 @@ async def CloneImage(request: Request,
                                                    user=user)
 
         if db_picture is None:
-            raise HTTPException(status_code=404)
+            raise HTTPException(status_code=204)
 
         return db_picture
 
