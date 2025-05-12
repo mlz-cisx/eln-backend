@@ -134,7 +134,8 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
         .where(
             and_(
                 models.Relation.right_object_id == models.Labbookchildelement.child_object_id,
-                models.Relation.left_content_type == 70
+                models.Relation.left_content_type == 70,
+                models.Relation.deleted == False,
             )
         )
     ).correlate(models.Labbookchildelement).scalar_subquery()
