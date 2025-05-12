@@ -289,7 +289,7 @@ def get_note_related_comments_count(db: Session, note_pk, user):
     return relations_count
 
 
-def create_note(db: Session, note: NoteCreate, user):
+def create_note(db: Session, note: NoteCreate, user, typesense: Client):
     if sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10:
         return
 
@@ -327,6 +327,8 @@ def create_note(db: Session, note: NoteCreate, user):
 
     db_note.last_modified_by = user
     db_note.created_by = user
+
+    update_note_typesense(db_note, typesense)
 
     return db_note
 

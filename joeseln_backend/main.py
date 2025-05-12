@@ -425,10 +425,12 @@ def preview_labbook_version(
 def create_note(
         elem: note_schemas.NoteCreate,
         db: Session = Depends(get_db),
+        typesense_client=Depends(get_typesense_client),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # for all users
-    db_note = note_service.create_note(db=db, note=elem, user=user)
+    db_note = note_service.create_note(db=db, note=elem, user=user,
+                                       typesense=typesense_client)
     if db_note is None:
         raise HTTPException(status_code=204)
     return db_note
