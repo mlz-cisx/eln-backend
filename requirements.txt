@@ -7,7 +7,7 @@ attrs==23.2.0
 bcrypt==4.0.1
 black==24.3.0
 bleach==6.2.0
-bleach-allowlist=1.0.3
+bleach-allowlist==1.0.3
 Brotli==1.1.0
 bs4==0.0.2
 cachetools==5.5.2
