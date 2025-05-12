@@ -9,6 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
+from joeseln_backend.full_text_search import html_stripper
+from joeseln_backend.full_text_search.html_stripper import sanitize_html
 from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.services.entry_path.entry_path_service import create_path, \
     create_entry
@@ -309,6 +311,8 @@ def create_file(db: Session, title: str,
             description) > ELEM_MAXIMUM_SIZE << 10:
         return
 
+    description = sanitize_html(description)
+
     file_path = f'{create_path(db=db)}'
 
     upload_entry_id = create_entry(db=db)
@@ -361,6 +365,8 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
     if (sys.getsizeof(elem.description) + sys.getsizeof(
             elem.title)) > ELEM_MAXIMUM_SIZE << 10:
         return None
+
+    elem.description = sanitize_html(elem.description)
 
     db_file = db.query(models.File).get(file_pk)
     old_title = db_file.title
@@ -480,8 +486,8 @@ def process_file_upload_form(form, db, contents, user):
     db_file = create_file(db=db, title=form['title'],
                           name=form['name'],
                           file_size=form['path'].size,
-                          description=form[
-                              'description'] if 'description' in form.keys() else None,
+                          description=sanitize_html(form[
+                              'description']) if 'description' in form.keys() else None,
                           mime_type=form['path'].content_type,
                           user=user)
     if not db_file:
@@ -511,7 +517,7 @@ def clone_file(db, contents, info, user):
                           title=info['title'],
                           name=info['name'],
                           file_size=info['file_size'],
-                          description=info['description'],
+                          description=sanitize_html(info['description']),
                           mime_type=info['mime_type'],
                           user=user)
     if not db_file:

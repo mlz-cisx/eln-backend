@@ -9,7 +9,8 @@ from sqlalchemy.sql import text
 
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
-from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
+from joeseln_backend.full_text_search.html_stripper import \
+    strip_html_and_binary, sanitize_html
 
 from joeseln_backend.auth import security
 from joeseln_backend.services.privileges.privileges_service import \
@@ -292,6 +293,7 @@ def create_note(db: Session, note: NoteCreate, user):
     if sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10:
         return
 
+    note.content = sanitize_html(note.content)
     db_note = models.Note(version_number=0,
                           subject=note.subject,
                           content=note.content,
@@ -342,6 +344,8 @@ def update_note_typesense(note: Note, typesense: Client):
 def update_note(db: Session, note_pk, note: NoteCreate, user, typesense: Client):
     if sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10:
         return
+
+    note.content = sanitize_html(note.content)
 
     note_to_update = db.query(models.Note).get(note_pk)
     old_subject = note_to_update.subject

@@ -3,6 +3,7 @@ import sys
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
+from joeseln_backend.full_text_search.html_stripper import sanitize_html
 from joeseln_backend.conf.base_conf import ELEM_MAXIMUM_SIZE
 from joeseln_backend.models import models
 from joeseln_backend.services.comment.comment_schemas import *
@@ -36,7 +37,7 @@ def create_comment(db: Session, comment: CreateComment, user):
                                 user=user):
 
         db_comment = models.Comment(
-            content=comment.content,
+            content=sanitize_html(comment.content),
             version_number=0,
             created_at=datetime.datetime.now(),
             created_by_id=user.id,
