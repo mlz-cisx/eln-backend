@@ -21,17 +21,19 @@ def search_with_model(db, model, search_text, user, typesense: Client):
     labbook_ids = [str(lb.id) for lb in lbs]
 
     if 'note' in model:
-        search_parameters = {
+        search_queries = []
+        search_queries.append({
+            'collection': 'notes',
             'q': search_text,
             'filter_by': f"labbook_id:[{','.join(labbook_ids)}] && soft_delete:=false",
-            # filter for notebook that user can access
             'query_by': 'subject,content',
             'fuzzy': True
-        }
+        })
+        search_res = typesense.multi_search.perform(
+            {'searches': search_queries},
+            {}
+        )['results'][0]['hits']
 
-        search_res = \
-        typesense.collections['notes'].documents.search(search_parameters)[
-            'hits']
         for result in search_res:
             result = result["document"]
             lb_elem = db.query(models.Labbookchildelement).get(
