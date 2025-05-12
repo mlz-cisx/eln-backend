@@ -297,17 +297,6 @@ async def create_labbook_elem(
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_element
 
-@app.post("/api/labbooks/{labbook_pk}/elements-batch/")
-async def create_labbook_elem_batch(
-        labbook_pk: UUID,
-        elems: list[labbookchildelement_schemas.Labbookchildelement_Create],
-        db: Session = Depends(get_db),
-        typesense_client = Depends(get_typesense_client),
-        user: User = Depends(get_current_user)):
-    labbookchildelement_service. \
-        create_lb_childelement_batch(db=db, labbook_pk=labbook_pk,
-                               labbook_childelems=elems, user=user, typesense=typesense_client)
-    return ["ok"]
 
 @app.patch("/api/labbooks/{labbook_pk}/elements/{element_pk}/",
            response_model=labbookchildelement_schemas.Labbookchildelement)

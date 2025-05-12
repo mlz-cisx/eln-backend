@@ -3,7 +3,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select, func, and_, or_
 
 import datetime
-from fastapi import HTTPException
 
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
@@ -423,60 +422,6 @@ def update_all_lb_childelements(db: Session,
 
     return True
 
-
-def create_lb_childelement_batch(db: Session, labbook_pk,
-                           labbook_childelems: list[Labbookchildelement_Create], user, typesense: Client):
-    if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
-        return None
-
-    for labbook_childelem in labbook_childelems:
-        
-        db_labbook_elem = models.Labbookchildelement(
-            labbook_id=labbook_pk,
-            position_x=labbook_childelem.position_x,
-            position_y=labbook_childelem.position_y,
-            width=labbook_childelem.width,
-            height=labbook_childelem.height,
-            child_object_id=labbook_childelem.child_object_id,
-            child_object_content_type=labbook_childelem.child_object_content_type,
-            child_object_content_type_model=map_to_child_object_model(
-            child_object_content_type=labbook_childelem.child_object_content_type),
-            version_number=0,
-            created_at=datetime.datetime.now(),
-            created_by_id=user.id,
-            last_modified_at=datetime.datetime.now(),
-            last_modified_by_id=user.id
-        )
-        db.add(db_labbook_elem)
-
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
-            db.close()
-            raise HTTPException(status_code=502)
-
-        update_child_element(db_labbook_elem=db_labbook_elem,
-                         child_object_content_type=db_labbook_elem.child_object_content_type,
-                         child_object_id=db_labbook_elem.child_object_id,
-                         db=db)
-
-        db.refresh(db_labbook_elem)
-
-        if db_labbook_elem.child_object_content_type == 30:
-            note = get_note(db=db, note_pk=db_labbook_elem.child_object_id)
-            try:
-                # insert note to typesense for searching purpose
-                stripped_content = strip_html_and_binary(note.content)
-                typesense.collections['notes'].documents.upsert({'id': str(note.id),
-                                                            'elem_id': str(db_labbook_elem.id),
-                                                            'subject': note.subject, 
-                                                            'content': stripped_content, 
-                                                            'last_modified_at': int(note.last_modified_at.timestamp()),
-                                                            'labbook_id': str(labbook_pk),
-                                                            'soft_delete': False})
-            except TypesenseClientError as e:
-                logger.error(e)
 
 def update_child_element(db_labbook_elem, child_object_content_type,
                          child_object_id, db):
