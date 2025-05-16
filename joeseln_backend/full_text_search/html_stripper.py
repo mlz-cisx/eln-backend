@@ -1,7 +1,8 @@
 from bs4 import BeautifulSoup
 import re
 import bleach
-from bleach_allowlist import generally_xss_safe, print_attrs
+from bleach_allowlist import generally_xss_safe, markdown_attrs, standard_styles
+from bleach.css_sanitizer import CSSSanitizer
 
 
 def strip_html_and_binary(content):
@@ -17,9 +18,13 @@ def strip_binary(content):
     stripped_content = re.sub(binary_pattern, "", content)
     return stripped_content.strip()
 
+custom_attrs = markdown_attrs
+custom_attrs.update({'table': ['border']})
+css_sanitizer = CSSSanitizer(allowed_css_properties=standard_styles)
 
 def sanitize_html(content: str) -> str:
     return bleach.clean(content,
                         tags=generally_xss_safe,
-                        attributes=print_attrs,
-                        protocols=['data'])
+                        attributes=custom_attrs,
+                        protocols=['data', 'https'],
+                        css_sanitizer=css_sanitizer)
