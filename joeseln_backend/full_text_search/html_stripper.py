@@ -22,9 +22,9 @@ custom_attrs = print_attrs
 custom_attrs.update({"table": ["border"], "a": ["href"]})
 css_sanitizer = CSSSanitizer(allowed_css_properties=standard_styles)
 
-def sanitize_html(content: str) -> str:
+def sanitize_html(content: str | None) -> str:
     return bleach.clean(
-        content,
+        content if content else '',
         tags=generally_xss_safe,
         attributes=custom_attrs,
         protocols=["data", "https"],
