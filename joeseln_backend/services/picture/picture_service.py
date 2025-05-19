@@ -340,6 +340,13 @@ def delete_picture_relation(db: Session, picture_pk, relation_pk, user):
             return
         db.refresh(db_relation)
 
+        comments_count = db.query(models.Relation).filter(
+            models.Relation.right_object_id == picture_pk,
+            models.Relation.deleted == False).count()
+
+        transmit({'model_name': 'comments', 'model_pk': str(picture_pk),
+                  'comments_count': comments_count})
+
         return get_picture_relations(db=db, picture_pk=picture_pk, params='',
                                      user=user)
 

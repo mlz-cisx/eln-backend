@@ -1,5 +1,7 @@
 import sys
 
+from sqlalchemy import select, func, and_, or_
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -72,5 +74,13 @@ def create_comment(db: Session, comment: CreateComment, user):
         except SQLAlchemyError as e:
             logger.error(e)
         db.refresh(db_relation)
+
+        comments_count = db.query(models.Relation).filter(
+            models.Relation.right_object_id == comment.relates_to_pk,
+            models.Relation.deleted == False).count()
+
+        transmit(
+            {'model_name': 'comments', 'model_pk': str(comment.relates_to_pk),
+             'comments_count': comments_count})
 
         return db_comment

@@ -286,6 +286,13 @@ def delete_file_relation(db: Session, file_pk, relation_pk, user):
             return
         db.refresh(db_relation)
 
+        comments_count = db.query(models.Relation).filter(
+            models.Relation.right_object_id == file_pk,
+            models.Relation.deleted == False).count()
+
+        transmit({'model_name': 'comments', 'model_pk': str(file_pk),
+                  'comments_count': comments_count})
+
         return get_file_relations(db=db, file_pk=file_pk, params='', user=user)
     return None
 

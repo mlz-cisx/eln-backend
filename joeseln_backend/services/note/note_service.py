@@ -268,6 +268,13 @@ def delete_note_relation(db: Session, note_pk, relation_pk, user):
             return
         db.refresh(db_relation)
 
+        comments_count = db.query(models.Relation).filter(
+            models.Relation.right_object_id == note_pk,
+            models.Relation.deleted == False).count()
+
+        transmit({'model_name': 'comments', 'model_pk': str(note_pk),
+                  'comments_count': comments_count})
+
         return get_note_relations(db=db, note_pk=note_pk, params='', user=user)
     return None
 
