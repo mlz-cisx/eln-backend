@@ -47,6 +47,46 @@ def check_for_labbook_access(db: Session, labbook_pk, user):
     return True
 
 
+def check_for_note_aside(db, element_pk, user):
+    db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
+    if not check_for_labbook_access(db=db,
+                                    labbook_pk=db_labbook_elem.labbook_id,
+                                    user=user):
+        return False
+
+    query = db.query(models.Labbookchildelement).filter_by(
+        labbook_id=db_labbook_elem.labbook_id, deleted=False).order_by(
+        models.Labbookchildelement.position_y).all()
+
+    elem_ne_x = db_labbook_elem.position_x + db_labbook_elem.width
+    elem_ne_y = db_labbook_elem.position_y
+    elem_se_y = db_labbook_elem.position_y + db_labbook_elem.height
+
+    # minItemCols : 5
+    if elem_ne_x > 15:
+        return False
+
+    insertion_possible = True
+    for elem in query:
+        # elem overlaps from top
+        if elem.position_x >= elem_ne_x and elem_se_y >= (
+                elem.position_y + elem.height) > elem_ne_y:
+            insertion_possible = False
+            break
+        # elem overlaps from bottom
+        if elem.position_x >= elem_ne_x and elem_se_y >= (
+                elem.position_y + 1) > elem_ne_y:
+            insertion_possible = False
+            break
+        # db_labbook_elem overlaps elem
+        if elem.position_x >= elem_ne_x and elem_se_y < (
+                elem.position_y + elem.height) and elem.position_y + 1 <= elem_ne_y:
+            insertion_possible = False
+            break
+
+    return insertion_possible
+
+
 def check_for_labbook_admin_access(db: Session, labbook_pk, user):
     if not user.admin:
         user_groups = get_user_groups_role_groupadmin(db=db,

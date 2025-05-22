@@ -420,6 +420,16 @@ def preview_labbook_version(
     return lb_metadata
 
 
+@app.get("/api/labbooks/note_aside/{elem_pk}/")
+def check_for_note_aside(
+        elem_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    # logger.info(user)
+    return labbook_service.check_for_note_aside(db=db, element_pk=elem_pk,
+                                                user=user)
+
+
 @app.post("/api/notes/",
           response_model=note_schemas.Note)
 def create_note(
