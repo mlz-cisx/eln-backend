@@ -102,9 +102,7 @@ def create_note_below(db: Session, element_pk, user,
 
     if has_to_be_shifted:
         shift = elem_y + rows - conflict_elem_position_y
-        print(shift)
         for elem in query:
-            print(elem.position_y, conflict_elem_position_y)
             if elem.position_y >= conflict_elem_position_y:
                 elem.position_y = elem.position_y + shift
 
