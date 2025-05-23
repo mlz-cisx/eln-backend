@@ -28,6 +28,7 @@ from joeseln_backend.conf.base_conf import URL_BASE_PATH, PICTURES_BASE_PATH, \
 
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
+from joeseln_backend.ws.ws_client import transmit
 
 
 def check_for_labbook_access(db: Session, labbook_pk, user):
@@ -48,6 +49,175 @@ def check_for_labbook_access(db: Session, labbook_pk, user):
 
         if not db_lb:
             return False
+    return True
+
+
+def create_note_below(db: Session, element_pk, user,
+                      typesense_client: Client):
+    db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
+    if not db_labbook_elem or \
+            not check_for_labbook_access(db=db,
+                                         labbook_pk=db_labbook_elem.labbook_id,
+                                         user=user):
+        return False
+
+    labbook_id = db_labbook_elem.labbook_id
+    query = db.query(models.Labbookchildelement).filter_by(
+        labbook_id=labbook_id, deleted=False).order_by(
+        models.Labbookchildelement.position_y).all()
+
+    elem_nw_x = db_labbook_elem.position_x
+    elem_ne_x = db_labbook_elem.position_x + db_labbook_elem.width
+    elem_y = db_labbook_elem.position_y + db_labbook_elem.height
+    elem_top_y = db_labbook_elem.position_y
+
+    new_x = db_labbook_elem.position_x
+    new_y = elem_y
+    new_width = db_labbook_elem.width
+    new_height = 5
+
+    has_to_be_shifted = False
+    rows = 5
+    conflict_elem_position_y = 0
+
+    for elem in query:
+        if elem.id != db_labbook_elem.id and elem.position_y >= elem_top_y and elem_ne_x > elem.position_x >= elem_nw_x \
+                and elem.position_y < elem_y + rows:
+            has_to_be_shifted = True
+            conflict_elem_position_y = elem.position_y
+            break
+        if elem.id != db_labbook_elem.id and elem.position_y >= elem_top_y \
+                and elem_ne_x >= elem.position_x + elem.width > elem_nw_x \
+                and elem.position_y < elem_y + rows:
+            has_to_be_shifted = True
+            conflict_elem_position_y = elem.position_y
+            break
+
+        if elem.id != db_labbook_elem.id and elem.position_y >= elem_top_y \
+                and elem_ne_x < elem.position_x + elem.width and elem.position_x < elem_nw_x \
+                and elem.position_y < elem_y + rows:
+            has_to_be_shifted = True
+            conflict_elem_position_y = elem.position_y
+            break
+
+    if has_to_be_shifted:
+        shift = elem_y + rows - conflict_elem_position_y
+        print(shift)
+        for elem in query:
+            print(elem.position_y, conflict_elem_position_y)
+            if elem.position_y >= conflict_elem_position_y:
+                elem.position_y = elem.position_y + shift
+
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+
+            return False
+
+    db_note = models.Note(version_number=0,
+                          subject='Text',
+                          content='',
+                          created_at=datetime.datetime.now(),
+                          created_by_id=user.id,
+                          last_modified_at=datetime.datetime.now(),
+                          last_modified_by_id=user.id)
+
+    db.add(db_note)
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return False
+
+    db.refresh(db_note)
+    # changerecord = [field_name,old_value,new_value]
+    # changerecords = [changerecord, changerecord, .....]
+    changerecords = [['subject', None, 'Text'],
+                     ['content', None, '']]
+    # changeset_types:
+    # U : edited/updated, R : restored, S: trashed , I initialized/created
+
+    create_history_entry(db=db,
+                         elem_id=db_note.id,
+                         user=user,
+                         object_type_id=30,
+                         changeset_type='I',
+                         changerecords=changerecords)
+
+    try:
+        document = {
+            'subject': 'Text',
+            'content': '',
+            'last_modified_at': int(datetime.datetime.now().timestamp())}
+        typesense_client.collections['notes'].documents[str(db_note.id)].update(
+            document)
+    except TypesenseClientError as e:
+        logger.error(e)
+
+    db_labbook_elem = models.Labbookchildelement(
+        labbook_id=labbook_id,
+        position_x=new_x,
+        position_y=new_y,
+        width=new_width,
+        height=new_height,
+        child_object_id=db_note.id,
+        child_object_content_type=30,
+        child_object_content_type_model='shared_elements.note',
+        version_number=0,
+        created_at=datetime.datetime.now(),
+        created_by_id=user.id,
+        last_modified_at=datetime.datetime.now(),
+        last_modified_by_id=user.id
+    )
+
+    db.add(db_labbook_elem)
+    lb_to_update = db.query(models.Labbook).get(labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = user.id
+
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return False
+
+    db.refresh(db_labbook_elem)
+
+    note = db.query(models.Note).get(db_note.id)
+    note.elem_id = db_labbook_elem.id
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return False
+
+    try:
+        # insert note to typesense for searching purpose
+        stripped_content = strip_html_and_binary(note.content)
+        typesense_client.collections['notes'].documents.upsert(
+            {'id': str(note.id),
+             'elem_id': str(
+                 db_labbook_elem.id),
+             'subject': note.subject,
+             'content': stripped_content,
+             'last_modified_at': int(
+                 note.last_modified_at.timestamp()),
+             'labbook_id': str(
+                 labbook_id),
+             'soft_delete': False})
+    except TypesenseClientError as e:
+        logger.error(e)
+
+    try:
+        transmit({'model_name': 'labbook', 'model_pk': str(labbook_id)})
+    except RuntimeError as e:
+        logger.error(e)
+
     return True
 
 
@@ -76,7 +246,7 @@ def create_note_aside(db: Session, element_pk, user,
     new_x = elem_ne_x
     new_y = elem_ne_y
     new_width = 20 - new_x
-    new_hight = db_labbook_elem.height
+    new_height = db_labbook_elem.height
 
     insertion_possible = True
     for elem in query:
@@ -145,7 +315,7 @@ def create_note_aside(db: Session, element_pk, user,
         position_x=new_x,
         position_y=new_y,
         width=new_width,
-        height=new_hight,
+        height=new_height,
         child_object_id=db_note.id,
         child_object_content_type=30,
         child_object_content_type_model='shared_elements.note',
@@ -194,6 +364,11 @@ def create_note_aside(db: Session, element_pk, user,
                  labbook_id),
              'soft_delete': False})
     except TypesenseClientError as e:
+        logger.error(e)
+
+    try:
+        transmit({'model_name': 'labbook', 'model_pk': str(labbook_id)})
+    except RuntimeError as e:
         logger.error(e)
 
     return True

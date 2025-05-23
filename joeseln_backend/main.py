@@ -432,6 +432,18 @@ def check_for_note_aside(
                                              typesense_client=typesense)
 
 
+@app.get("/api/labbooks/note_below/{elem_pk}/")
+def create_note_below(
+        elem_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user),
+        typesense=Depends(get_typesense_client)):
+    # logger.info(user)
+    return labbook_service.create_note_below(db=db, element_pk=elem_pk,
+                                             user=user,
+                                             typesense_client=typesense)
+
+
 @app.post("/api/notes/",
           response_model=note_schemas.Note)
 def create_note(
