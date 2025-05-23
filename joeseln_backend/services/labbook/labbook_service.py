@@ -6,6 +6,10 @@ from sqlalchemy.sql import text
 
 from sqlalchemy import or_
 
+from typesense.client import Client
+from typesense.exceptions import TypesenseClientError
+
+from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
 from joeseln_backend.models import models
 from joeseln_backend.services.history.history_service import \
     create_history_entry
@@ -47,15 +51,18 @@ def check_for_labbook_access(db: Session, labbook_pk, user):
     return True
 
 
-def check_for_note_aside(db, element_pk, user):
+def create_note_aside(db: Session, element_pk, user,
+                      typesense_client: Client):
     db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
-    if not check_for_labbook_access(db=db,
-                                    labbook_pk=db_labbook_elem.labbook_id,
-                                    user=user):
+    if not db_labbook_elem or \
+            not check_for_labbook_access(db=db,
+                                         labbook_pk=db_labbook_elem.labbook_id,
+                                         user=user):
         return False
 
+    labbook_id = db_labbook_elem.labbook_id
     query = db.query(models.Labbookchildelement).filter_by(
-        labbook_id=db_labbook_elem.labbook_id, deleted=False).order_by(
+        labbook_id=labbook_id, deleted=False).order_by(
         models.Labbookchildelement.position_y).all()
 
     elem_ne_x = db_labbook_elem.position_x + db_labbook_elem.width
@@ -65,6 +72,11 @@ def check_for_note_aside(db, element_pk, user):
     # minItemCols : 5
     if elem_ne_x > 15:
         return False
+
+    new_x = elem_ne_x
+    new_y = elem_ne_y
+    new_width = 20 - new_x
+    new_hight = db_labbook_elem.height
 
     insertion_possible = True
     for elem in query:
@@ -84,7 +96,107 @@ def check_for_note_aside(db, element_pk, user):
             insertion_possible = False
             break
 
-    return insertion_possible
+    if not insertion_possible:
+        return False
+
+    db_note = models.Note(version_number=0,
+                          subject='Text',
+                          content='',
+                          created_at=datetime.datetime.now(),
+                          created_by_id=user.id,
+                          last_modified_at=datetime.datetime.now(),
+                          last_modified_by_id=user.id)
+
+    db.add(db_note)
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return False
+
+    db.refresh(db_note)
+    # changerecord = [field_name,old_value,new_value]
+    # changerecords = [changerecord, changerecord, .....]
+    changerecords = [['subject', None, 'Text'],
+                     ['content', None, '']]
+    # changeset_types:
+    # U : edited/updated, R : restored, S: trashed , I initialized/created
+
+    create_history_entry(db=db,
+                         elem_id=db_note.id,
+                         user=user,
+                         object_type_id=30,
+                         changeset_type='I',
+                         changerecords=changerecords)
+
+    try:
+        document = {
+            'subject': 'Text',
+            'content': '',
+            'last_modified_at': int(datetime.datetime.now().timestamp())}
+        typesense_client.collections['notes'].documents[str(db_note.id)].update(
+            document)
+    except TypesenseClientError as e:
+        logger.error(e)
+
+    db_labbook_elem = models.Labbookchildelement(
+        labbook_id=labbook_id,
+        position_x=new_x,
+        position_y=new_y,
+        width=new_width,
+        height=new_hight,
+        child_object_id=db_note.id,
+        child_object_content_type=30,
+        child_object_content_type_model='shared_elements.note',
+        version_number=0,
+        created_at=datetime.datetime.now(),
+        created_by_id=user.id,
+        last_modified_at=datetime.datetime.now(),
+        last_modified_by_id=user.id
+    )
+
+    db.add(db_labbook_elem)
+    lb_to_update = db.query(models.Labbook).get(labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = user.id
+
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return False
+
+    db.refresh(db_labbook_elem)
+
+    note = db.query(models.Note).get(db_note.id)
+    note.elem_id = db_labbook_elem.id
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return False
+
+    try:
+        # insert note to typesense for searching purpose
+        stripped_content = strip_html_and_binary(note.content)
+        typesense_client.collections['notes'].documents.upsert(
+            {'id': str(note.id),
+             'elem_id': str(
+                 db_labbook_elem.id),
+             'subject': note.subject,
+             'content': stripped_content,
+             'last_modified_at': int(
+                 note.last_modified_at.timestamp()),
+             'labbook_id': str(
+                 labbook_id),
+             'soft_delete': False})
+    except TypesenseClientError as e:
+        logger.error(e)
+
+    return True
 
 
 def check_for_labbook_admin_access(db: Session, labbook_pk, user):

@@ -424,10 +424,12 @@ def preview_labbook_version(
 def check_for_note_aside(
         elem_pk: UUID,
         db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+        user: User = Depends(get_current_user),
+        typesense=Depends(get_typesense_client)):
     # logger.info(user)
-    return labbook_service.check_for_note_aside(db=db, element_pk=elem_pk,
-                                                user=user)
+    return labbook_service.create_note_aside(db=db, element_pk=elem_pk,
+                                             user=user,
+                                             typesense_client=typesense)
 
 
 @app.post("/api/notes/",
