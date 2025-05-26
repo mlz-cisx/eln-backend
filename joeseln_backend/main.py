@@ -892,7 +892,7 @@ def restore_picture(
 
 @app.patch("/api/pictures/{picture_pk}/task/",
            response_model=picture_schemas.Picture)
-def restore_picture(
+def update_title_picture(
         pic_payload: picture_schemas.UpdatePictureTitle,
         picture_pk: UUID,
         db: Session = Depends(get_db),
