@@ -54,7 +54,11 @@ def check_for_labbook_access(db: Session, labbook_pk, user):
 
 def create_note_below(db: Session, element_pk, user,
                       typesense_client: Client):
-    db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
+    try:
+        db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
+    except ValueError:
+        return False
+
     if not db_labbook_elem or \
             not check_for_labbook_access(db=db,
                                          labbook_pk=db_labbook_elem.labbook_id,
@@ -221,7 +225,11 @@ def create_note_below(db: Session, element_pk, user,
 
 def create_note_aside(db: Session, element_pk, user,
                       typesense_client: Client):
-    db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
+    try:
+        db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
+    except ValueError:
+        return False
+
     if not db_labbook_elem or \
             not check_for_labbook_access(db=db,
                                          labbook_pk=db_labbook_elem.labbook_id,
