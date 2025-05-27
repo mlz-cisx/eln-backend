@@ -618,6 +618,7 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
         return
     db_picture.width = form['width']
     db_picture.height = form['height']
+    db_picture.scale = form['scale']
     db_picture.last_modified_at = datetime.datetime.now()
     db_picture.last_modified_by_id = user.id
 

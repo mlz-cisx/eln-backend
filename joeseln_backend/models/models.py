@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, \
-    Text, event, BigInteger, UniqueConstraint, Index
+    Text, event, BigInteger, UniqueConstraint, Index, Float
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
@@ -121,6 +121,7 @@ class Picture(Base):
     background_image_size = Column(BigInteger)
     rendered_image_size = Column(BigInteger)
     shapes_image_size = Column(BigInteger)
+    scale = Column(Float, default=1)
     # __ts_vector__ = Column(TSVector(), Computed(
     #      "to_tsvector('english', title )",
     #      persisted=True))

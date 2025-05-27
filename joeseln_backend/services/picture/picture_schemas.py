@@ -25,6 +25,7 @@ class Picture(BaseModel):
     shapes_image: str = Field(..., alias='download_shapes')
     height: int
     width: int
+    scale: float
     title: str
 
     content_type: int = picture_content_type
