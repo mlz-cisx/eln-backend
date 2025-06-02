@@ -890,7 +890,7 @@ def restore_picture(
     return db_pic
 
 
-@app.patch("/api/pictures/{picture_pk}/task/",
+@app.patch("/api/pictures/{picture_pk}/title/",
            response_model=picture_schemas.Picture)
 def update_title_picture(
         pic_payload: picture_schemas.UpdatePictureTitle,
