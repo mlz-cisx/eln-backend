@@ -56,12 +56,14 @@ def restore_picture_version(db: Session, picture_pk, version_pk, user):
     summary = f'restored from v{db_picture_version.number}'
     version_metadata = db_picture_version.version_metadata
     title = version_metadata['title']
+    scale = version_metadata['scale']
     ri_img = version_metadata['ri_img']
     shapes = version_metadata['shapes']
     # user authorization is done in add picture version
     db_picture = add_picture_version(db=db, picture_pk=picture_pk,
                                      summary=summary,
                                      restored_title=title,
+                                     restored_scale=scale,
                                      restored_ri_img=ri_img,
                                      restored_shapes=shapes,
                                      user=user)[0]
@@ -70,7 +72,8 @@ def restore_picture_version(db: Session, picture_pk, version_pk, user):
 
 
 def add_picture_version(db: Session, picture_pk, summary, user,
-                        restored_title=None, restored_ri_img=None,
+                        restored_title=None, restored_scale=None,
+                        restored_ri_img=None,
                         restored_shapes=None):
     pic_to_test = db.query(models.Picture).get(picture_pk)
     if pic_to_test:
@@ -111,6 +114,7 @@ def add_picture_version(db: Session, picture_pk, summary, user,
 
             if restored_title is not None:
                 db_picture.title = restored_title
+                db_picture.scale = restored_scale
                 try:
                     db.commit()
                 except SQLAlchemyError as e:
@@ -121,6 +125,7 @@ def add_picture_version(db: Session, picture_pk, summary, user,
 
             version_metadata = {
                 'title': db_picture.title,
+                'scale': db_picture.scale,
                 'ri_img': restored_ri_img,
                 'shapes': restored_shapes,
                 'metadata': [],
