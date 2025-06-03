@@ -8,8 +8,9 @@ from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
+import pandas as pd
+import pandas.errors
 
-from joeseln_backend.full_text_search import html_stripper
 from joeseln_backend.full_text_search.html_stripper import sanitize_html
 from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.services.entry_path.entry_path_service import create_path, \
@@ -505,10 +506,19 @@ def process_file_upload_form(form, db, contents, user):
         file.write(contents)
         file.close()
 
-    db.close()
+    if db_file.mime_type == 'text/csv':
+        plot_data = get_plot_content_from_file(file_to_process=db_file)
+        updated_db_file = db.query(models.File).get(db_file.id)
+        updated_db_file.plot_data = plot_data
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
 
-    ret_file = build_download_url_with_token(file_to_process=deepcopy(db_file),
-                                             user=user)
+    file_to_process = db.query(models.File).get(db_file.id)
+    ret_file = build_download_url_with_token(
+        file_to_process=file_to_process,
+        user=user)
 
     ret_file.created_by = user
     ret_file.last_modified_by = user
@@ -917,3 +927,23 @@ def remove_soft_deleted_file(db: Session, file_pk):
             return
         return True
     return
+
+
+def get_plot_content_from_file(file_to_process):
+    file_path = f'{FILES_BASE_PATH}{file_to_process.path}'
+    # something wrong with the file
+    try:
+        df = pd.read_csv(file_path, sep=r"\s+|,|;", engine='python')
+    except Exception as e:
+        logger.error(e)
+        return json.dumps({})
+    # wrong header
+    for key in df.to_dict().keys():
+        if "Unnamed" in key:
+            return json.dumps({})
+    # cannot be converted to json string
+    try:
+        return json.dumps(df.to_dict())
+    except Exception as e:
+        logger.error(e)
+        return json.dumps({})

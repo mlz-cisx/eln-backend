@@ -570,7 +570,8 @@ def get_labbook_for_export(db: Session, labbook_pk):
 
 def get_labbook_with_privileges(db: Session, labbook_pk, user):
     if user.admin:
-        lb = db.query(models.Labbook).get(labbook_pk)
+        lb = db.query(models.Labbook).filter(models.Labbook.deleted == False,
+                                             models.Labbook.id == labbook_pk).first()
         if lb:
             db_user_created = db.query(models.User).get(lb.created_by_id)
             db_user_modified = db.query(models.User).get(
@@ -589,10 +590,12 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
     if LABBOOK_QUERY_MODE == 'match':
         db_lb = db.query(models.Labbook).filter(
             or_(*[models.Labbook.title.contains(name) for name in
-                  user_groups])).filter(models.Labbook.id == labbook_pk).first()
+                  user_groups])).filter(models.Labbook.deleted == False,
+                                        models.Labbook.id == labbook_pk).first()
     elif LABBOOK_QUERY_MODE == 'equal':
         db_lb = db.query(models.Labbook).filter(
             models.Labbook.title.in_(user_groups),
+            models.Labbook.deleted == False,
             models.Labbook.id == labbook_pk).first()
 
     if db_lb:

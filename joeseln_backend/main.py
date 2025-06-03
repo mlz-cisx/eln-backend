@@ -90,6 +90,9 @@ from joeseln_backend.full_text_search.typesense_service import typesense_client,
 # will create all tables if not exist
 from joeseln_backend.models.table_creator import table_creator
 
+# does updates on the database
+from joeseln_backend.database.migration_scripts import update_db_tables
+
 from joeseln_backend.ws.ws_client import ws_client
 
 from contextlib import asynccontextmanager
@@ -111,6 +114,8 @@ async def lifespan(app: FastAPI):
     table_creator()
     create_basic_roles()
     create_inital_admin()
+    # executing migration scripts
+    update_db_tables()
 
     # connect typesense
     typesense_client.connect_typesense_client()

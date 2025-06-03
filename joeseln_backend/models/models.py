@@ -147,6 +147,7 @@ class File(Base):
     imported = Column(Boolean, default=False)
     # editor content
     description = Column(Text, default='')
+    plot_data = Column(Text, default='{}')
     mime_type = Column(Text, default='')
     file_size = Column(BigInteger)
     created_at = Column(DateTime)

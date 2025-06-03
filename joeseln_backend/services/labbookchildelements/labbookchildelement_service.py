@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session, aliased
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select, func, and_, or_
 
-import datetime
 
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
@@ -249,10 +248,11 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
         {
             **item[0].__dict__,
             'child_object': {**item[1].__dict__,
-                             'created_by': item[2], 
+                             'created_by': item[2],
                              'last_modified_by': item[3],
-                             'path': f'{URL_BASE_PATH}files/{item[1].id}/download?jwt={jwt}'
-                            },
+                             'path': f'{URL_BASE_PATH}files/{item[1].id}/download?jwt={jwt}',
+                             'plot_data': item[1].plot_data
+                             },
             'num_related_comments': item[4]
         }
         for item in results
@@ -465,3 +465,5 @@ def update_child_element(db_labbook_elem, child_object_content_type,
         except SQLAlchemyError as e:
             logger.error(e)
             db.close()
+
+
