@@ -128,17 +128,18 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
     created_by = aliased(models.User)
     last_modified_by = aliased(models.User)
 
-    # subquery to get comment count
+    # uncorrelated subquery to get comment count
     related_comments_count = (
-        select(func.count())
+        select([models.Relation.right_object_id, func.count().label('count')])
         .where(
             and_(
-                models.Relation.right_object_id == models.Labbookchildelement.child_object_id,
                 models.Relation.left_content_type == 70,
                 models.Relation.deleted == False,
             )
         )
-    ).correlate(models.Labbookchildelement).scalar_subquery()
+        .group_by(models.Relation.right_object_id)
+        .alias('related_comments')
+    )
 
     # note query
     query = (
@@ -147,11 +148,15 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
             models.Note,
             created_by,
             last_modified_by,
-            related_comments_count.label('num_related_comments')
+            func.coalesce(related_comments_count.c.count, 0).label('num_related_comments')
         )
         .join(models.Note, models.Labbookchildelement.child_object_id == models.Note.id)
         .join(created_by, models.Note.created_by_id == created_by.id)
         .join(last_modified_by, models.Note.last_modified_by_id == last_modified_by.id)
+        .outerjoin(
+            related_comments_count,
+            models.Labbookchildelement.child_object_id == related_comments_count.c.right_object_id
+        )
         .where(
             and_(
                 models.Labbookchildelement.labbook_id == labbook_pk,
@@ -180,11 +185,15 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
             models.Picture,
             created_by,
             last_modified_by,
-            related_comments_count.label('num_related_comments')
+            func.coalesce(related_comments_count.c.count, 0).label('num_related_comments')
         )
         .join(models.Picture, models.Labbookchildelement.child_object_id == models.Picture.id)
         .join(created_by, models.Picture.created_by_id == created_by.id)
         .join(last_modified_by, models.Picture.last_modified_by_id == last_modified_by.id)
+        .outerjoin(
+            related_comments_count,
+            models.Labbookchildelement.child_object_id == related_comments_count.c.right_object_id
+        )
         .where(
             and_(
                 models.Labbookchildelement.labbook_id == labbook_pk,
@@ -217,11 +226,15 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
             models.File,
             created_by,
             last_modified_by,
-            related_comments_count.label('num_related_comments')
+            func.coalesce(related_comments_count.c.count, 0).label('num_related_comments')
         )
         .join(models.File, models.Labbookchildelement.child_object_id == models.File.id)
         .join(created_by, models.File.created_by_id == created_by.id)
         .join(last_modified_by, models.File.last_modified_by_id == last_modified_by.id)
+        .outerjoin(
+            related_comments_count,
+            models.Labbookchildelement.child_object_id == related_comments_count.c.right_object_id
+        )
         .where(
             and_(
                 models.Labbookchildelement.labbook_id == labbook_pk,
