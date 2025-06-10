@@ -104,6 +104,7 @@ rpds-py==0.18.1
 rsa==4.9
 six==1.16.0
 sniffio==1.3.0
+spec2nexus==2021.2.8
 SQLAlchemy==1.4.51
 sqlalchemy-events==0.1.0
 sqlparse==0.5.0

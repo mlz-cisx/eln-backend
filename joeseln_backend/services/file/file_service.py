@@ -9,7 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 import pandas as pd
-import pandas.errors
+
+from spec2nexus import spec
 
 from joeseln_backend.full_text_search.html_stripper import sanitize_html
 from joeseln_backend.auth.security import get_user_from_jwt
@@ -23,6 +24,8 @@ from joeseln_backend.services.history.history_service import \
 from joeseln_backend.services.labbook.labbook_service import \
     check_for_labbook_access, get_all_labbook_ids_from_non_admin_user, \
     check_for_labbook_admin_access
+from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import \
+    Labbookchildelement_Create
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
     ADMIN
 from joeseln_backend.services.privileges.privileges_service import \
@@ -72,9 +75,13 @@ def get_all_files(db: Session, params, user):
             file.last_modified_by = db_user_modified
 
             try:
-                lb_elem = db.query(models.Labbookchildelement).get(file.elem_id)
-                lb = db.query(models.Labbook).get(lb_elem.labbook_id)
-                file.lb_title = lb.title
+                if file.elem_id:
+                    lb_elem = db.query(models.Labbookchildelement).get(
+                        file.elem_id)
+                    lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+                    file.lb_title = lb.title
+                else:
+                    file.lb_title = 'None'
             except:
                 file.lb_title = 'None'
 
@@ -172,10 +179,6 @@ def get_file_with_privileges(db: Session, file_pk, user):
         file_content.created_by = db_user_created
         file_content.last_modified_by = db_user_modified
 
-        if user.admin:
-            return {'privileges': ADMIN,
-                    'file': file_content}
-
         lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
 
         if not lb_elem:
@@ -183,6 +186,10 @@ def get_file_with_privileges(db: Session, file_pk, user):
 
         file_content.position_y = lb_elem.position_y
         file_content.labbook_id = lb_elem.labbook_id
+
+        if user.admin:
+            return {'privileges': ADMIN,
+                    'file': file_content}
 
         if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                         user=user):
@@ -314,7 +321,7 @@ def get_lb_pk_from_file(db: Session, file_pk):
 
 def create_file(db: Session, title: str,
                 name: str, file_size: int, description: str, mime_type: str,
-                user):
+                user, plot_data='[]'):
     if file_size > ELEM_MAXIMUM_SIZE << 10 or sys.getsizeof(
             description) > ELEM_MAXIMUM_SIZE << 10:
         return
@@ -333,6 +340,7 @@ def create_file(db: Session, title: str,
                           title=title,
                           name=name,
                           original_filename=name,
+                          plot_data=plot_data,
                           display=name,
                           imported=False,
                           # editor content
@@ -505,6 +513,22 @@ def process_file_upload_form(form, db, contents, user):
     with open(file_path, 'wb') as file:
         file.write(contents)
         file.close()
+
+    if db_file.name.endswith('.spc'):
+        try:
+            labbook_pk = form['labbook_pk']
+            description = create_plot_content_from_spec_file(
+                file_to_process=db_file, db=db, user=user,
+                labbook_pk=labbook_pk)
+            if description:
+                updated_db_file = db.query(models.File).get(db_file.id)
+                updated_db_file.description = description
+                try:
+                    db.commit()
+                except SQLAlchemyError as e:
+                    logger.error(e)
+        except KeyError:
+            pass
 
     if db_file.mime_type == 'text/csv':
         plot_data = get_plot_content_from_file(file_to_process=db_file)
@@ -936,14 +960,150 @@ def get_plot_content_from_file(file_to_process):
         df = pd.read_csv(file_path, sep=r"\s+|,|;", engine='python')
     except Exception as e:
         logger.error(e)
-        return json.dumps({})
+        return json.dumps([])
     # wrong header
     for key in df.to_dict().keys():
         if "Unnamed" in key:
-            return json.dumps({})
-    # cannot be converted to json string
+            return json.dumps([])
+    # cannot be converted to json string or has null values
     try:
-        return json.dumps(df.to_dict())
+        if df.isnull().any().any():
+            return json.dumps([])
+        return json.dumps([[file_to_process.name, df.to_dict()]])
     except Exception as e:
         logger.error(e)
-        return json.dumps({})
+        return json.dumps([])
+
+
+def create_plot_content_from_spec_file(file_to_process, db, user, labbook_pk):
+    file_path = f'{FILES_BASE_PATH}{file_to_process.path}'
+    if not spec.is_spec_file(file_path):
+        return
+
+    spec_data = spec.SpecDataFile(file_path)
+
+    description = ''
+    description += eln_format(f'SPEC file name: {spec_data.specFile}')
+    description += eln_format(f'SPEC date: {spec_data.headers[0].date}')
+    description += eln_format(f'COMMENTS: {spec_data.headers[0].comments}')
+    description += eln_format(f'Number of Scans {len(spec_data.scans)}')
+
+    position_y = 7
+    for scanNum, scan in spec_data.scans.items():
+        info = {}
+        if len(scan.data) > 0:
+            df = pd.DataFrame(scan.data)
+            # empty spaces in column name produces error in re-import
+            df.columns = [col.strip().replace(' ', '_') for col in df.columns]
+
+            info['title'] = f'Scan {scanNum}  {scan.scanCmd}'
+            info['name'] = f'Scan_{scanNum}.csv'
+            scan_description = ''
+            scan_description += eln_format(
+                f'SPEC file name: {spec_data.specFile}')
+            scan_description += eln_format(
+                f'SPEC date: {spec_data.headers[0].date}')
+            scan_description += eln_format(f'Scan {scanNum}  {scan.scanCmd}')
+            scan_description += eln_format(
+                f'Date: {scan.date} Duration: {scan.T} sec')
+            info['description'] = scan_description
+            info['file_size'] = sys.getsizeof(df)
+            info['mime_type'] = 'text/csv'
+            plot_data = json.dumps(
+                [[f'Scan {scanNum}  {scan.scanCmd}', df.to_dict()]])
+            file = create_file_from_spec_scan(db=db, dataframe=df, info=info,
+                                              user=user, plot_data=plot_data)
+            add_spec_scan_as_file_to_labbook(db=db, labbook_pk=labbook_pk,
+                                             file_pk=file.id,
+                                             user=user, position_y=position_y)
+            position_y = position_y + 8
+
+    return description
+
+
+def eln_format(eln_line):
+    return f'<pre style="margin: 0px !important;">{eln_line}</pre>'
+
+
+def create_file_from_spec_scan(db, dataframe, info, user, plot_data):
+    db_file = create_file(db=db,
+                          title=info['title'],
+                          name=info['name'],
+                          file_size=info['file_size'],
+                          description=info['description'],
+                          mime_type=info['mime_type'],
+                          user=user,
+                          plot_data=plot_data)
+    if not db_file:
+        return None
+    file_path = f'{FILES_BASE_PATH}{db_file.path}'
+
+    with open(file_path, 'wb') as file:
+        dataframe.to_csv(file, index=False)
+        file.close()
+
+    db_file.created_by = user
+    db_file.last_modified_by = user
+
+    return db_file
+
+
+def add_spec_scan_as_file_to_labbook(db, labbook_pk, file_pk, user, position_y):
+    childelem = Labbookchildelement_Create.parse_obj({
+        'position_x': 0,
+        'position_y': position_y,
+        'width': 13,
+        'height': 8,
+        'child_object_id': file_pk,
+        'child_object_content_type': 50
+    })
+
+    db_labbook_elem = models.Labbookchildelement(
+        labbook_id=labbook_pk,
+        position_x=childelem.position_x,
+        position_y=childelem.position_y,
+        width=childelem.width,
+        height=childelem.height,
+        child_object_id=childelem.child_object_id,
+        child_object_content_type=childelem.child_object_content_type,
+        child_object_content_type_model='shared_elements.file',
+        version_number=0,
+        created_at=datetime.datetime.now(),
+        created_by_id=user.id,
+        last_modified_at=datetime.datetime.now(),
+        last_modified_by_id=user.id
+    )
+    db.add(db_labbook_elem)
+
+    lb_to_update = db.query(models.Labbook).get(labbook_pk)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = user.id
+
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return db_labbook_elem
+
+    file = db.query(models.File).get(file_pk)
+    file.elem_id = db_labbook_elem.id
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+
+    db_labbook_elem.child_object = get_file(db=db,
+                                            file_pk=db_labbook_elem.child_object_id,
+                                            user=user)
+    db_labbook_elem.num_related_comments = get_file_related_comments_count(
+        db=db,
+        file_pk=db_labbook_elem.child_object_id, user=user)
+
+    try:
+        transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
+    except RuntimeError as e:
+        logger.error(e)
+
+    return db_labbook_elem
