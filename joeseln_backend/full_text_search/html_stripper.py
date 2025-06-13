@@ -18,7 +18,7 @@ def strip_binary(content):
     stripped_content = re.sub(binary_pattern, "", content)
     return stripped_content.strip()
 
-generally_xss_safe = generally_xss_safe.append('details')
+generally_xss_safe.append('details')
 custom_attrs = print_attrs
 custom_attrs.update({"table": ["border"], "a": ["href"]})
 css_sanitizer = CSSSanitizer(allowed_css_properties=standard_styles)
