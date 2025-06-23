@@ -988,6 +988,11 @@ def create_plot_content_from_spec_file(file_to_process, db, user, labbook_pk):
     description += eln_format(f'COMMENTS: {spec_data.headers[0].comments}')
     description += eln_format(f'Number of Scans {len(spec_data.scans)}')
 
+    if db.query(models.Labbookchildelement).filter(
+            models.Labbookchildelement.labbook_id == labbook_pk,
+            models.Labbookchildelement.deleted == False).count():
+        return description
+
     position_y = 7
     for scanNum, scan in spec_data.scans.items():
         info = {}
