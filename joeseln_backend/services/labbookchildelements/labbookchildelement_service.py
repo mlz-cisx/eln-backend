@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, defer
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select, func, and_, or_
 
@@ -241,7 +241,7 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
                 models.Labbookchildelement.child_object_content_type == 50
             )
         )
-    )
+    ).options(defer(models.File.plot_data))
     results = db.execute(query).fetchall()
 
     files = [
@@ -251,7 +251,6 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
                              'created_by': item[2],
                              'last_modified_by': item[3],
                              'path': f'{URL_BASE_PATH}files/{item[1].id}/download?jwt={jwt}',
-                             'plot_data': item[1].plot_data
                              },
             'num_related_comments': item[4]
         }
