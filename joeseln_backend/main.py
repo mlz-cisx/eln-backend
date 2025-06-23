@@ -7,13 +7,15 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import Annotated
 from datetime import timedelta
+from urllib.parse import urlencode
+from keycloak import KeycloakOpenID
 
 from typing import Any
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import FastAPI, Request, Body, Depends, \
     HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from joeseln_backend.services.picture import picture_schemas, \
     picture_version_service, \
@@ -50,16 +52,21 @@ from joeseln_backend.services.user.user_password import gui_password_change, \
 from joeseln_backend.services.admin_stat.admin_stat_service import get_stat
 from joeseln_backend.services.admin_stat.admin_stat_schemas import StatResponse
 
-from joeseln_backend.database.database import get_db
+from joeseln_backend.database.database import SessionLocal, get_db
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
     export_file
 from joeseln_backend.full_text_search import text_search
-from joeseln_backend.conf.base_conf import ORIGINS, JAEGER_HOST, JAEGER_PORT, \
-    JAEGER_SERVICE_NAME, PICTURES_BASE_PATH, FILES_BASE_PATH
+from joeseln_backend.conf.base_conf import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, KEYCLOAK_SERVER_URL, ORIGINS, JAEGER_HOST, JAEGER_PORT, \
+    JAEGER_SERVICE_NAME, PICTURES_BASE_PATH, FILES_BASE_PATH, URL_BASE_PATH, APP_BASE_PATH
 from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
     get_current_user, authenticate_user, \
     ACCESS_TOKEN_EXPIRE_SECONDS, \
     create_access_token
+
+from joeseln_backend.services.user.user_service import update_oidc_user
+from joeseln_backend.services.user.user_schema import OIDCUserCreate
+from joeseln_backend.services.user_to_group.user_to_group_service import \
+    update_oidc_user_groups
 
 # first logger
 from joeseln_backend.mylogging.root_logger import logger
@@ -138,6 +145,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+keycloak_openid = KeycloakOpenID(server_url=KEYCLOAK_SERVER_URL,
+                                 client_id=KEYCLOAK_CLIENT_ID,
+                                 realm_name=KEYCLOAK_REALM_NAME,
+                                 client_secret_key=KEYCLOAK_CLIENT_SECRET)
 
 @app.get("/api/health/")
 def get_health():
@@ -1328,6 +1340,54 @@ def change_password(password: PasswordChange,
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return ['ok']
+
+@app.get("/api/login-keycloak")
+def keycloak_redirect():
+    redirect_uri = f"{URL_BASE_PATH}callback"
+    auth_url =  keycloak_openid.auth_url(
+            redirect_uri=redirect_uri,
+            scope="openid profile email"
+    )
+    return RedirectResponse(url=auth_url)
+
+@app.get("/api/logout-keycloak")
+def keycloak_logout():
+    logout_url = keycloak_openid.well_known()['end_session_endpoint']
+    redirect_url = f"{APP_BASE_PATH}login"
+    params = {"post_logout_redirect_uri": redirect_url, "client_id": KEYCLOAK_CLIENT_ID}
+    return RedirectResponse(url=f"{logout_url}?{urlencode(params)}")
+
+
+@app.get("/api/callback")
+def keycloak_callback(code: str, db: Session = Depends(get_db)):
+    # fetch token
+    token = keycloak_openid.token(
+        grant_type='authorization_code',
+        code=code,
+        redirect_uri=f"{URL_BASE_PATH}callback"
+    )
+    if not token:
+        return RedirectResponse(url=f"{APP_BASE_PATH}login")
+
+    # introsepction
+    userinfo = keycloak_openid.introspect(token['access_token'])
+    if not userinfo:
+        return RedirectResponse(url=f"{APP_BASE_PATH}login")
+
+    # update user
+    user = update_oidc_user(db=db, oidc_user=OIDCUserCreate.parse_obj(userinfo))
+    if (user):
+        update_oidc_user_groups(db=SessionLocal(), user=user)
+        access_token_expires = timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
+        access_token = create_access_token(
+            data={"sub": user.username}, expires_delta=access_token_expires
+            )
+        # redirect to login page with token parameter
+        params = {"token": access_token}
+        response = RedirectResponse(url=f"{APP_BASE_PATH}login?{urlencode(params)}")
+        return response
+
+    return RedirectResponse(url=f"{APP_BASE_PATH}login")
 
 
 @app.post("/api/token")

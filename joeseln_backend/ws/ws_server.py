@@ -9,7 +9,7 @@ from joeseln_backend.mylogging.root_logger import logger
 import asyncio
 import json
 import websockets
-from joeseln_backend.auth.security import get_current_keycloak_user_for_ws, \
+from joeseln_backend.auth.security import \
     get_current_jwt_user_for_ws
 from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_PORT, \
     WS_INTERNAL_IP
@@ -26,14 +26,6 @@ async def handle_client(websocket, path):
         token = path.split('/ws/jwt_')[1]
         # print('JWT ', token)
         uname = await get_current_jwt_user_for_ws(token=token)
-        if uname:
-            connected_clients.add(websocket)
-            add_user_connected_ws(uname=uname, ws_id=vars(websocket)['id'])
-
-    if path.startswith('/ws/oidc_'):
-        token = path.split('/ws/oidc_')[1]
-        # print('OIDC ', token)
-        uname = await get_current_keycloak_user_for_ws(token=token)
         if uname:
             connected_clients.add(websocket)
             add_user_connected_ws(uname=uname, ws_id=vars(websocket)['id'])

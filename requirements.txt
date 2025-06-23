@@ -4,6 +4,7 @@ argcomplete==3.2.3
 asgiref==3.8.1
 asttokens==2.4.1
 attrs==23.2.0
+authlib==1.6.0
 bcrypt==4.0.1
 black==24.3.0
 bleach==6.2.0
