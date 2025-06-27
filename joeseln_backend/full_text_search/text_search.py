@@ -14,10 +14,11 @@ def search_with_model(db, model, search_text, user, typesense: Client):
     if LABBOOK_QUERY_MODE == 'match':
         lbs = db.query(models.Labbook).filter(
             or_(*[models.Labbook.title.contains(name) for name in
-                  user_groups])).all()
+                  user_groups]), models.Labbook.deleted == False).all()
     else:
         lbs = db.query(models.Labbook).filter(
-            models.Labbook.title.in_(user_groups)).all()
+            models.Labbook.title.in_(user_groups),
+            models.Labbook.deleted == False).all()
     labbook_ids = [str(lb.id) for lb in lbs]
 
     if 'note' in model:
