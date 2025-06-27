@@ -54,14 +54,22 @@ def get_all_pictures(db: Session, params, user):
                 filter(or_
                        (models.Labbook.title.ilike(f'%{search_text}%'),
                         models.Picture.title.ilike(
-                            f'%{search_text}%'))).order_by(
+                            f'%{search_text}%')),
+                       models.Labbook.deleted == False).order_by(
                 text('picture.' + order_params)).offset(
                 params.get('offset')).limit(
                 params.get('limit')).all()
         else:
             pics = db.query(models.Picture).filter_by(
-                deleted=bool(params.get('deleted'))).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
+                deleted=bool(params.get('deleted'))).join(
+                models.Labbookchildelement,
+                models.Picture.elem_id ==
+                models.Labbookchildelement.id).join(models.Labbook,
+                                                    models.Labbook.id ==
+                                                    models.Labbookchildelement.labbook_id).filter(
+                models.Labbook.deleted == False).order_by(
+                text('picture.' + order_params)).offset(
+                params.get('offset')).limit(
                 params.get('limit')).all()
         for pic in pics:
             db_user_created = db.query(models.User).get(pic.created_by_id)
@@ -94,7 +102,8 @@ def get_all_pictures(db: Session, params, user):
             models.Labbookchildelement.labbook_id). \
             filter(or_
                    (models.Labbook.title.ilike(f'%{search_text}%'),
-                    models.Picture.title.ilike(f'%{search_text}%'))).order_by(
+                    models.Picture.title.ilike(f'%{search_text}%')),
+                   models.Labbook.deleted == False).order_by(
             text('picture.' + order_params)).offset(
             params.get('offset')).limit(
             params.get('limit')).all()
@@ -103,8 +112,11 @@ def get_all_pictures(db: Session, params, user):
             deleted=bool(params.get('deleted'))). \
             join(models.Labbookchildelement,
                  models.Picture.elem_id ==
-                 models.Labbookchildelement.id).filter(
-            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+                 models.Labbookchildelement.id).join(models.Labbook,
+                                                     models.Labbook.id ==
+                                                     models.Labbookchildelement.labbook_id).filter(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids),
+            models.Labbook.deleted == False).order_by(
             text('picture.' + order_params)).offset(
             params.get('offset')).limit(
             params.get('limit')).all()

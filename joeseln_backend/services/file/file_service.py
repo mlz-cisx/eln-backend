@@ -58,14 +58,22 @@ def get_all_files(db: Session, params, user):
                                                     models.Labbookchildelement.labbook_id). \
                 filter(or_
                        (models.Labbook.title.ilike(f'%{search_text}%'),
-                        models.File.title.ilike(f'%{search_text}%'))).order_by(
+                        models.File.title.ilike(f'%{search_text}%')),
+                       models.Labbook.deleted == False).order_by(
                 text('file.' + order_params)).offset(
                 params.get('offset')).limit(
                 params.get('limit')).all()
         else:
             files = db.query(models.File).filter_by(
-                deleted=bool(params.get('deleted'))).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
+                deleted=bool(params.get('deleted'))).join(
+                models.Labbookchildelement,
+                models.File.elem_id ==
+                models.Labbookchildelement.id).join(models.Labbook,
+                                                    models.Labbook.id ==
+                                                    models.Labbookchildelement.labbook_id) \
+                .filter(models.Labbook.deleted == False).order_by(
+                text('file.' + order_params)).offset(
+                params.get('offset')).limit(
                 params.get('limit')).all()
         for file in files:
             db_user_created = db.query(models.User).get(file.created_by_id)
@@ -102,7 +110,8 @@ def get_all_files(db: Session, params, user):
             models.Labbookchildelement.labbook_id). \
             filter(or_
                    (models.Labbook.title.ilike(f'%{search_text}%'),
-                    models.File.title.ilike(f'%{search_text}%'))).order_by(
+                    models.File.title.ilike(f'%{search_text}%')),
+                   models.Labbook.deleted == False).order_by(
             text('file.' + order_params)).offset(
             params.get('offset')).limit(
             params.get('limit')).all()
@@ -111,8 +120,12 @@ def get_all_files(db: Session, params, user):
             deleted=bool(params.get('deleted'))). \
             join(models.Labbookchildelement,
                  models.File.elem_id ==
-                 models.Labbookchildelement.id).filter(
-            models.Labbookchildelement.labbook_id.in_(labbook_ids)).order_by(
+                 models.Labbookchildelement.id).join(
+            models.Labbook,
+            models.Labbook.id ==
+            models.Labbookchildelement.labbook_id).filter(
+            models.Labbookchildelement.labbook_id.in_(labbook_ids),
+            models.Labbook.deleted == False).order_by(
             text('file.' + order_params)).offset(
             params.get('offset')).limit(
             params.get('limit')).all()
