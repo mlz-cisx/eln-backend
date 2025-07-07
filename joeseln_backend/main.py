@@ -152,7 +152,8 @@ keycloak_openid = KeycloakOpenID(server_url=KEYCLOAK_SERVER_URL,
                                  client_secret_key=KEYCLOAK_CLIENT_SECRET)
 
 @app.get("/api/health/")
-def get_health():
+def get_health(db: Session = Depends(get_db)):
+    db.execute('SELECT 1')
     return ['ok']
 
 
