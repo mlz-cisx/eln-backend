@@ -543,7 +543,8 @@ def process_file_upload_form(form, db, contents, user):
         except KeyError:
             pass
 
-    if db_file.mime_type == 'text/csv':
+    if db_file.mime_type == 'text/csv' or (
+            'plottable' in form.keys() and int(form['plottable']) == 1):
         plot_data = get_plot_content_from_file(file_to_process=db_file)
         updated_db_file = db.query(models.File).get(db_file.id)
         updated_db_file.plot_data = plot_data
