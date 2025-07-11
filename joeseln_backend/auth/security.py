@@ -1,4 +1,5 @@
 from cachetools import cached, TTLCache
+from sqlalchemy import false
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 import bcrypt
@@ -24,8 +25,6 @@ from starlette.status import (
     HTTP_500_INTERNAL_SERVER_ERROR
 )
 
-from joeseln_backend.services.sessiontoken.session_token_service import \
-    TokenService
 from joeseln_backend.conf.base_conf import STATIC_ADMIN_TOKEN
 
 from joeseln_backend.mylogging.root_logger import logger
@@ -39,7 +38,7 @@ DOWNLOAD_TOKEN_EXPIRE_MINUTES = 60 * 24
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    token_type: str | None = None
 
 
 class TokenData(BaseModel):
@@ -141,8 +140,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    TokenService.set_token_exp(token=encoded_jwt.decode(),
-                               exp=int(expire.strftime("%Y%m%d%H%M%S")))
     return encoded_jwt
 
 
@@ -165,23 +162,8 @@ def get_user_from_jwt(token: Annotated[str, Depends(oauth2_scheme)]):
                 return
             return user
     except jwt.exceptions.ExpiredSignatureError as e:
-        # logger.info(e)
-        if Security.check_token_exp(token.encode().decode()):
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM],
-                                 leeway=36000)
-            # we aligned to keycloak's sub
-            username: str = payload.get("sub")
-            if username is None:
-                return
-            user = get_user_with_groups_by_uname(db=SessionLocal(),
-                                                 username=username)
-
-            if user is None:
-                return
-            return user
-        else:
-            logger.info('token expired ')
-            return
+        # logger.info('token expired ')
+        return
 
     except jwt.exceptions.PyJWTError as e:
         logger.error(f'PyJWTError: {e}')
@@ -213,28 +195,17 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
                 raise credentials_exception
             return user
     except jwt.exceptions.ExpiredSignatureError as e:
-        # logger.info(e)
-        if Security.check_token_exp(token.encode().decode()):
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM],
-                                 leeway=36000)
-            # we aligned to keycloak's sub
-            username: str = payload.get("sub")
-            if username is None:
-                raise credentials_exception
-            # TODO for a better performance this could be called only at /users/me
-            user = get_user_with_groups_by_uname(db=SessionLocal(),
-                                                 username=username)
-
-            if user is None or user.deleted:
-                raise credentials_exception
-            return user
-        else:
-            logger.info('token expired ')
-            raise credentials_exception
+        # logger.info('token expired ')
+        raise credentials_exception
 
     except jwt.exceptions.PyJWTError as e:
         logger.error(f'oidc user is considered as non oidc user: {e}')
 
+
+def verify_jwt_with_leeway(token, leeway=300):
+    payload  = jwt.decode(token.access_token.encode(), SECRET_KEY, algorithms=[ALGORITHM], leeway=leeway)
+    username = payload.get("sub")
+    return username
 
 async def get_current_jwt_user_for_ws(token):
     try:
@@ -244,33 +215,3 @@ async def get_current_jwt_user_for_ws(token):
     except jwt.exceptions.PyJWTError:
         return
 
-
-
-class Security:
-    @staticmethod
-    def create_password(password):
-        bytes = password.encode('utf-8')
-        salt = bcrypt.gensalt()
-        hash = bcrypt.hashpw(bytes, salt)
-        logger.info(hash)
-
-    @staticmethod
-    def check_password(username, password):
-        hash = Security.get_hashed_password(username=username)
-        userBytes = password.encode('utf-8')
-        result = bcrypt.checkpw(userBytes, hash)
-        logger.info(result)
-
-    @staticmethod
-    def get_hashed_password(username):
-        foo = 'foo'
-        return foo.encode()
-
-    @staticmethod
-    def check_token_exp(token):
-        exp = TokenService.get_token_exp(token=token)
-        if exp < int(datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")):
-            return False
-        else:
-            TokenService.extend_token(token=token)
-            return True

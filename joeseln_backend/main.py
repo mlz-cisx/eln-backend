@@ -9,6 +9,7 @@ from typing import Annotated
 from datetime import timedelta
 from urllib.parse import urlencode
 from keycloak import KeycloakOpenID
+import jwt
 
 from typing import Any
 from fastapi.security import OAuth2PasswordRequestForm
@@ -59,7 +60,7 @@ from joeseln_backend.full_text_search import text_search
 from joeseln_backend.conf.base_conf import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, KEYCLOAK_SERVER_URL, ORIGINS, JAEGER_HOST, JAEGER_PORT, \
     JAEGER_SERVICE_NAME, PICTURES_BASE_PATH, FILES_BASE_PATH, URL_BASE_PATH, APP_BASE_PATH
 from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
-    get_current_user, authenticate_user, \
+    get_current_user, authenticate_user, verify_jwt_with_leeway, \
     ACCESS_TOKEN_EXPIRE_SECONDS, \
     create_access_token
 
@@ -1410,6 +1411,21 @@ async def login_for_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")
+
+@app.post("/api/refresh-token")
+def refresh_access_token(access_token: Token) -> Token:
+    try:
+        username = verify_jwt_with_leeway(access_token)
+        access_token_expires = timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
+        new_token = create_access_token(
+            data={"sub": username}, expires_delta=access_token_expires
+        )
+        return Token(access_token=new_token, token_type="bearer")
+    except jwt.exceptions.ExpiredSignatureError as _:
+        raise HTTPException(status_code=403)
+    except Exception as e:
+        logger.warn(e)
+        raise HTTPException(status_code=403)
 
 
 @app.get("/api/search/")

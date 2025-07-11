@@ -267,13 +267,6 @@ class Version(Base):
     # unique (content_type_id, object_id, number)
 
 
-class SessionToken(Base):
-    __tablename__ = 'sessiontoken'
-    id = Column(BigInteger, primary_key=True)
-    token = Column(Text)
-    expiration_time = Column(BigInteger)
-
-
 class Relation(Base):
     __tablename__ = 'relation'
     __table_args__ = (
