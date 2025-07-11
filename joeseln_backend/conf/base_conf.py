@@ -24,6 +24,9 @@ FILES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/files/'
 # MLZ-ELN URL
 URL_BASE_PATH = 'http://172.25.74.236:8010/api/'
 
+# Frontend url
+APP_BASE_PATH = ''
+
 # WS ELN URL
 WS_URL = 'ws://172.25.74.236:4501/ws/'
 WS_PORT = 4501

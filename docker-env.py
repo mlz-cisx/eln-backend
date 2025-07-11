@@ -25,6 +25,7 @@ FILES_BASE_PATH = os.getenv("FILES_BASE_PATH", "/data/files/")
 # Base URL
 URL_BASE_PATH = os.getenv("URL_BASE_PATH")
 WS_URL = os.getenv("WS_URL")
+APP_BASE_PATH = os.getenv("APP_BASE_PATH", "")
 WS_PORT = os.getenv("WS_PORT")
 
 WS_INTERNAL_IP = os.getenv("WS_INTERNAL_IP")
