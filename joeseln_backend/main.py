@@ -1385,8 +1385,7 @@ def keycloak_callback(code: str, db: Session = Depends(get_db)):
             )
         # redirect to login page with token parameter
         params = {"token": access_token}
-        response = RedirectResponse(url=f"{APP_BASE_PATH}login?{urlencode(params)}")
-        return response
+        return RedirectResponse(url=f"{APP_BASE_PATH}login?{urlencode(params)}")
 
     return RedirectResponse(url=f"{APP_BASE_PATH}login")
 
