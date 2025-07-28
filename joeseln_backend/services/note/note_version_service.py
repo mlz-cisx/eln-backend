@@ -1,16 +1,18 @@
-from sqlalchemy.orm import Session
 import json
-from sqlalchemy.exc import SQLAlchemyError
 
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from joeseln_backend.full_text_search.typesense_service import \
+    get_typesense_client
 from joeseln_backend.models import models
+from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.labbook.labbook_service import \
     check_for_labbook_access
 from joeseln_backend.services.labbookchildelements.labbookchildelement_service import \
     check_for_version_edit_access_on_lb_elem
 from joeseln_backend.services.note import note_service
 from joeseln_backend.services.note.note_schemas import *
-
-from joeseln_backend.mylogging.root_logger import logger
 
 
 def get_all_note_versions(db: Session, note_pk, user):
@@ -85,7 +87,8 @@ def add_note_version(db: Session, note_pk, summary, user, restored_content=None,
                 except SQLAlchemyError as e:
                     logger.error(e)
                 db.refresh(db_note)
-                note_service.restore_note(db=db, note_pk=note_pk, user=user)
+                note_service.restore_note(db=db, note_pk=note_pk, user=user,
+                                          typesense=get_typesense_client())
 
             version_metadata = {
                 'content': db_note.content,
