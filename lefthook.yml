@@ -1,0 +1,8 @@
+pre-commit:
+  parallel: false
+  commands:
+    ruff-linter:
+      run: ruff check --fix
+    format:
+      glob: "*.py"
+      run: darker {staged_files}

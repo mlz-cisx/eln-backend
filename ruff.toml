@@ -1,0 +1,9 @@
+[lint]
+select = ["E", "F", "I"]
+ignore = ["E712", "E501"]
+# E702: true-false-comparison (E712) due to sqlchemy
+# E501 line-too-long
+
+[format]
+# allow both single and double quote
+quote-style = "preserve"
