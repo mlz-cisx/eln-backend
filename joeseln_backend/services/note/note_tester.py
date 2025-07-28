@@ -1,5 +1,5 @@
 import requests
-from joeseln_backend.conf.content_types import *
+from joeseln_backend.conf.content_types import note_content_type, note_content_type_model
 from joeseln_backend.services.note.note_test_content import CONTENT
 from joeseln_backend.conf.base_conf import STATIC_ADMIN_TOKEN
 

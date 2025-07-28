@@ -1,6 +1,6 @@
 import datetime
-from typing import List, Any
-from pydantic import BaseModel, Field, Json
+from typing import List
+from pydantic import BaseModel, Field
 from uuid import UUID
 from joeseln_backend.services.user.user_schema import User
 

@@ -1,5 +1,6 @@
-import logging, os
-from logging import config
+import logging
+import logging.config
+import os
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 

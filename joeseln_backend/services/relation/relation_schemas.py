@@ -1,11 +1,10 @@
 import datetime
 
-from pydantic import BaseModel, Field, Json
+from pydantic import BaseModel, Field
 from uuid import UUID
 
-from typing import Any
 
-from joeseln_backend.conf.content_types import *
+from joeseln_backend.conf.content_types import relation_content_type
 from joeseln_backend.services.note.note_schemas import Note
 from joeseln_backend.services.picture.picture_schemas import Picture
 from joeseln_backend.services.file.file_schemas import File

@@ -1,4 +1,5 @@
-import sys, os
+import sys
+import os
 
 # append path of parent dir to have joeseln_backend as module
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
@@ -57,10 +58,8 @@ from joeseln_backend.database.database import SessionLocal, get_db
 from joeseln_backend.export import export_labbook, export_note, export_picture, \
     export_file
 from joeseln_backend.full_text_search import text_search
-from joeseln_backend.conf.base_conf import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, KEYCLOAK_SERVER_URL, ORIGINS, JAEGER_HOST, JAEGER_PORT, \
-    JAEGER_SERVICE_NAME, PICTURES_BASE_PATH, FILES_BASE_PATH, URL_BASE_PATH, APP_BASE_PATH
-from joeseln_backend.auth.security import Token, OAuth2PasswordBearer, \
-    get_current_user, authenticate_user, verify_jwt_with_leeway, \
+from joeseln_backend.conf.base_conf import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, KEYCLOAK_SERVER_URL, ORIGINS, PICTURES_BASE_PATH, FILES_BASE_PATH, URL_BASE_PATH, APP_BASE_PATH
+from joeseln_backend.auth.security import Token, get_current_user, authenticate_user, verify_jwt_with_leeway, \
     ACCESS_TOKEN_EXPIRE_SECONDS, \
     create_access_token
 
@@ -230,7 +229,7 @@ def export_link_labbook(labbook_pk: UUID,
 
 
 @app.get("/api/labbooks/{labbook_pk}/export_as_zip/", )
-def export_labbook_content(labbook_pk: UUID,
+def export_labbook_content_zip(labbook_pk: UUID,
                            db: Session = Depends(get_db),
                            user: User = Depends(get_current_user)):
     zipped_labbook = export_labbook.create_export_zip_file(db=db,

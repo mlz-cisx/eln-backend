@@ -1,16 +1,12 @@
 from cachetools import cached, TTLCache
-from sqlalchemy import false
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
-import bcrypt
 from pydantic import BaseModel
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.conf.base_conf import INSTRUMENT_AS_ADMIN
-from joeseln_backend.services.user.user_service import update_oidc_user, \
-    get_user_by_uname
-from joeseln_backend.services.user.user_schema import OIDCUserCreate
+from joeseln_backend.services.user.user_service import get_user_by_uname
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_with_groups_by_uname, update_oidc_user_groups
+    get_user_with_groups_by_uname
 
 from typing import Annotated, Any
 from datetime import datetime, timedelta, timezone
@@ -18,12 +14,6 @@ import jwt
 import time
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
-import requests
-from starlette.status import (
-    HTTP_200_OK,
-    HTTP_401_UNAUTHORIZED,
-    HTTP_500_INTERNAL_SERVER_ERROR
-)
 
 from joeseln_backend.conf.base_conf import STATIC_ADMIN_TOKEN
 
@@ -161,7 +151,7 @@ def get_user_from_jwt(token: Annotated[str, Depends(oauth2_scheme)]):
             if user is None:
                 return
             return user
-    except jwt.exceptions.ExpiredSignatureError as e:
+    except jwt.exceptions.ExpiredSignatureError:
         # logger.info('token expired ')
         return
 
@@ -194,7 +184,7 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             if user is None or user.deleted:
                 raise credentials_exception
             return user
-    except jwt.exceptions.ExpiredSignatureError as e:
+    except jwt.exceptions.ExpiredSignatureError:
         # logger.info('token expired ')
         raise credentials_exception
 

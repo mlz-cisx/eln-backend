@@ -1,12 +1,6 @@
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.services.user_to_group.user_to_group_service import \
-    create_group, create_user_to_group, get_user_group_roles, get_user_groups, \
-    remove_all_group_roles, \
-    remove_as_groupadmin_from_group, remove_as_user_from_group, \
-    get_user_groups_role_user, get_user_groups_role_groupadmin, \
-    remove_admin_role, add_admin_role, add_as_groupadmin_to_group
-from joeseln_backend.services.user_to_group.user_to_group_schema import Group, \
-    UserToGroup_Create
+    get_user_groups_role_groupadmin
 
 my_session = SessionLocal()
 

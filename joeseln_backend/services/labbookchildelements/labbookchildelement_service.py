@@ -1,22 +1,21 @@
 from sqlalchemy.orm import Session, aliased, defer
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import select, func, and_, or_
-
+from sqlalchemy import select, func, and_
+import datetime
 
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
 from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
 
 from joeseln_backend.models import models
-from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import *
+from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import Labbookchildelement_Create
 
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.services.picture import picture_service
 from joeseln_backend.services.file import file_service
 
 from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access, get_all_labbook_ids_from_non_admin_user, \
-    check_for_labbook_admin_access
+    check_for_labbook_access, check_for_labbook_admin_access
 
 from joeseln_backend.services.note.note_service import get_note_relations, \
     get_note_related_comments_count, get_note

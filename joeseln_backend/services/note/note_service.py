@@ -1,5 +1,5 @@
 import sys
-
+import datetime
 from fastapi.exceptions import HTTPException
 
 from sqlalchemy import or_
@@ -17,7 +17,7 @@ from joeseln_backend.services.privileges.privileges_service import \
     create_note_privileges, create_strict_privileges
 from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.models import models
-from joeseln_backend.services.note.note_schemas import *
+from joeseln_backend.services.note.note_schemas import Note, NoteCreate
 from joeseln_backend.services.history.history_service import \
     create_history_entry, create_note_update_history_entry
 from joeseln_backend.helper import db_ordering
@@ -84,7 +84,7 @@ def get_all_notes(db: Session, params, user):
                 lb_elem = db.query(models.Labbookchildelement).get(note.elem_id)
                 lb = db.query(models.Labbook).get(lb_elem.labbook_id)
                 note.lb_title = lb.title
-            except:
+            except SQLAlchemyError:
                 note.lb_title = 'None'
         return notes
 
@@ -133,7 +133,7 @@ def get_all_notes(db: Session, params, user):
             lb_elem = db.query(models.Labbookchildelement).get(note.elem_id)
             lb = db.query(models.Labbook).get(lb_elem.labbook_id)
             note.lb_title = lb.title
-        except:
+        except SQLAlchemyError:
             note.lb_title = 'None'
 
     return notes

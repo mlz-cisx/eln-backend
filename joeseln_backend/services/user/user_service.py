@@ -1,7 +1,8 @@
+import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from joeseln_backend.models import models
-from joeseln_backend.services.user.user_schema import *
+from joeseln_backend.services.user.user_schema import OIDCUserCreate, GuiUserPatch, UserCreate
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
 
@@ -32,7 +33,7 @@ def update_oidc_user(db: Session, oidc_user: OIDCUserCreate):
         db.refresh(db_user)
         try:
             db_user.groups = oidc_user.realm_access['roles']
-        except TypeError as e:
+        except TypeError:
             db_user.groups = []
         return db_user
     elif db_user.email != oidc_user.email or \
@@ -57,7 +58,7 @@ def update_oidc_user(db: Session, oidc_user: OIDCUserCreate):
     else:
         try:
             db_user.groups = oidc_user.realm_access['roles']
-        except TypeError as e:
+        except TypeError:
             db_user.groups = []
         return db_user
 

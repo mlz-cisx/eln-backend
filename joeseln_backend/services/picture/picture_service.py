@@ -6,6 +6,7 @@ from fastapi import Request
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_
+import datetime
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -30,7 +31,7 @@ from joeseln_backend.models import models
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.services.entry_path.entry_path_service import create_path, \
     create_entry
-from joeseln_backend.services.picture.picture_schemas import *
+from joeseln_backend.services.picture.picture_schemas import UpdatePictureTitle
 from joeseln_backend.conf.base_conf import PICTURES_BASE_PATH, URL_BASE_PATH, \
     LABBOOK_QUERY_MODE, ELEM_MAXIMUM_SIZE
 from joeseln_backend.services.comment.comment_schemas import Comment
@@ -82,7 +83,7 @@ def get_all_pictures(db: Session, params, user):
                 lb_elem = db.query(models.Labbookchildelement).get(pic.elem_id)
                 lb = db.query(models.Labbook).get(lb_elem.labbook_id)
                 pic.lb_title = lb.title
-            except:
+            except SQLAlchemyError:
                 pic.lb_title = 'None'
 
         return pics
@@ -132,7 +133,7 @@ def get_all_pictures(db: Session, params, user):
             lb_elem = db.query(models.Labbookchildelement).get(pic.elem_id)
             lb = db.query(models.Labbook).get(lb_elem.labbook_id)
             pic.lb_title = lb.title
-        except:
+        except SQLAlchemyError:
             pic.lb_title = 'None'
 
     return pics
@@ -672,7 +673,7 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
         db_picture.created_by = db_user_created
         db_picture.last_modified_by = user
 
-        bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
+        # bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
         ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
         shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
 

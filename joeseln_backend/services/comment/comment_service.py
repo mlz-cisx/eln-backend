@@ -1,6 +1,5 @@
 import sys
-
-from sqlalchemy import select, func, and_, or_
+import datetime
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from joeseln_backend.full_text_search.html_stripper import sanitize_html
 from joeseln_backend.conf.base_conf import ELEM_MAXIMUM_SIZE
 from joeseln_backend.models import models
-from joeseln_backend.services.comment.comment_schemas import *
+from joeseln_backend.services.comment.comment_schemas import CreateComment
 from joeseln_backend.conf.content_types import type2model, comment_content_type, \
     comment_content_type_model
 from joeseln_backend.mylogging.root_logger import logger

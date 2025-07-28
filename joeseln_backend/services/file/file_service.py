@@ -2,6 +2,7 @@ import json
 import pathlib
 import sys
 from copy import deepcopy
+import datetime
 
 from fastapi.responses import FileResponse
 from sqlalchemy import or_
@@ -17,8 +18,8 @@ from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.services.entry_path.entry_path_service import create_path, \
     create_entry
 from joeseln_backend.auth import security
+from joeseln_backend.services.file.file_schemas import FilePatch
 from joeseln_backend.models import models
-from joeseln_backend.services.file.file_schemas import *
 from joeseln_backend.services.history.history_service import \
     create_history_entry, create_file_update_history_entry
 from joeseln_backend.services.labbook.labbook_service import \
@@ -90,7 +91,7 @@ def get_all_files(db: Session, params, user):
                     file.lb_title = lb.title
                 else:
                     file.lb_title = 'None'
-            except:
+            except SQLAlchemyError:
                 file.lb_title = 'None'
 
         return files
@@ -140,7 +141,7 @@ def get_all_files(db: Session, params, user):
             lb_elem = db.query(models.Labbookchildelement).get(file.elem_id)
             lb = db.query(models.Labbook).get(lb_elem.labbook_id)
             file.lb_title = lb.title
-        except:
+        except SQLAlchemyError:
             file.lb_title = 'None'
 
     return files

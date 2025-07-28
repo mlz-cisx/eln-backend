@@ -1,4 +1,5 @@
-import sys, os
+import sys
+import os
 from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError
 

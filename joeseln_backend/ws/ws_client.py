@@ -26,7 +26,8 @@ class WebSocketClient:
             try:
                 merged_data = {**{'action': 'transmit', 'auth': self.token}, **db_data}
                 await self.websocket.send(json.dumps(merged_data))
-                response = await self.websocket.recv()
+                _ = await self.websocket.recv()
+                # response = await self.websocket.recv()
                 # print('transmitted to eln ', response)
             except websockets.exceptions.ConnectionClosedError as e:
                 logger.error(e)

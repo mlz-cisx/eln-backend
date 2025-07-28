@@ -1,5 +1,6 @@
+from sqlalchemy.orm import Session
 import json
-
+import datetime
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -12,7 +13,7 @@ from joeseln_backend.services.labbook.labbook_service import \
 from joeseln_backend.services.labbookchildelements.labbookchildelement_service import \
     check_for_version_edit_access_on_lb_elem
 from joeseln_backend.services.note import note_service
-from joeseln_backend.services.note.note_schemas import *
+from joeseln_backend.conf.content_types import note_content_type_version
 
 
 def get_all_note_versions(db: Session, note_pk, user):

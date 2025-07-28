@@ -1,6 +1,5 @@
 import sqlalchemy
 from sqlalchemy import text
-from sqlalchemy.exc import ProgrammingError
 from joeseln_backend.database.database import engine
 from joeseln_backend.mylogging.root_logger import logger
 

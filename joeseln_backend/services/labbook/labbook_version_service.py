@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
 import json
+import datetime
 from sqlalchemy.exc import SQLAlchemyError
 
 from joeseln_backend.models import models
-from joeseln_backend.services.note.note_schemas import *
+from joeseln_backend.conf.content_types import note_content_type_model, picture_content_type_model, file_content_type_model, picture_content_type_version
 from joeseln_backend.services.picture import picture_version_service
 from joeseln_backend.services.note import note_version_service
 from joeseln_backend.services.file import file_version_service

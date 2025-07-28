@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 import json
+import datetime
 from sqlalchemy.exc import SQLAlchemyError
 
 from joeseln_backend.services.labbook.labbook_service import \
@@ -8,7 +9,7 @@ from joeseln_backend.services.labbookchildelements.labbookchildelement_service i
     check_for_version_edit_access_on_lb_elem
 from joeseln_backend.services.picture import picture_service
 from joeseln_backend.models import models
-from joeseln_backend.services.note.note_schemas import *
+from joeseln_backend.conf.content_types import picture_content_type_version
 
 from joeseln_backend.mylogging.root_logger import logger
 
