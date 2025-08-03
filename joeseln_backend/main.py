@@ -11,10 +11,22 @@ from urllib.parse import urlencode
 from uuid import UUID
 
 import jwt
-from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import (
+    Body,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from keycloak import KeycloakOpenID
 from sqlalchemy.orm import Session
 
@@ -60,6 +72,7 @@ from joeseln_backend.full_text_search.typesense_service import (
     get_typesense_client,
     typesense_client,
 )
+from joeseln_backend.helper.db_ordering import OrderingParam
 
 # trace.set_tracer_provider(
 #     TracerProvider(
@@ -72,6 +85,7 @@ from joeseln_backend.full_text_search.typesense_service import (
 # from joeseln_backend.mylogging.jaeger_logger import jaeger_tracer
 # jaeger_tracer = jaeger_tracer()
 # will create all tables if not exist
+from joeseln_backend.models.models import export_link, simple_messege_response
 from joeseln_backend.models.table_creator import table_creator
 
 # first logger
@@ -173,7 +187,7 @@ async def lifespan(app: FastAPI):
     await ws_client.close()
 
 
-app = FastAPI(lifespan=lifespan, docs_url="/api/docs")
+app = FastAPI(lifespan=lifespan, docs_url="/api/docs", redoc_url="/api/redoc")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ORIGINS,
@@ -187,10 +201,10 @@ keycloak_openid = KeycloakOpenID(server_url=KEYCLOAK_SERVER_URL,
                                  realm_name=KEYCLOAK_REALM_NAME,
                                  client_secret_key=KEYCLOAK_CLIENT_SECRET)
 
-@app.get("/api/health/")
+@app.get("/api/health/", response_model=simple_messege_response)
 def get_health(db: Session = Depends(get_db)):
-    db.execute('SELECT 1')
-    return ['ok']
+    db.execute("SELECT 1")
+    return "ok"
 
 
 @app.get("/api/stat", response_model=StatResponse)
@@ -203,9 +217,16 @@ def read_stat(db: Session = Depends(get_db),
 
 
 @app.get("/api/labbooks/", response_model=list[labbook_schemas.LabbookWithLen])
-def read_labbooks(request: Request,
-                  db: Session = Depends(get_db),
-                  user: User = Depends(get_current_user)):
+def read_labbooks(
+    request: Request,
+    ordering: OrderingParam = Query(None),
+    limit: int = Query(..., gt=0),
+    offset: int = Query(..., ge=0),
+    search: str = Query(None),
+    deleted: bool = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # with jaeger_tracer.start_span('GET /labbooks/ user') as span:
     #     span.log_kv({'user': user.username})
     labbooks = labbook_service.get_labbooks_from_user(db=db,
@@ -240,19 +261,18 @@ def read_labbook(labbook_pk: UUID,
 
 
 @app.get("/api/labbooks/{labbook_pk}/export/", response_class=FileResponse)
-def export_labbook_content(request: Request, labbook_pk: UUID,
-                           db: Session = Depends(get_db),
-                           user: User = Depends(get_current_user)):
-    dwldable_labbook = export_labbook.get_export_data(db=db, lb_pk=labbook_pk,
-                                                      jwt=
-                                                      request.query_params._dict
-                                                      ['jwt'])
+def export_labbook_content(
+    jwt: str,
+    labbook_pk: UUID,
+    db: Session = Depends(get_db),
+):
+    dwldable_labbook = export_labbook.get_export_data(db=db, lb_pk=labbook_pk, jwt=jwt)
     if dwldable_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_labbook
 
 
-@app.get("/api/labbooks/{labbook_pk}/get_export_link/")
+@app.get("/api/labbooks/{labbook_pk}/get_export_link/", response_model=export_link)
 def export_link_labbook(labbook_pk: UUID,
                         db: Session = Depends(get_db),
                         user: User = Depends(get_current_user)):
@@ -264,13 +284,15 @@ def export_link_labbook(labbook_pk: UUID,
     return export_link
 
 
-@app.get("/api/labbooks/{labbook_pk}/export_as_zip/", )
-def export_labbook_content_zip(labbook_pk: UUID,
-                           db: Session = Depends(get_db),
-                           user: User = Depends(get_current_user)):
-    zipped_labbook = export_labbook.create_export_zip_file(db=db,
-                                                           labbook_pk=labbook_pk,
-                                                           user=user)
+@app.get("/api/labbooks/{labbook_pk}/export_as_zip/", response_class=StreamingResponse)
+def export_labbook_content_zip(
+    labbook_pk: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    zipped_labbook = export_labbook.create_export_zip_file(
+        db=db, labbook_pk=labbook_pk, user=user
+    )
     if zipped_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return zipped_labbook
@@ -372,7 +394,10 @@ async def patch_labbook_elem(
     return lb_element
 
 
-@app.put("/api/labbooks/{labbook_pk}/elements/update_all/")
+@app.put(
+    "/api/labbooks/{labbook_pk}/elements/update_all/",
+    response_model=simple_messege_response,
+)
 async def update_labbook_elements(
         labbook_pk: str,
         elems: list[labbookchildelement_schemas.Labbookchildelement_Update],
@@ -380,12 +405,10 @@ async def update_labbook_elements(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # all groupmembers
-    if labbookchildelement_service. \
-            update_all_lb_childelements(db=db,
-                                        labbook_childelems=elems,
-                                        labbook_pk=labbook_pk,
-                                        user=user):
-        return ['ok']
+    if labbookchildelement_service.update_all_lb_childelements(
+        db=db, labbook_childelems=elems, labbook_pk=labbook_pk, user=user
+    ):
+        return "ok"
     else:
         raise HTTPException(status_code=404, detail="Labbook not found")
 
@@ -393,7 +416,6 @@ async def update_labbook_elements(
 @app.get("/api/labbooks/{labbook_pk}/history/",
          response_model=list[history_schema.ElemHistory])
 def get_labbook_history(
-        request: Request,
         labbook_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
@@ -405,7 +427,6 @@ def get_labbook_history(
 @app.get("/api/labbooks/{labbook_pk}/versions/",
          response_model=list[labbook_schemas.LabbookVersion])
 def get_labbook_versions(
-        request: Request,
         labbook_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
@@ -438,7 +459,10 @@ def add_labbook_version(
     # DONE
 
 
-@app.post("/api/labbooks/{labbook_pk}/versions/{version_pk}/restore/")
+@app.post(
+    "/api/labbooks/{labbook_pk}/versions/{version_pk}/restore/",
+    response_model=labbook_schemas.Labbook,
+)
 def restore_labbook_version(
         labbook_pk: UUID,
         version_pk: str,
@@ -474,8 +498,8 @@ def preview_labbook_version(
     return lb_metadata
 
 
-@app.get("/api/labbooks/note_aside/{elem_pk}/")
-def check_for_note_aside(
+@app.get("/api/labbooks/note_aside/{elem_pk}/", response_model=bool)
+def create_for_note_aside(
         elem_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user),
@@ -486,7 +510,7 @@ def check_for_note_aside(
                                              typesense_client=typesense)
 
 
-@app.get("/api/labbooks/note_below/{elem_pk}/")
+@app.get("/api/labbooks/note_below/{elem_pk}/", response_model=bool)
 def create_note_below(
         elem_pk: UUID,
         db: Session = Depends(get_db),
@@ -517,9 +541,15 @@ def create_note(
 @app.get("/api/notes/",
          response_model=list[note_schemas.NoteWithLbTitle])
 def read_notes(
-        request: Request,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+    request: Request,
+    ordering: OrderingParam = Query(None),
+    limit: int = Query(..., gt=0),
+    offset: int = Query(..., ge=0),
+    search: str = Query(None),
+    deleted: bool = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
     # for all users with corresponding labbook access
     db_notes = note_service.get_all_notes(db=db,
@@ -581,14 +611,16 @@ def restore_note(
 @app.get("/api/notes/{note_pk}/",
          response_model=note_schemas.NoteWithPrivileges)
 def get_note(
-        request: Request,
-        response: Response,
-        note_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+    response: Response,
+    note_pk: UUID,
+    If_None_Match: Annotated[str | None, Header()] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
-    db_note = note_service.get_note_with_privileges(db=db, note_pk=note_pk,
-                                                    user=user, etag=request.headers.get("If-None-Match"))
+    db_note = note_service.get_note_with_privileges(
+        db=db, note_pk=note_pk, user=user, etag=If_None_Match
+    )
     if db_note is None:
         raise HTTPException(status_code=204)
 
@@ -599,20 +631,18 @@ def get_note(
 @app.get("/api/notes/{note_pk}/export/",
          response_class=FileResponse)
 def export_note_content(
-        request: Request,
-        note_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+    jwt: str,
+    note_pk: UUID,
+    db: Session = Depends(get_db),
+):
     # logger.info(user)
-    dwldable_note = export_note.get_export_data(db=db, note_pk=note_pk,
-                                                jwt=request.query_params._dict
-                                                ['jwt'])
+    dwldable_note = export_note.get_export_data(db=db, note_pk=note_pk, jwt=jwt)
     if dwldable_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_note
 
 
-@app.get("/api/notes/{note_pk}/get_export_link/")
+@app.get("/api/notes/{note_pk}/get_export_link/", response_model=export_link)
 def export_link__note(
         note_pk: UUID,
         db: Session = Depends(get_db),
@@ -628,7 +658,6 @@ def export_link__note(
 @app.get("/api/notes/{note_pk}/history/",
          response_model=list[history_schema.ElemHistory])
 def get_note_history(
-        request: Request,
         note_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
@@ -667,7 +696,10 @@ def add_note_version(
     return db_note
 
 
-@app.post("/api/notes/{note_pk}/versions/{version_pk}/restore/")
+@app.post(
+    "/api/notes/{note_pk}/versions/{version_pk}/restore/",
+    response_model=note_schemas.Note,
+)
 async def restore_note_version(
         note_pk: UUID,
         version_pk: str,
@@ -712,32 +744,34 @@ def get_note_relations(
                                            user=user)
 
 
-@app.post("/api/notes/{note_pk}/relations/")
-def add_note_relation(
-        request: Request,
-        note_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    logger.info(request.query_params._dict)
-    return ['ok']
-    # DONE not in use
+# @app.post("/api/notes/{note_pk}/relations/")
+# def add_note_relation(
+#         request: Request,
+#         note_pk: UUID,
+#         db: Session = Depends(get_db),
+#         user: User = Depends(get_current_user)):
+#     logger.info(request.query_params._dict)
+#     return ['ok']
+#     # DONE not in use
 
 
-@app.put("/api/notes/{note_pk}/relations/{relation_pk}/")
-def put_note_relation(
-        request: Request,
-        note_pk: UUID,
-        relation_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    logger.info(request.query_params._dict)
-    return ['ok']
-    # DONE not in use
+# @app.put("/api/notes/{note_pk}/relations/{relation_pk}/")
+# def put_note_relation(
+#         request: Request,
+#         note_pk: UUID,
+#         relation_pk: UUID,
+#         db: Session = Depends(get_db),
+#         user: User = Depends(get_current_user)):
+#     logger.info(request.query_params._dict)
+#     return ['ok']
+#     # DONE not in use
 
 
-@app.delete("/api/notes/{note_pk}/relations/{relation_pk}/")
+@app.delete(
+    "/api/notes/{note_pk}/relations/{relation_pk}/",
+    response_model=list[relation_schemas.Relation],
+)
 def delete_note_relation(
-        request: Request,
         note_pk: UUID,
         relation_pk: UUID,
         db: Session = Depends(get_db),
@@ -752,21 +786,29 @@ def delete_note_relation(
 
 
 @app.post("/api/pictures/", response_model=picture_schemas.Picture)
-async def UploadImage(request: Request,
-                      db: Session = Depends(get_db),
-                      user: User = Depends(get_current_user)):
+async def upload_image(
+    request: Request,
+    width: Annotated[int, Form(...)],
+    height: Annotated[int, Form(...)],
+    title: Annotated[str, Form(...)],
+    background_image: Annotated[UploadFile | None, File()] = None,
+    rendered_image: Annotated[UploadFile | None, File()] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
+    ret_vals = None
     async with request.form() as form:
         # picture upload
-        if 'background_image' in form.keys():
-            contents = await form['background_image'].read()
+        if background_image:
+            contents = await background_image.read()
             ret_vals = picture_service.process_picture_upload_form(form=form,
                                                                    db=db,
                                                                    contents=contents,
                                                                    user=user)
         # sketch upload
-        elif 'rendered_image' in form.keys():
-            contents = await form['rendered_image'].read()
+        elif rendered_image:
+            contents = await rendered_image.read()
             ret_vals = picture_service.process_sketch_upload_form(form=form,
                                                                   db=db,
                                                                   contents=contents,
@@ -779,14 +821,19 @@ async def UploadImage(request: Request,
 
 
 @app.post("/api/pictures/clone/", response_model=picture_schemas.Picture)
-async def CloneImage(request: Request,
-                     db: Session = Depends(get_db),
-                     user: User = Depends(get_current_user)):
+async def clone_image(
+    request: Request,
+    background_image: Annotated[UploadFile, File()],
+    rendered_image: Annotated[UploadFile, File()],
+    shapes_image: Annotated[UploadFile, File()],
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
     async with request.form() as form:
-        bi_img_contents = await form['background_image'].read()
-        ri_img_contents = await form['rendered_image'].read()
-        shapes_contents = await form['shapes_image'].read()
+        bi_img_contents = await background_image.read()
+        ri_img_contents = await rendered_image.read()
+        shapes_contents = await shapes_image.read()
         db_picture = picture_service.clone_picture(db=db,
                                                    bi_img_contents=bi_img_contents,
                                                    ri_img_contents=ri_img_contents,
@@ -803,9 +850,15 @@ async def CloneImage(request: Request,
 @app.get("/api/pictures/",
          response_model=list[picture_schemas.PictureWithLbTitle])
 def read_pictures(
-        request: Request,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+    request: Request,
+    ordering: OrderingParam = Query(None),
+    limit: int = Query(..., gt=0),
+    offset: int = Query(..., ge=0),
+    search: str = Query(None),
+    deleted: bool = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
     db_pictures = picture_service.get_all_pictures(db=db,
                                                    params=request.query_params._dict,
@@ -816,16 +869,16 @@ def read_pictures(
 @app.get("/api/pictures/{picture_pk}/",
          response_model=picture_schemas.PictureWithPrivileges)
 def get_picture(
-        request: Request,
-        response: Response,
-        picture_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+    response: Response,
+    picture_pk: UUID,
+    If_None_Match: Annotated[str | None, Header()] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
-    db_picture = picture_service.get_picture_with_privileges(db=db,
-                                                             picture_pk=picture_pk,
-                                                             user=user,
-                                                             request=request)
+    db_picture = picture_service.get_picture_with_privileges(
+        db=db, picture_pk=picture_pk, user=user, If_None_Match=If_None_Match
+    )
 
     if db_picture is None:
         raise HTTPException(status_code=204)
@@ -834,28 +887,24 @@ def get_picture(
     return db_picture['content']
 
 
-@app.get("/api/pictures/{picture_pk}/bi_download/",
-         response_class=FileResponse)
-def get_bi_picture(
-        request: Request,
-        picture_pk: UUID,
-        db: Session = Depends(get_db)):
-    logger.info(request.query_params._dict)
+@app.get("/api/pictures/{picture_pk}/bi_download/", response_class=FileResponse)
+def get_bi_picture(jwt: str, picture_pk: UUID, db: Session = Depends(get_db)):
     bi_picture = picture_service.build_bi_download_response(
-        picture_pk=picture_pk,
-        db=db,
-        jwt=request.query_params._dict['jwt'])
+        picture_pk=picture_pk, db=db, jwt=jwt
+    )
     if bi_picture is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return bi_picture
 
 
-@app.get("/api/pictures/{picture_pk}/ri_download/")
+@app.get("/api/pictures/{picture_pk}/ri_download/", response_class=FileResponse)
 def get_ri_picture(
-        request: Request,
-        picture_pk: UUID,
-        db: Session = Depends(get_db)):
-    logger.info(request.query_params._dict)
+    request: Request,
+    picture_pk: UUID,
+    If_None_Match: Annotated[str | None, Header()] = None,
+    If_Modified_Since: Annotated[str | None, Header()] = None,
+    db: Session = Depends(get_db),
+):
     ri_picture = picture_service.build_ri_download_response(
         picture_pk=picture_pk,
         db=db,
@@ -865,16 +914,11 @@ def get_ri_picture(
     return ri_picture
 
 
-@app.get("/api/pictures/{picture_pk}/shapes/",
-         response_class=FileResponse)
-def get_shapes(
-        request: Request,
-        picture_pk: UUID,
-        db: Session = Depends(get_db)):
-    shapes = picture_service.build_shapes_response(picture_pk=picture_pk, db=db,
-                                                   jwt=
-                                                   request.query_params._dict[
-                                                       'jwt'])
+@app.get("/api/pictures/{picture_pk}/shapes/", response_class=FileResponse)
+def get_shapes(jwt: str, picture_pk: UUID, db: Session = Depends(get_db)):
+    shapes = picture_service.build_shapes_response(
+        picture_pk=picture_pk, db=db, jwt=jwt
+    )
     if shapes is None:
         raise HTTPException(status_code=404, detail="token expired")
     return shapes
@@ -883,22 +927,19 @@ def get_shapes(
 @app.get("/api/pictures/{picture_pk}/export/",
          response_class=FileResponse)
 def export_picture_content(
-        request: Request,
-        picture_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+    jwt: str,
+    picture_pk: UUID,
+    db: Session = Depends(get_db),
+):
     # logger.info(user)
-    dwldable_pic = export_picture.get_export_data(db=db, picture_pk=picture_pk,
-                                                  jwt=request.query_params._dict
-                                                  ['jwt'])
+    dwldable_pic = export_picture.get_export_data(db=db, picture_pk=picture_pk, jwt=jwt)
     if dwldable_pic is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_pic
 
 
-@app.get("/api/pictures/{picture_pk}/get_export_link/")
+@app.get("/api/pictures/{picture_pk}/get_export_link/", response_model=export_link)
 def export_link_picture(
-        request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
@@ -963,16 +1004,20 @@ def update_title_picture(
 @app.patch("/api/pictures/{picture_pk}/",
            response_model=picture_schemas.Picture)
 async def patch_picture(
-        request: Request,
-        picture_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+    request: Request,
+    picture_pk: UUID,
+    background_image: Annotated[UploadFile, File()],
+    rendered_image: Annotated[UploadFile, File()],
+    shapes_image: Annotated[UploadFile, File()],
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
     # for all users
     async with request.form() as form:
-        bi_img_contents = await form['background_image'].read()
-        ri_img_contents = await form['rendered_image'].read()
-        shapes_contents = await form['shapes_image'].read()
+        bi_img_contents = await background_image.read()
+        ri_img_contents = await rendered_image.read()
+        shapes_contents = await shapes_image.read()
         db_picture = picture_service.update_picture(pk=picture_pk,
                                                     db=db,
                                                     form=form,
@@ -990,7 +1035,6 @@ async def patch_picture(
 @app.get("/api/pictures/{picture_pk}/history/",
          response_model=list[history_schema.ElemHistory])
 def get_picture_history(
-        request: Request,
         picture_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
@@ -1032,7 +1076,10 @@ def add_picture_version(
     return picture_version
 
 
-@app.post("/api/pictures/{picture_pk}/versions/{version_pk}/restore/")
+@app.post(
+    "/api/pictures/{picture_pk}/versions/{version_pk}/restore/",
+    response_model=picture_schemas.Picture,
+)
 def restore_picture_version(
         picture_pk: UUID,
         version_pk: str,
@@ -1080,25 +1127,35 @@ def get_picture_relations(
                                                  user=user)
 
 
-@app.delete("/api/pictures/{picture_pk}/relations/{relation_pk}/")
+@app.delete(
+    "/api/pictures/{picture_pk}/relations/{relation_pk}/",
+    response_model=simple_messege_response,
+)
 def delete_picture_relation(
-        request: Request,
-        picture_pk: UUID,
-        relation_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    picture_service.delete_picture_relation(db=db, picture_pk=picture_pk,
-                                            relation_pk=relation_pk, user=user)
-    return ['ok']
+    picture_pk: UUID,
+    relation_pk: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    picture_service.delete_picture_relation(
+        db=db, picture_pk=picture_pk, relation_pk=relation_pk, user=user
+    )
+    return "ok"
 
 
 @app.post("/api/files/", response_model=file_schemas.File)
-async def UploadFile(request: Request,
-                     db: Session = Depends(get_db),
-                     user: User = Depends(get_current_user)):
+async def upload_file(
+    request: Request,
+    title: Annotated[str, Form(...)],
+    name: Annotated[str, Form(...)],
+    path: Annotated[UploadFile, File()],
+    description: Annotated[str | None, Form(...)] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
     async with request.form() as form:
-        contents = await form['path'].read()
+        contents = await path.read()
         ret_vals = file_service.process_file_upload_form(form=form, db=db,
                                                          contents=contents,
                                                          user=user)
@@ -1110,16 +1167,19 @@ async def UploadFile(request: Request,
 
 
 @app.post("/api/files/clone/", response_model=file_schemas.File)
-async def CloneFile(request: Request,
-                    db: Session = Depends(get_db),
-                    user: User = Depends(get_current_user)):
+async def clone_file(
+    request: Request,
+    info: Annotated[str, Form(...)],
+    path: Annotated[UploadFile, File()],
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
-    async with request.form() as form:
-        contents = await form['path'].read()
-        ret_vals = file_service.clone_file(db=db,
-                                           contents=contents,
-                                           info=form['info'],
-                                           user=user)
+    async with request.form() as _:
+        contents = await path.read()
+        ret_vals = file_service.clone_file(
+            db=db, contents=contents, info=info, user=user
+        )
 
         if ret_vals is None:
             raise HTTPException(status_code=204)
@@ -1207,7 +1267,7 @@ def export_file_content(
     return dwldable_file
 
 
-@app.get("/api/files/{file_pk}/get_export_link/")
+@app.get("/api/files/{file_pk}/get_export_link/", response_model=export_link)
 def export_link_file(
         request: Request,
         file_pk: UUID,
@@ -1253,7 +1313,6 @@ def restore_file(
 @app.get("/api/files/{file_pk}/history/",
          response_model=list[history_schema.ElemHistory])
 def get_file_history(
-        request: Request,
         file_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
@@ -1264,7 +1323,6 @@ def get_file_history(
 @app.get("/api/files/{file_pk}/versions/",
          response_model=list[file_schemas.FileVersion])
 def get_file_versions(
-        request: Request,
         file_pk: UUID,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
@@ -1292,7 +1350,10 @@ def add_file_version(
     return file_version
 
 
-@app.post("/api/files/{file_pk}/versions/{version_pk}/restore/")
+@app.post(
+    "/api/files/{file_pk}/versions/{version_pk}/restore/",
+    response_model=file_schemas.File,
+)
 def restore_file_version(
         file_pk: UUID,
         version_pk: str,
@@ -1338,19 +1399,23 @@ def get_file_relations(
                                            user=user)
 
 
-@app.delete("/api/files/{file_pk}/relations/{relation_pk}/")
+@app.delete(
+    "/api/files/{file_pk}/relations/{relation_pk}/",
+    response_model=simple_messege_response,
+)
 def delete_file_relation(
-        request: Request,
-        file_pk: UUID,
-        relation_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    file_service.delete_file_relation(db=db, file_pk=file_pk,
-                                      relation_pk=relation_pk, user=user)
-    return ['ok']
+    file_pk: UUID,
+    relation_pk: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    file_service.delete_file_relation(
+        db=db, file_pk=file_pk, relation_pk=relation_pk, user=user
+    )
+    return "ok"
 
 
-@app.post("/api/comments/")
+@app.post("/api/comments/", response_model=simple_messege_response)
 def create_comment(
         comment: comment_schemas.CreateComment,
         db: Session = Depends(get_db),
@@ -1359,7 +1424,7 @@ def create_comment(
                                                 user=user)
     if db_comment is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
-    return db_comment
+    return "ok"
 
 
 @app.get('/api/users/me', response_model=User)
@@ -1367,18 +1432,19 @@ async def user_me(user: User = Depends(get_current_user)):
     return user
 
 
-@app.put('/api/change_password')
-def change_password(password: PasswordChange,
-                    db: Session = Depends(get_db),
-                    user: User = Depends(get_current_user),
-                    ):
-    db_user = gui_password_change(db=db, user=user,
-                                  none_hashed_password=password)
+@app.put("/api/change_password", response_model=simple_messege_response)
+def change_password(
+    password: PasswordChange,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_user = gui_password_change(db=db, user=user, none_hashed_password=password)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    return ['ok']
+    return "ok"
 
-@app.get("/api/login-keycloak")
+
+@app.get("/api/login-keycloak", response_class=RedirectResponse)
 def keycloak_redirect():
     redirect_uri = f"{URL_BASE_PATH}callback"
     auth_url =  keycloak_openid.auth_url(
@@ -1387,7 +1453,8 @@ def keycloak_redirect():
     )
     return RedirectResponse(url=auth_url)
 
-@app.get("/api/logout-keycloak")
+
+@app.get("/api/logout-keycloak", response_class=RedirectResponse)
 def keycloak_logout():
     logout_url = keycloak_openid.well_known()['end_session_endpoint']
     redirect_url = f"{APP_BASE_PATH}login"
@@ -1395,7 +1462,7 @@ def keycloak_logout():
     return RedirectResponse(url=f"{logout_url}?{urlencode(params)}")
 
 
-@app.get("/api/callback")
+@app.get("/api/callback", response_class=RedirectResponse)
 def keycloak_callback(code: str, db: Session = Depends(get_db)):
     # fetch token
     token = keycloak_openid.token(
@@ -1428,11 +1495,11 @@ def keycloak_callback(code: str, db: Session = Depends(get_db)):
 
 @app.post("/api/token")
 async def login_for_access_token(
-        form_data: Annotated[OAuth2PasswordRequestForm, Depends(),],
-        db: Session = Depends(get_db),
+    username: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    db: Session = Depends(get_db),
 ) -> Token:
-    user = authenticate_user(db=db, username=form_data.username,
-                             password=form_data.password)
+    user = authenticate_user(db=db, username=username, password=password)
 
     if not user:
         raise HTTPException(
@@ -1463,29 +1530,35 @@ def refresh_access_token(access_token: Token) -> Token:
         raise HTTPException(status_code=403)
 
 
-@app.get("/api/search/")
-def eln_search(request: Request,
-               db: Session = Depends(get_db),
-               typesense_client = Depends(get_typesense_client),
-               user: User = Depends(get_current_user)):
+@app.get("/api/search/", response_model=list[text_search.search_result_type])
+def eln_search(
+    model: str = Query(),
+    search: str = Query(),
+    db: Session = Depends(get_db),
+    typesense_client=Depends(get_typesense_client),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
-    result = text_search.search_with_model(db=db,
-                                           model=request.query_params._dict[
-                                               'model'],
-                                           search_text=
-                                           request.query_params._dict[
-                                               'search'], user=user, typesense=typesense_client)
+    result = text_search.search_with_model(
+        db=db, model=model, search_text=search, user=user, typesense=typesense_client
+    )
     return result
 
 
 @app.get("/api/admin/users", response_model=list[UserExtendedConnected])
 def get_users(
-        request: Request,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    db_users = admin_user_service.get_all_users(db=db,
-                                                params=request.query_params._dict,
-                                                user=user)
+    request: Request,
+    ordering: OrderingParam = Query(None),
+    limit: int = Query(..., gt=0),
+    offset: int = Query(..., ge=0),
+    search: str = Query(None),
+    deleted: bool = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_users = admin_user_service.get_all_users(
+        db=db, params=request.query_params._dict, user=user
+    )
     if db_users is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_users
@@ -1545,7 +1618,7 @@ def patch_user_password(
     return db_user
 
 
-@app.patch("/api/admin/users/{user_id}/soft_delete/")
+@app.patch("/api/admin/users/{user_id}/soft_delete/", response_model=UserExtended)
 def soft_delete_user(
         user_id: int,
         db: Session = Depends(get_db),
@@ -1558,7 +1631,7 @@ def soft_delete_user(
     return db_user
 
 
-@app.patch("/api/admin/users/{user_id}/restore/")
+@app.patch("/api/admin/users/{user_id}/restore/", response_model=UserExtended)
 def restore_user(
         user_id: int,
         db: Session = Depends(get_db),
@@ -1572,12 +1645,19 @@ def restore_user(
 
 
 @app.get("/api/admin/admins", response_model=list[AdminExtended])
-def get_admins(request: Request,
-               db: Session = Depends(get_db),
-               user: User = Depends(get_current_user)):
-    db_users = admin_user_service.get_all_admins(db=db,
-                                                 params=request.query_params._dict,
-                                                 user=user)
+def get_admins(
+    request: Request,
+    ordering: OrderingParam = Query(None),
+    limit: int = Query(..., gt=0),
+    offset: int = Query(..., ge=0),
+    search: str = Query(None),
+    deleted: bool = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_users = admin_user_service.get_all_admins(
+        db=db, params=request.query_params._dict, user=user
+    )
     if db_users is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_users
@@ -1613,18 +1693,24 @@ def restore_admin(
 @app.get("/api/admin/groups",
          response_model=list[user_to_group_schema.ExtendedGroup])
 def get_groups(
-        request: Request,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    db_groups = user_to_group_service.get_all_groups(db=db,
-                                                     params=request.query_params._dict,
-                                                     user=user)
+    request: Request,
+    ordering: OrderingParam = Query(None),
+    limit: int = Query(..., gt=0),
+    offset: int = Query(..., ge=0),
+    search: str = Query(None),
+    deleted: bool = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_groups = user_to_group_service.get_all_groups(
+        db=db, params=request.query_params._dict, user=user
+    )
     if db_groups is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_groups
 
 
-@app.get("/api/admin/groups/{group_pk}")
+@app.get("/api/admin/groups/{group_pk}", response_model=list[str])
 def get_group(
         group_pk: UUID,
         db: Session = Depends(get_db),
@@ -1637,7 +1723,9 @@ def get_group(
     return [title]
 
 
-@app.patch("/api/admin/groups/{group_pk}/soft_delete/")
+@app.patch(
+    "/api/admin/groups/{group_pk}/soft_delete/", response_model=simple_messege_response
+)
 def delete_group(
         group_pk: UUID,
         db: Session = Depends(get_db),
@@ -1666,20 +1754,28 @@ def create_group(
 @app.get("/api/admin/group/groupadmins/{group_pk}",
          response_model=list[GroupUserExtended])
 def get_group_groupadmins(
-        request: Request,
-        group_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    db_groups = user_to_group_service.get_all_groupadmins(db=db,
-                                                          group_pk=group_pk,
-                                                          params=request.query_params._dict,
-                                                          authed_user=user)
+    request: Request,
+    group_pk: UUID,
+    ordering: OrderingParam = Query(None),
+    limit: int = Query(..., gt=0),
+    offset: int = Query(..., ge=0),
+    search: str = Query(None),
+    deleted: bool = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_groups = user_to_group_service.get_all_groupadmins(
+        db=db, group_pk=group_pk, params=request.query_params._dict, authed_user=user
+    )
     if db_groups is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_groups
 
 
-@app.patch("/api/admin/group/groupadmins/{group_pk}/{user_id}/soft_delete/")
+@app.patch(
+    "/api/admin/group/groupadmins/{group_pk}/{user_id}/soft_delete/",
+    response_model=simple_messege_response,
+)
 def soft_delete_groupadmin(
         user_id: int,
         group_pk: UUID,
@@ -1694,10 +1790,13 @@ def soft_delete_groupadmin(
         raise HTTPException(status_code=204)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
-    return db_user_to_group
+    return "ok"
 
 
-@app.patch("/api/admin/group/groupadmins/{group_pk}/{user_id}/restore/")
+@app.patch(
+    "/api/admin/group/groupadmins/{group_pk}/{user_id}/restore/",
+    response_model=simple_messege_response,
+)
 def restore_groupadmin(
         user_id: int,
         group_pk: UUID,
@@ -1710,25 +1809,35 @@ def restore_groupadmin(
         authed_user=user)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
-    return db_user_to_group
+    return "ok"
 
 
-@app.get("/api/admin/group/groupusers/{group_pk}",
-         response_model=list[GroupUserExtended])
-def get_group_users(request: Request,
-                    group_pk: UUID,
-                    db: Session = Depends(get_db),
-                    user: User = Depends(get_current_user)):
-    db_groups = user_to_group_service.get_all_groupusers(db=db,
-                                                         group_pk=group_pk,
-                                                         params=request.query_params._dict,
-                                                         authed_user=user)
+@app.get(
+    "/api/admin/group/groupusers/{group_pk}", response_model=list[GroupUserExtended]
+)
+def get_group_users(
+    request: Request,
+    group_pk: UUID,
+    ordering: OrderingParam = Query(None),
+    limit: int = Query(..., gt=0),
+    offset: int = Query(..., ge=0),
+    search: str = Query(None),
+    deleted: bool = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_groups = user_to_group_service.get_all_groupusers(
+        db=db, group_pk=group_pk, params=request.query_params._dict, authed_user=user
+    )
     if db_groups is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return db_groups
 
 
-@app.patch("/api/admin/group/groupusers/{group_pk}/{user_id}/soft_delete/")
+@app.patch(
+    "/api/admin/group/groupusers/{group_pk}/{user_id}/soft_delete/",
+    response_model=simple_messege_response,
+)
 def soft_delete_group_user(
         user_id: int,
         group_pk: UUID,
@@ -1743,10 +1852,13 @@ def soft_delete_group_user(
         raise HTTPException(status_code=204)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
-    return db_user_to_group
+    return "ok"
 
 
-@app.patch("/api/admin/group/groupusers/{group_pk}/{user_id}/restore/")
+@app.patch(
+    "/api/admin/group/groupusers/{group_pk}/{user_id}/restore/",
+    response_model=simple_messege_response,
+)
 def restore_group_user(
         user_id: int,
         group_pk: UUID,
@@ -1758,25 +1870,35 @@ def restore_group_user(
                                                                       authed_user=user)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
-    return db_user_to_group
+    return "ok"
 
 
-@app.get("/api/admin/group/groupguests/{group_pk}",
-         response_model=list[GroupUserExtended])
-def get_group_guests(request: Request,
-                     group_pk: UUID,
-                     db: Session = Depends(get_db),
-                     user: User = Depends(get_current_user)):
-    db_groups = user_to_group_service.get_all_groupguests(db=db,
-                                                          group_pk=group_pk,
-                                                          params=request.query_params._dict,
-                                                          authed_user=user)
+@app.get(
+    "/api/admin/group/groupguests/{group_pk}", response_model=list[GroupUserExtended]
+)
+def get_group_guests(
+    request: Request,
+    group_pk: UUID,
+    ordering: OrderingParam = Query(None),
+    limit: int = Query(..., gt=0),
+    offset: int = Query(..., ge=0),
+    search: str = Query(None),
+    deleted: bool = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    db_groups = user_to_group_service.get_all_groupguests(
+        db=db, group_pk=group_pk, params=request.query_params._dict, authed_user=user
+    )
     if db_groups is None:
         raise HTTPException(status_code=404, detail="Group not found")
     return db_groups
 
 
-@app.patch("/api/admin/group/groupguests/{group_pk}/{user_id}/soft_delete/")
+@app.patch(
+    "/api/admin/group/groupguests/{group_pk}/{user_id}/soft_delete/",
+    response_model=simple_messege_response,
+)
 def soft_delete_group_guest(
         user_id: int,
         group_pk: UUID,
@@ -1791,10 +1913,13 @@ def soft_delete_group_guest(
         raise HTTPException(status_code=204)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Group not found")
-    return db_user_to_group
+    return "ok"
 
 
-@app.patch("/api/admin/group/groupguests/{group_pk}/{user_id}/restore/")
+@app.patch(
+    "/api/admin/group/groupguests/{group_pk}/{user_id}/restore/",
+    response_model=simple_messege_response,
+)
 def add_group_guests(
         user_id: int,
         group_pk: UUID,
@@ -1806,4 +1931,4 @@ def add_group_guests(
                                                                        authed_user=user)
     if db_user_to_group is None:
         raise HTTPException(status_code=404, detail="Group not found")
-    return db_user_to_group
+    return "ok"

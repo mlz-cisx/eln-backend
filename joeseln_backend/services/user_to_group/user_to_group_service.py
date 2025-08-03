@@ -854,7 +854,7 @@ def gui_delete_group(db: Session, authed_user, group_pk):
             logger.error(e)
             db.close()
             return
-        return ['ok']
+        return "ok"
     return
 
 

@@ -1,4 +1,42 @@
-def get_order_params(ordering):
+from typing import Literal, Optional
+
+OrderingParam = Literal[
+    "pk",
+    "-pk",
+    "subject",
+    "-subject",
+    "title",
+    "-title",
+    "created_at",
+    "-created_at",
+    "created_by",
+    "-created_by",
+    "last_modified_at",
+    "-last_modified_at",
+    "last_modified_by",
+    "-last_modified_by",
+    "name",
+    "-name",
+    "file_size",
+    "-file_size",
+    "groupname",
+    "-groupname",
+    "username",
+    "-username",
+    "first_name",
+    "-first_name",
+    "last_name",
+    "-last_name",
+    "email",
+    "-email",
+    "oidc_user",
+    "-oidc_user",
+    "connected",
+    "-connected",
+]
+
+
+def get_order_params(ordering: Optional[OrderingParam]) -> str:
     match ordering:
         # defaults pk are mapped to created_at field
         case 'pk':

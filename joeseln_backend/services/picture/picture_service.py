@@ -4,7 +4,6 @@ import pathlib
 import shutil
 from copy import deepcopy
 
-from fastapi import Request
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_
@@ -233,12 +232,12 @@ def get_all_deleted_pics(db: Session):
     return pics
 
 
-def get_picture_with_privileges(db: Session, picture_pk, user, request: Request):
+def get_picture_with_privileges(db: Session, picture_pk, user, If_None_Match):
     db_picture = db.query(models.Picture).get(picture_pk)
     if db_picture:
 
         etag = f'{db_picture.id}-{db_picture.last_modified_at}'
-        if request.headers.get("If-None-Match") == etag:
+        if If_None_Match == etag:
             raise HTTPException(status_code=304) 
 
         db_user_created = db.query(models.User).get(db_picture.created_by_id)

@@ -1,10 +1,20 @@
 from sqlalchemy import or_
 from typesense.client import Client
+from typing_extensions import TypedDict
 
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 from joeseln_backend.models import models
+from joeseln_backend.services.user.user_schema import UserExtended
 from joeseln_backend.services.user_to_group.user_to_group_service import get_user_groups
 
+
+class search_result_type(TypedDict):
+    content_type_model: str
+    display: str
+    created_by: UserExtended
+    pk: str
+    labbook_pos_y: int
+    element_pk: str
 
 def search_with_model(db, model, search_text, user, typesense: Client):
     result_array = []
