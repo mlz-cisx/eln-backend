@@ -1,7 +1,9 @@
 import sys
 
-from joeseln_backend.services.picture.picture_service import \
-    get_all_deleted_pics, remove_soft_deleted_picture
+from joeseln_backend.services.picture.picture_service import (
+    get_all_deleted_pics,
+    remove_soft_deleted_picture,
+)
 
 sys.path.insert(0, '../../../..')
 

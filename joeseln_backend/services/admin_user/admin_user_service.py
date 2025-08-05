@@ -1,19 +1,21 @@
 import datetime
 
+from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
-from sqlalchemy import or_
 
-from joeseln_backend.mylogging.root_logger import logger
-from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
-    ADMIN
-
+from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
-from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_groups, get_user_groups_role_groupadmin
+from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.privileges.admin_privileges.privileges_service import (
+    ADMIN,
+)
+from joeseln_backend.services.user_to_group.user_to_group_service import (
+    get_user_groups,
+    get_user_groups_role_groupadmin,
+)
 
 
 def get_all_users(db: Session, params, user):

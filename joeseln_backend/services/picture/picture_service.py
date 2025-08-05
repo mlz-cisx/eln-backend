@@ -1,42 +1,54 @@
+import datetime
 import json
 import pathlib
-from copy import deepcopy
 import shutil
+from copy import deepcopy
+
 from fastapi import Request
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_
-import datetime
-
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
-from joeseln_backend.auth.security import get_user_from_jwt
-from joeseln_backend.services.history.history_service import \
-    create_history_entry
-from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access, get_all_labbook_ids_from_non_admin_user, \
-    check_for_labbook_admin_access
-from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
-    ADMIN
-from joeseln_backend.services.privileges.privileges_service import \
-    create_pic_privileges, create_strict_privileges
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_group_roles_with_match, get_user_group_roles, \
-    check_for_admin_role_with_user_id, check_for_guest_role
-from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.auth import security
-from joeseln_backend.models import models
+from joeseln_backend.auth.security import get_user_from_jwt
+from joeseln_backend.conf.base_conf import (
+    ELEM_MAXIMUM_SIZE,
+    LABBOOK_QUERY_MODE,
+    PICTURES_BASE_PATH,
+    URL_BASE_PATH,
+)
 from joeseln_backend.helper import db_ordering
-from joeseln_backend.services.entry_path.entry_path_service import create_path, \
-    create_entry
-from joeseln_backend.services.picture.picture_schemas import UpdatePictureTitle
-from joeseln_backend.conf.base_conf import PICTURES_BASE_PATH, URL_BASE_PATH, \
-    LABBOOK_QUERY_MODE, ELEM_MAXIMUM_SIZE
-from joeseln_backend.services.comment.comment_schemas import Comment
-
+from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.comment.comment_schemas import Comment
+from joeseln_backend.services.entry_path.entry_path_service import (
+    create_entry,
+    create_path,
+)
+from joeseln_backend.services.history.history_service import create_history_entry
+from joeseln_backend.services.labbook.labbook_service import (
+    check_for_labbook_access,
+    check_for_labbook_admin_access,
+    get_all_labbook_ids_from_non_admin_user,
+)
+from joeseln_backend.services.picture.picture_schemas import UpdatePictureTitle
+from joeseln_backend.services.privileges.admin_privileges.privileges_service import (
+    ADMIN,
+)
+from joeseln_backend.services.privileges.privileges_service import (
+    create_pic_privileges,
+    create_strict_privileges,
+)
+from joeseln_backend.services.user_to_group.user_to_group_service import (
+    check_for_admin_role_with_user_id,
+    check_for_guest_role,
+    get_user_group_roles,
+    get_user_group_roles_with_match,
+)
+from joeseln_backend.ws.ws_client import transmit
 
 
 def get_all_pictures(db: Session, params, user):

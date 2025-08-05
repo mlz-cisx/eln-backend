@@ -1,7 +1,8 @@
 import datetime
-from pydantic import BaseModel, Field
-from uuid import UUID
 from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 from joeseln_backend.services.privileges.privileges_schema import Privileges
 

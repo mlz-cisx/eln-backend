@@ -1,37 +1,39 @@
-from sqlalchemy.orm import Session, aliased, defer
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import select, func, and_
 import datetime
 
+from sqlalchemy import and_, func, select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, aliased, defer
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
-from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
-
-from joeseln_backend.models import models
-from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import Labbookchildelement_Create
-
-from joeseln_backend.ws.ws_client import transmit
-from joeseln_backend.services.picture import picture_service
-from joeseln_backend.services.file import file_service
-
-from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access, check_for_labbook_admin_access
-
-from joeseln_backend.services.note.note_service import get_note_relations, \
-    get_note_related_comments_count, get_note
-
-from joeseln_backend.services.file.file_service import get_file_relations, \
-    get_file_related_comments_count
-
-from joeseln_backend.services.picture.picture_service import \
-    get_picture_relations, \
-    get_picture_related_comments_count
 
 from joeseln_backend.auth import security
-
-from joeseln_backend.mylogging.root_logger import logger
-
 from joeseln_backend.conf.base_conf import URL_BASE_PATH
+from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
+from joeseln_backend.models import models
+from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.file import file_service
+from joeseln_backend.services.file.file_service import (
+    get_file_related_comments_count,
+    get_file_relations,
+)
+from joeseln_backend.services.labbook.labbook_service import (
+    check_for_labbook_access,
+    check_for_labbook_admin_access,
+)
+from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import (
+    Labbookchildelement_Create,
+)
+from joeseln_backend.services.note.note_service import (
+    get_note,
+    get_note_related_comments_count,
+    get_note_relations,
+)
+from joeseln_backend.services.picture import picture_service
+from joeseln_backend.services.picture.picture_service import (
+    get_picture_related_comments_count,
+    get_picture_relations,
+)
+from joeseln_backend.ws.ws_client import transmit
 
 
 def map_to_child_object_model(child_object_content_type):

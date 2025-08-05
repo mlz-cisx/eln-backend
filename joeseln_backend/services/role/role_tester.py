@@ -1,6 +1,6 @@
 from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.services.role.role_schema import Role
 from joeseln_backend.services.role.role_service import get_role_by_rolename
-from joeseln_backend.services.role.role_schema import Role 
 
 my_session = SessionLocal()
 

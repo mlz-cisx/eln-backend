@@ -1,22 +1,21 @@
-import sys
 import os
+import sys
 from pathlib import Path
+
 from sqlalchemy.exc import SQLAlchemyError
 
 sys.path.append(os.path.abspath(Path(__file__).parent.parent.parent))
 
-from joeseln_backend.mylogging.root_logger import logger
-
 import asyncio
 import json
-import websockets
-from joeseln_backend.auth.security import \
-    get_current_jwt_user_for_ws
-from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_PORT, \
-    WS_INTERNAL_IP
 
+import websockets
+
+from joeseln_backend.auth.security import get_current_jwt_user_for_ws
+from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_INTERNAL_IP, WS_PORT
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.models.models import UserConnectedWs
+from joeseln_backend.mylogging.root_logger import logger
 
 connected_clients = set()
 

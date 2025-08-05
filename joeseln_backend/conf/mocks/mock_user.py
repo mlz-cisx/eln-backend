@@ -1,5 +1,5 @@
 from joeseln_backend.auth.security import get_password_hash
-from joeseln_backend.conf.base_conf import INSTRUMENT_AS_ADMIN, INITIAL_ADMIN
+from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
 
 USER0 = {
     'username': INITIAL_ADMIN,

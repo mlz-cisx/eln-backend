@@ -1,5 +1,5 @@
-from joeseln_backend.models import models
 from joeseln_backend.database.database import engine
+from joeseln_backend.models import models
 
 
 def table_creator():

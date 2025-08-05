@@ -3,8 +3,10 @@ import sys
 sys.path.insert(0, '../../../..')
 
 from joeseln_backend.database.database import SessionLocal
-from joeseln_backend.services.note.note_service import get_all_deleted_notes, \
-    remove_soft_deleted_note
+from joeseln_backend.services.note.note_service import (
+    get_all_deleted_notes,
+    remove_soft_deleted_note,
+)
 
 
 def note_remover():

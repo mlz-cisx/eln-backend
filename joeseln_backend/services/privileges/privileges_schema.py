@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class Privileges(BaseModel):
     fullAccess: bool
     view: bool

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class StatResponse(BaseModel):
     total_users: int
     active_users: int

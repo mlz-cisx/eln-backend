@@ -1,5 +1,6 @@
 import typesense
 from typesense.exceptions import ObjectNotFound
+
 from joeseln_backend.conf.base_conf import (
     TYPESENSE_API_KEY,
     TYPESENSE_HOST,

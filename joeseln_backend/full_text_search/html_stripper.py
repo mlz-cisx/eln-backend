@@ -1,8 +1,9 @@
-from bs4 import BeautifulSoup
 import re
+
 import bleach
-from bleach_allowlist import generally_xss_safe, print_attrs, standard_styles
 from bleach.css_sanitizer import CSSSanitizer
+from bleach_allowlist import generally_xss_safe, print_attrs, standard_styles
+from bs4 import BeautifulSoup
 
 
 def strip_html_and_binary(content):

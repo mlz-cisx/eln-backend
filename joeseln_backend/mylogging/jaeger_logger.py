@@ -1,8 +1,9 @@
 import logging
 import sys
+
 from jaeger_logger_reporter import LoggerTraceConfig, LoggerTracerReporter
-from joeseln_backend.conf.base_conf import JAEGER_PORT, JAEGER_HOST, \
-    JAEGER_SERVICE_NAME
+
+from joeseln_backend.conf.base_conf import JAEGER_HOST, JAEGER_PORT, JAEGER_SERVICE_NAME
 
 
 def jaeger_tracer():

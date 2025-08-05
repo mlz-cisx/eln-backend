@@ -1,9 +1,8 @@
 import sys
 
 sys.path.insert(0, '../../../..')
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    add_admin_role
 from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.services.user_to_group.user_to_group_service import add_admin_role
 
 
 def admin_creator():

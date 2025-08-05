@@ -3,8 +3,10 @@ import sys
 sys.path.insert(0, '../../../..')
 
 from joeseln_backend.database.database import SessionLocal
-from joeseln_backend.services.labbook.labbook_service import \
-    get_deleted_labbooks, remove_deleted_labbook_with_its_content
+from joeseln_backend.services.labbook.labbook_service import (
+    get_deleted_labbooks,
+    remove_deleted_labbook_with_its_content,
+)
 
 
 def labbook_remove():

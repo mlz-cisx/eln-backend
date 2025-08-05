@@ -1,15 +1,27 @@
-from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
-    ADMIN
-from joeseln_backend.services.privileges.groupadmin_privileges.privileges_service import \
-    LABBOOK_GROUPADMIN, USER_NOTES_GROUPADMIN, ADMIN_NOTES_GROUPADMIN, \
-    USER_PICS_GROUPADMIN, ADMIN_PICS_GROUPADMIN, USER_FILES_GROUPADMIN, \
-    ADMIN_FILES_GROUPADMIN
-from joeseln_backend.services.privileges.user_privileges.privileges_service import \
-    LABBOOK_USER, USER_NOTES_USER, ADMIN_NOTES_USER, USER_PICS_USER, \
-    ADMIN_PICS_USER, USER_FILES_USER, ADMIN_FILES_USER
-from joeseln_backend.services.privileges.guest_privileges.privileges_service import \
-    GUEST
-
+from joeseln_backend.services.privileges.admin_privileges.privileges_service import (
+    ADMIN,
+)
+from joeseln_backend.services.privileges.groupadmin_privileges.privileges_service import (
+    ADMIN_FILES_GROUPADMIN,
+    ADMIN_NOTES_GROUPADMIN,
+    ADMIN_PICS_GROUPADMIN,
+    LABBOOK_GROUPADMIN,
+    USER_FILES_GROUPADMIN,
+    USER_NOTES_GROUPADMIN,
+    USER_PICS_GROUPADMIN,
+)
+from joeseln_backend.services.privileges.guest_privileges.privileges_service import (
+    GUEST,
+)
+from joeseln_backend.services.privileges.user_privileges.privileges_service import (
+    ADMIN_FILES_USER,
+    ADMIN_NOTES_USER,
+    ADMIN_PICS_USER,
+    LABBOOK_USER,
+    USER_FILES_USER,
+    USER_NOTES_USER,
+    USER_PICS_USER,
+)
 
 # TODO factorization necessary
 

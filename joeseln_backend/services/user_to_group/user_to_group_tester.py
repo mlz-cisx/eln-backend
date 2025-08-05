@@ -1,6 +1,7 @@
 from joeseln_backend.database.database import SessionLocal
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_groups_role_groupadmin
+from joeseln_backend.services.user_to_group.user_to_group_service import (
+    get_user_groups_role_groupadmin,
+)
 
 my_session = SessionLocal()
 

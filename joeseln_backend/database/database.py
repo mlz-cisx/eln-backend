@@ -1,8 +1,13 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
-from joeseln_backend.conf.base_conf import DB_USER, DB_PASSWORD, DB_TABLE, \
-    DB_PORT, DB_ADDR
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+from joeseln_backend.conf.base_conf import (
+    DB_ADDR,
+    DB_PASSWORD,
+    DB_PORT,
+    DB_TABLE,
+    DB_USER,
+)
 
 _user = DB_USER
 _password = DB_PASSWORD

@@ -1,14 +1,14 @@
-from sqlalchemy import desc
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 import datetime
 
-from joeseln_backend.helper.debouncer import debounce
+from sqlalchemy import desc
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
+from joeseln_backend.conf.base_conf import STATIC_HISTORY_DEBOUNCE
 from joeseln_backend.conf.content_types import type2model
+from joeseln_backend.helper.debouncer import debounce
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
-from joeseln_backend.conf.base_conf import STATIC_HISTORY_DEBOUNCE
 
 
 def create_history_entry(db: Session, elem_id, user, object_type_id,

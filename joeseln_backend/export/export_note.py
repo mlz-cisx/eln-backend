@@ -1,12 +1,12 @@
-from jinja2 import Environment, FileSystemLoader
-import os
-from weasyprint import HTML
 import io
+import os
+
 from fastapi.responses import Response
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
 
 from joeseln_backend.auth.security import get_user_from_jwt
-from joeseln_backend.services.note.note_service import get_note, \
-    get_note_relations
+from joeseln_backend.services.note.note_service import get_note, get_note_relations
 
 
 def get_export_data(db, note_pk, jwt):

@@ -1,10 +1,16 @@
 import datetime
-from sqlalchemy.orm import Session
+
 from sqlalchemy.exc import SQLAlchemyError
-from joeseln_backend.models import models
-from joeseln_backend.services.user.user_schema import OIDCUserCreate, GuiUserPatch, UserCreate
-from joeseln_backend.mylogging.root_logger import logger
+from sqlalchemy.orm import Session
+
 from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
+from joeseln_backend.models import models
+from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.user.user_schema import (
+    GuiUserPatch,
+    OIDCUserCreate,
+    UserCreate,
+)
 
 
 def get_user_by_uname(db: Session, username):

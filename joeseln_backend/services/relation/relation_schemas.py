@@ -1,14 +1,13 @@
 import datetime
-
-from pydantic import BaseModel, Field
 from uuid import UUID
 
+from pydantic import BaseModel, Field
 
 from joeseln_backend.conf.content_types import relation_content_type
+from joeseln_backend.services.comment.comment_schemas import Comment
+from joeseln_backend.services.file.file_schemas import File
 from joeseln_backend.services.note.note_schemas import Note
 from joeseln_backend.services.picture.picture_schemas import Picture
-from joeseln_backend.services.file.file_schemas import File
-from joeseln_backend.services.comment.comment_schemas import Comment
 from joeseln_backend.services.user.user_schema import User
 
 

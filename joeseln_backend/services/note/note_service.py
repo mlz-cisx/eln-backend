@@ -1,43 +1,52 @@
-import sys
 import datetime
+import sys
+
 from fastapi.exceptions import HTTPException
-
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
-
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
-from joeseln_backend.full_text_search.html_stripper import \
-    strip_html_and_binary, sanitize_html
 
 from joeseln_backend.auth import security
-from joeseln_backend.services.privileges.privileges_service import \
-    create_note_privileges, create_strict_privileges
-from joeseln_backend.ws.ws_client import transmit
-from joeseln_backend.models import models
-from joeseln_backend.services.note.note_schemas import Note, NoteCreate
-from joeseln_backend.services.history.history_service import \
-    create_history_entry, create_note_update_history_entry
+from joeseln_backend.conf.base_conf import (
+    ELEM_MAXIMUM_SIZE,
+    LABBOOK_QUERY_MODE,
+    URL_BASE_PATH,
+)
+from joeseln_backend.full_text_search.html_stripper import (
+    sanitize_html,
+    strip_html_and_binary,
+)
 from joeseln_backend.helper import db_ordering
-from joeseln_backend.conf.base_conf import URL_BASE_PATH, ELEM_MAXIMUM_SIZE
-
+from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.comment.comment_schemas import Comment
-
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_group_roles, get_user_group_roles_with_match, \
-    check_for_admin_role_with_user_id, check_for_guest_role
-
-from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
-    ADMIN
-
-from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access, get_all_labbook_ids_from_non_admin_user, \
-    check_for_labbook_admin_access
-
-from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
+from joeseln_backend.services.history.history_service import (
+    create_history_entry,
+    create_note_update_history_entry,
+)
+from joeseln_backend.services.labbook.labbook_service import (
+    check_for_labbook_access,
+    check_for_labbook_admin_access,
+    get_all_labbook_ids_from_non_admin_user,
+)
+from joeseln_backend.services.note.note_schemas import Note, NoteCreate
+from joeseln_backend.services.privileges.admin_privileges.privileges_service import (
+    ADMIN,
+)
+from joeseln_backend.services.privileges.privileges_service import (
+    create_note_privileges,
+    create_strict_privileges,
+)
+from joeseln_backend.services.user_to_group.user_to_group_service import (
+    check_for_admin_role_with_user_id,
+    check_for_guest_role,
+    get_user_group_roles,
+    get_user_group_roles_with_match,
+)
+from joeseln_backend.ws.ws_client import transmit
 
 
 def get_all_notes(db: Session, params, user):

@@ -1,9 +1,11 @@
 import datetime
-from sqlalchemy.orm import Session
+
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from joeseln_backend.models import models
-from joeseln_backend.services.role.role_schema import Role_Create
 from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.role.role_schema import Role_Create
 
 
 def get_role_by_rolename(db: Session, rolename):

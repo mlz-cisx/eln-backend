@@ -1,8 +1,10 @@
 import os
+
 from sqlalchemy.orm import Session
+
+from joeseln_backend.conf.base_conf import FILES_BASE_PATH, PICTURES_BASE_PATH
 from joeseln_backend.models import models
 from joeseln_backend.services.admin_stat.admin_stat_schemas import StatResponse
-from joeseln_backend.conf.base_conf import PICTURES_BASE_PATH, FILES_BASE_PATH
 
 
 def get_directory_size(directory):

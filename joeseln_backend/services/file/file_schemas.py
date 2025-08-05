@@ -1,9 +1,15 @@
 import datetime
-from typing import List, Any
-from pydantic import BaseModel, Field, Json
+from typing import Any, List
 from uuid import UUID
 
-from joeseln_backend.conf.content_types import file_content_type, file_content_type_model, version_content_type, version_content_type_model
+from pydantic import BaseModel, Field, Json
+
+from joeseln_backend.conf.content_types import (
+    file_content_type,
+    file_content_type_model,
+    version_content_type,
+    version_content_type_model,
+)
 from joeseln_backend.services.privileges.privileges_schema import Privileges
 from joeseln_backend.services.user.user_schema import User
 

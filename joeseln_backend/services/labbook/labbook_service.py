@@ -1,34 +1,38 @@
-import pathlib
 import datetime
-
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.sql import text
+import pathlib
 
 from sqlalchemy import or_
-
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import text
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
 
-from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
-from joeseln_backend.models import models
-from joeseln_backend.services.history.history_service import \
-    create_history_entry
-from joeseln_backend.services.labbook.labbook_schemas import LabbookCreate, LabbookPatch
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_group_roles, get_user_group_roles_with_match, \
-    get_user_groups, get_user_groups_role_groupadmin
-from joeseln_backend.services.privileges.admin_privileges.privileges_service import \
-    ADMIN
-from joeseln_backend.services.privileges.privileges_service import \
-    create_labbook_privileges
 from joeseln_backend.auth import security
+from joeseln_backend.conf.base_conf import (
+    FILES_BASE_PATH,
+    LABBOOK_QUERY_MODE,
+    PICTURES_BASE_PATH,
+    URL_BASE_PATH,
+)
+from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
 from joeseln_backend.helper import db_ordering
-from joeseln_backend.conf.base_conf import URL_BASE_PATH, PICTURES_BASE_PATH, \
-    FILES_BASE_PATH
-
+from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
-from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
+from joeseln_backend.services.history.history_service import create_history_entry
+from joeseln_backend.services.labbook.labbook_schemas import LabbookCreate, LabbookPatch
+from joeseln_backend.services.privileges.admin_privileges.privileges_service import (
+    ADMIN,
+)
+from joeseln_backend.services.privileges.privileges_service import (
+    create_labbook_privileges,
+)
+from joeseln_backend.services.user_to_group.user_to_group_service import (
+    get_user_group_roles,
+    get_user_group_roles_with_match,
+    get_user_groups,
+    get_user_groups_role_groupadmin,
+)
 from joeseln_backend.ws.ws_client import transmit
 
 

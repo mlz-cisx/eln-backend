@@ -1,7 +1,9 @@
 import sys
 
-from joeseln_backend.services.file.file_service import get_all_deleted_files, \
-    remove_soft_deleted_file
+from joeseln_backend.services.file.file_service import (
+    get_all_deleted_files,
+    remove_soft_deleted_file,
+)
 
 sys.path.insert(0, '../../../..')
 

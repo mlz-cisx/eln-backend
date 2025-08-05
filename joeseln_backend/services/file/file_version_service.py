@@ -1,17 +1,17 @@
-from sqlalchemy.orm import Session
-import json
-from sqlalchemy.exc import SQLAlchemyError
 import datetime
+import json
 
-from joeseln_backend.models import models
-from joeseln_backend.services.file import file_service
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from joeseln_backend.conf.content_types import file_content_type_version
-
+from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
-from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access
-from joeseln_backend.services.labbookchildelements.labbookchildelement_service import \
-    check_for_version_edit_access_on_lb_elem
+from joeseln_backend.services.file import file_service
+from joeseln_backend.services.labbook.labbook_service import check_for_labbook_access
+from joeseln_backend.services.labbookchildelements.labbookchildelement_service import (
+    check_for_version_edit_access_on_lb_elem,
+)
 
 
 def get_all_file_versions(db: Session, file_pk, user):

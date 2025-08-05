@@ -1,9 +1,13 @@
 import datetime
 from typing import List
-from pydantic import BaseModel, Field
 from uuid import UUID
 
-from joeseln_backend.conf.content_types import comment_content_type, comment_content_type_model
+from pydantic import BaseModel, Field
+
+from joeseln_backend.conf.content_types import (
+    comment_content_type,
+    comment_content_type_model,
+)
 from joeseln_backend.services.user.user_schema import User
 
 

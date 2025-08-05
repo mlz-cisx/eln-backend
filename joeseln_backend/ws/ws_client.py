@@ -1,9 +1,10 @@
-import json
-import websockets
 import asyncio
+import json
 
+import websockets
+
+from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_URL
 from joeseln_backend.mylogging.root_logger import logger
-from joeseln_backend.conf.base_conf import WS_URL, STATIC_WS_TOKEN
 
 
 class WebSocketClient:

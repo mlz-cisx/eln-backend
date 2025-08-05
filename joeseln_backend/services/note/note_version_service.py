@@ -1,19 +1,18 @@
-from sqlalchemy.orm import Session
-import json
 import datetime
+import json
+
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from joeseln_backend.full_text_search.typesense_service import \
-    get_typesense_client
+from joeseln_backend.conf.content_types import note_content_type_version
+from joeseln_backend.full_text_search.typesense_service import get_typesense_client
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
-from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access
-from joeseln_backend.services.labbookchildelements.labbookchildelement_service import \
-    check_for_version_edit_access_on_lb_elem
+from joeseln_backend.services.labbook.labbook_service import check_for_labbook_access
+from joeseln_backend.services.labbookchildelements.labbookchildelement_service import (
+    check_for_version_edit_access_on_lb_elem,
+)
 from joeseln_backend.services.note import note_service
-from joeseln_backend.conf.content_types import note_content_type_version
 
 
 def get_all_note_versions(db: Session, note_pk, user):

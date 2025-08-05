@@ -1,6 +1,7 @@
 import datetime
-from pydantic import BaseModel, Field
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class Group_Create(BaseModel):

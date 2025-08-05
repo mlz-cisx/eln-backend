@@ -2,7 +2,10 @@ import requests
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from joeseln_backend.conf.base_conf import STATIC_ADMIN_TOKEN
-from joeseln_backend.conf.content_types import picture_content_type, picture_content_type_model
+from joeseln_backend.conf.content_types import (
+    picture_content_type,
+    picture_content_type_model,
+)
 
 ELN_URL = 'http://localhost:8010/'
 TEST_IMG_1 = '/home/jbaudisch/Bilder/original.png'

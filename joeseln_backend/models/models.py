@@ -1,15 +1,26 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, \
-    Text, event, BigInteger, UniqueConstraint, Index, Float
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from datetime import datetime
+from uuid import uuid4
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    event,
+)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
-from uuid import uuid4
-from datetime import datetime
-
-from joeseln_backend.ws.ws_client import transmit
 from joeseln_backend.database.database import Base
-
 from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.ws.ws_client import transmit
 
 
 class User(Base):

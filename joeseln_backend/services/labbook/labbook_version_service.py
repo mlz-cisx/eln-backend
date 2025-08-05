@@ -1,18 +1,24 @@
-from sqlalchemy.orm import Session
-import json
 import datetime
+import json
+
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
+from joeseln_backend.conf.content_types import (
+    file_content_type_model,
+    note_content_type_model,
+    picture_content_type_model,
+    picture_content_type_version,
+)
 from joeseln_backend.models import models
-from joeseln_backend.conf.content_types import note_content_type_model, picture_content_type_model, file_content_type_model, picture_content_type_version
-from joeseln_backend.services.picture import picture_version_service
-from joeseln_backend.services.note import note_version_service
-from joeseln_backend.services.file import file_version_service
-
-from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access, check_for_labbook_admin_access
-
 from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.file import file_version_service
+from joeseln_backend.services.labbook.labbook_service import (
+    check_for_labbook_access,
+    check_for_labbook_admin_access,
+)
+from joeseln_backend.services.note import note_version_service
+from joeseln_backend.services.picture import picture_version_service
 
 
 def get_all_labbook_versions(db: Session, labbook_pk, user):

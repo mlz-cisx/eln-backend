@@ -2,9 +2,8 @@ import sys
 
 sys.path.insert(0, '../../../..')
 from joeseln_backend.auth.security import get_password_hash
-from joeseln_backend.services.user.user_password import \
-    change_user_password
 from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.services.user.user_password import change_user_password
 
 
 def user_updater():

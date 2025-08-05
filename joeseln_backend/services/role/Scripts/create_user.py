@@ -2,10 +2,9 @@ import sys
 
 sys.path.insert(0, '../../../..')
 from joeseln_backend.auth.security import get_password_hash
-from joeseln_backend.services.user.user_schema import UserCreate
-from joeseln_backend.services.user.user_service import \
-    create_user
 from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.services.user.user_schema import UserCreate
+from joeseln_backend.services.user.user_service import create_user
 
 
 def user_creator():

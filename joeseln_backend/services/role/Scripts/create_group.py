@@ -1,9 +1,8 @@
 import sys
 
 sys.path.insert(0, '../../../..')
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    create_group
 from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.services.user_to_group.user_to_group_service import create_group
 
 
 def group_creator():

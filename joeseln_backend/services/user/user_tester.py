@@ -1,7 +1,7 @@
 from joeseln_backend.conf.mocks.mock_user import TEST_USER_2
 from joeseln_backend.database.database import SessionLocal
+from joeseln_backend.services.user.user_schema import UserCreate, UserExtended
 from joeseln_backend.services.user.user_service import create_user
-from joeseln_backend.services.user.user_schema import UserExtended, UserCreate
 
 my_session = SessionLocal()
 

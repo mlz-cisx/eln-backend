@@ -1,17 +1,20 @@
 import datetime
-from sqlalchemy import literal
-from sqlalchemy.orm import Session
+
+from sqlalchemy import literal, or_
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
-from sqlalchemy import or_
 
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
+from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.role.role_service import get_role_by_rolename
 from joeseln_backend.services.user.user_service import get_user_by_uname
-from joeseln_backend.services.user_to_group.user_to_group_schema import Group_Create, UserToGroup_Create
-from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.user_to_group.user_to_group_schema import (
+    Group_Create,
+    UserToGroup_Create,
+)
 
 
 def get_all_groups(db: Session, params, user):

@@ -1,23 +1,22 @@
-from cachetools import cached, TTLCache
-from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
-from pydantic import BaseModel
-from joeseln_backend.database.database import SessionLocal
-from joeseln_backend.conf.base_conf import INSTRUMENT_AS_ADMIN
-from joeseln_backend.services.user.user_service import get_user_by_uname
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_with_groups_by_uname
-
-from typing import Annotated, Any
-from datetime import datetime, timedelta, timezone
-import jwt
 import time
-from passlib.context import CryptContext
+from datetime import datetime, timedelta, timezone
+from typing import Annotated, Any
+
+import jwt
+from cachetools import TTLCache, cached
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from passlib.context import CryptContext
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from joeseln_backend.conf.base_conf import STATIC_ADMIN_TOKEN
-
+from joeseln_backend.conf.base_conf import INSTRUMENT_AS_ADMIN, STATIC_ADMIN_TOKEN
+from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.user.user_service import get_user_by_uname
+from joeseln_backend.services.user_to_group.user_to_group_service import (
+    get_user_with_groups_by_uname,
+)
 
 SECRET_KEY = "b014bc552ecfc62a46b6c4bea9d35d6d7e5ff6f0244eff28a3f5ad4be1d3015d"
 ALGORITHM = "HS256"

@@ -1,75 +1,53 @@
-import sys
 import os
+import sys
 
 # append path of parent dir to have joeseln_backend as module
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Annotated
+from contextlib import asynccontextmanager
 from datetime import timedelta
+from typing import Annotated, Any
 from urllib.parse import urlencode
-from keycloak import KeycloakOpenID
-import jwt
+from uuid import UUID
 
-from typing import Any
-from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import FastAPI, Request, Body, Depends, \
-    HTTPException, status, Response
+import jwt
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from keycloak import KeycloakOpenID
+from sqlalchemy.orm import Session
 
-from joeseln_backend.services.picture import picture_schemas, \
-    picture_version_service, \
-    picture_service
-from joeseln_backend.services.note import note_schemas, note_service, \
-    note_version_service
-from joeseln_backend.services.admin_user import admin_user_service
-from joeseln_backend.services.user import user_service
-from joeseln_backend.services.user_to_group import user_to_group_service, \
-    user_to_group_schema
-from joeseln_backend.services.labbookchildelements import \
-    labbookchildelement_service, \
-    labbookchildelement_schemas
-from joeseln_backend.services.labbook import labbook_version_service
-from joeseln_backend.services.labbook import labbook_schemas, labbook_service
-from joeseln_backend.services.file import file_version_service, file_schemas, \
-    file_service
-
-from joeseln_backend.services.comment import comment_schemas, comment_service
-
-from joeseln_backend.services.relation import relation_schemas
-from joeseln_backend.services.history import history_schema
-from joeseln_backend.services.history.history_service import get_history
-
-from joeseln_backend.services.role.basic_roles_creator import \
-    create_basic_roles, create_inital_admin
-
-from joeseln_backend.services.user.user_schema import User, PasswordChange, \
-    UserExtended, UserWithPrivileges, GuiUserCreate, AdminExtended, \
-    GroupUserExtended, GuiUserPatch, PasswordPatch, UserExtendedConnected
-from joeseln_backend.services.user.user_password import gui_password_change, \
-    gui_patch_user_password, guicreate_user
-
-from joeseln_backend.services.admin_stat.admin_stat_service import get_stat
-from joeseln_backend.services.admin_stat.admin_stat_schemas import StatResponse
-
+from joeseln_backend.auth.security import (
+    ACCESS_TOKEN_EXPIRE_SECONDS,
+    Token,
+    authenticate_user,
+    create_access_token,
+    get_current_user,
+    verify_jwt_with_leeway,
+)
+from joeseln_backend.conf.base_conf import (
+    APP_BASE_PATH,
+    FILES_BASE_PATH,
+    KEYCLOAK_CLIENT_ID,
+    KEYCLOAK_CLIENT_SECRET,
+    KEYCLOAK_REALM_NAME,
+    KEYCLOAK_SERVER_URL,
+    ORIGINS,
+    PICTURES_BASE_PATH,
+    URL_BASE_PATH,
+)
 from joeseln_backend.database.database import SessionLocal, get_db
-from joeseln_backend.export import export_labbook, export_note, export_picture, \
-    export_file
+
+# does updates on the database
+from joeseln_backend.database.migration_scripts import update_db_tables
+from joeseln_backend.export import (
+    export_file,
+    export_labbook,
+    export_note,
+    export_picture,
+)
 from joeseln_backend.full_text_search import text_search
-from joeseln_backend.conf.base_conf import KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, KEYCLOAK_REALM_NAME, KEYCLOAK_SERVER_URL, ORIGINS, PICTURES_BASE_PATH, FILES_BASE_PATH, URL_BASE_PATH, APP_BASE_PATH
-from joeseln_backend.auth.security import Token, get_current_user, authenticate_user, verify_jwt_with_leeway, \
-    ACCESS_TOKEN_EXPIRE_SECONDS, \
-    create_access_token
-
-from joeseln_backend.services.user.user_service import update_oidc_user
-from joeseln_backend.services.user.user_schema import OIDCUserCreate
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    update_oidc_user_groups
-
-# first logger
-from joeseln_backend.mylogging.root_logger import logger
 
 # second logger
 # from opentelemetry import trace
@@ -78,9 +56,10 @@ from joeseln_backend.mylogging.root_logger import logger
 # from opentelemetry.sdk.trace import TracerProvider
 # from opentelemetry.sdk.trace.export import BatchSpanProcessor
 # from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-
-from joeseln_backend.full_text_search.typesense_service import typesense_client, \
-                                                               get_typesense_client
+from joeseln_backend.full_text_search.typesense_service import (
+    get_typesense_client,
+    typesense_client,
+)
 
 # trace.set_tracer_provider(
 #     TracerProvider(
@@ -89,20 +68,77 @@ from joeseln_backend.full_text_search.typesense_service import typesense_client,
 # jaeger_exporter = JaegerExporter(agent_host_name=JAEGER_HOST,
 #                                  agent_port=JAEGER_PORT)
 # tracer_provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
-
 # third logger
 # from joeseln_backend.mylogging.jaeger_logger import jaeger_tracer
 # jaeger_tracer = jaeger_tracer()
-
 # will create all tables if not exist
 from joeseln_backend.models.table_creator import table_creator
 
-# does updates on the database
-from joeseln_backend.database.migration_scripts import update_db_tables
-
+# first logger
+from joeseln_backend.mylogging.root_logger import logger
+from joeseln_backend.services.admin_stat.admin_stat_schemas import StatResponse
+from joeseln_backend.services.admin_stat.admin_stat_service import get_stat
+from joeseln_backend.services.admin_user import admin_user_service
+from joeseln_backend.services.comment import comment_schemas, comment_service
+from joeseln_backend.services.file import (
+    file_schemas,
+    file_service,
+    file_version_service,
+)
+from joeseln_backend.services.history import history_schema
+from joeseln_backend.services.history.history_service import get_history
+from joeseln_backend.services.labbook import (
+    labbook_schemas,
+    labbook_service,
+    labbook_version_service,
+)
+from joeseln_backend.services.labbookchildelements import (
+    labbookchildelement_schemas,
+    labbookchildelement_service,
+)
+from joeseln_backend.services.note import (
+    note_schemas,
+    note_service,
+    note_version_service,
+)
+from joeseln_backend.services.picture import (
+    picture_schemas,
+    picture_service,
+    picture_version_service,
+)
+from joeseln_backend.services.relation import relation_schemas
+from joeseln_backend.services.role.basic_roles_creator import (
+    create_basic_roles,
+    create_inital_admin,
+)
+from joeseln_backend.services.user import user_service
+from joeseln_backend.services.user.user_password import (
+    gui_password_change,
+    gui_patch_user_password,
+    guicreate_user,
+)
+from joeseln_backend.services.user.user_schema import (
+    AdminExtended,
+    GroupUserExtended,
+    GuiUserCreate,
+    GuiUserPatch,
+    OIDCUserCreate,
+    PasswordChange,
+    PasswordPatch,
+    User,
+    UserExtended,
+    UserExtendedConnected,
+    UserWithPrivileges,
+)
+from joeseln_backend.services.user.user_service import update_oidc_user
+from joeseln_backend.services.user_to_group import (
+    user_to_group_schema,
+    user_to_group_service,
+)
+from joeseln_backend.services.user_to_group.user_to_group_service import (
+    update_oidc_user_groups,
+)
 from joeseln_backend.ws.ws_client import ws_client
-
-from contextlib import asynccontextmanager
 
 
 @asynccontextmanager

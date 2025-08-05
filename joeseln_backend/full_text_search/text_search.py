@@ -1,9 +1,9 @@
 from sqlalchemy import or_
 from typesense.client import Client
-from joeseln_backend.models import models
+
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_groups
+from joeseln_backend.models import models
+from joeseln_backend.services.user_to_group.user_to_group_service import get_user_groups
 
 
 def search_with_model(db, model, search_text, user, typesense: Client):
