@@ -3,7 +3,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from joeseln_backend.conf.content_types import element_content_type
 from joeseln_backend.services.file.file_schemas import File
 from joeseln_backend.services.note.note_schemas import Note
 from joeseln_backend.services.picture.picture_schemas import Picture
@@ -28,11 +27,6 @@ class Labbookchildelement(BaseModel):
     created_by_id: int
     last_modified_at: datetime.datetime
     last_modified_by_id: int
-
-    # mocked fields
-    num_related_comments: int
-    num_relations: int = 0
-    content_type: int = element_content_type
 
     class Config:
         populate_by_name = True

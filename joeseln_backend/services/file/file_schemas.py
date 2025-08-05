@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, List
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, Json
@@ -40,18 +40,11 @@ class File(BaseModel):
     container_id: str | None = None
     envelope_id: str | None = None
     mime_type: str | None
-    # we don't need this
-    directory_id: str = 'foo'
-    location: str = ''
+
     content_type: int = file_content_type
     content_type_model: str = file_content_type_model
     last_modified_by: User
     created_by: User
-    fake_metadata: List[str] = []
-    is_favourite: bool = False
-    is_dss_file: bool = False
-    projects: List[Any] = []
-    url: str = ''
 
     # for jumping function
     position_y: int = 0
@@ -97,9 +90,6 @@ class FilePreviewVersion(BaseModel):
     name: str
     title: str
     description: str
-    metadata: List[Any]
-    projects: List[Any]
-    metadata_version: int
 
     directory: None = None
     uploaded_file_entry: int | str | UUID | None = 'foo'

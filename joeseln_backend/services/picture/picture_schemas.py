@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, List
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, Json
@@ -38,11 +38,7 @@ class Picture(BaseModel):
     content_type_model: str = picture_content_type_model
     last_modified_by: User
     created_by: User
-    # alt
     display: str
-    fake_metadata: List[str] = []
-    is_favourite: bool = False
-    projects: List[Any] = []
 
     class Config:
         populate_by_name = True
@@ -77,10 +73,6 @@ class PictureVersion(BaseModel):
 
 class PicturePreviewVersion(BaseModel):
     title: str
-    metadata: List[Any]
-    projects: List[Any]
-    metadata_version: int
-
     uploaded_file_entry: int | str | UUID | None = 'foo'
 
     class Config:

@@ -26,15 +26,10 @@ class Labbook(BaseModel):
     last_modified_by_id: int
     description: str
 
-    display: str = ''
-    my_metadata: List[str] = []
     content_type_model: str = labbook_content_type_model
-    projects: List[str] = []
-    url: str = ''
     last_modified_by: User
     created_by: User
     content_type: int = labbook_content_type
-    is_favourite: bool = False
 
     class Config:
         populate_by_name = True

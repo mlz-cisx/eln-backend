@@ -1,5 +1,4 @@
 import datetime
-from typing import List
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -29,12 +28,6 @@ class Comment(BaseModel):
 
     content_type: int = comment_content_type
     content_type_model: str = comment_content_type_model
-
-    # mocked
-    display: int | str | UUID = 'Left object id ?, right object id ?'
-    is_favourite: bool = False
-    my_metadata: List[str] = []
-    url: str = ''
 
     class Config:
         populate_by_name = True

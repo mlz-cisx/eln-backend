@@ -39,7 +39,6 @@ class Relation(BaseModel):
     last_modified_by: User
     created_by: User
 
-    display: str = 'Left object id ?, right object id ?'
 
     class Config:
         populate_by_name = True

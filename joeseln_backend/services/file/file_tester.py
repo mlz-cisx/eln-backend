@@ -9,7 +9,7 @@ from joeseln_backend.conf.content_types import (
     file_content_type_model,
 )
 
-ELN_URL = 'http://localhost:8010/'
+ELN_URL = 'http://localhost:8010/api/'
 TEST_IMG_1 = '/home/jbaudisch/Bilder/original.png'
 TEST_IMG_2 = '/home/jbaudisch/Bilder/Logo.png'
 

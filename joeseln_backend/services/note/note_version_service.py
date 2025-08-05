@@ -92,10 +92,7 @@ def add_note_version(db: Session, note_pk, summary, user, restored_content=None,
 
             version_metadata = {
                 'content': db_note.content,
-                'subject': db_note.subject,
-                'metadata': [],
-                'projects': [],
-                'metadata_version': 1
+                'subject': db_note.subject
             }
 
             db_note_version = models.Version(

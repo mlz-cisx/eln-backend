@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from joeseln_backend.conf.content_types import picture_content_type_version
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
-from joeseln_backend.services.labbook.labbook_service import check_for_labbook_access
+from joeseln_backend.services.labbook.labbook_service import \
+    check_for_labbook_access
 from joeseln_backend.services.labbookchildelements.labbookchildelement_service import (
     check_for_version_edit_access_on_lb_elem,
 )
@@ -125,10 +126,7 @@ def add_picture_version(db: Session, picture_pk, summary, user,
                 'title': db_picture.title,
                 'scale': db_picture.scale,
                 'ri_img': restored_ri_img,
-                'shapes': restored_shapes,
-                'metadata': [],
-                'projects': [],
-                'metadata_version': 1
+                'shapes': restored_shapes
             }
 
             db_picture_version = models.Version(

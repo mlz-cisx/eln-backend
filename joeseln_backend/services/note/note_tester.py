@@ -7,7 +7,7 @@ from joeseln_backend.conf.content_types import (
 )
 from joeseln_backend.services.note.note_test_content import CONTENT
 
-ELN_URL = 'http://localhost:8010/'
+ELN_URL = 'http://localhost:8010/api/'
 
 
 class BackendConnector:

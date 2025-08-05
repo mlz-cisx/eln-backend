@@ -95,10 +95,7 @@ def add_file_version(db: Session, file_pk, summary, user,
             version_metadata = {
                 'name': db_file.name,
                 'title': db_file.title,
-                'description': db_file.description,
-                'metadata': [],
-                'projects': [],
-                'metadata_version': 1
+                'description': db_file.description
             }
 
             db_file_version = models.Version(

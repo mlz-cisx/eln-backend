@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, List
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, Json
@@ -29,10 +29,6 @@ class Note(BaseModel):
     content_type_model: str = note_content_type_model
     last_modified_by: User
     created_by: User
-    display: str = ''
-    fake_metadata: List[str] = []
-    is_favourite: bool = False
-    projects: List[Any] = []
 
     # for jumping
     position_y: int = 0
@@ -77,9 +73,6 @@ class NoteVersion(BaseModel):
 class NotePreviewVersion(BaseModel):
     content: str
     subject: str
-    metadata: List[Any]
-    projects: List[Any]
-    metadata_version: int
 
 
 class NoteWithPrivileges(BaseModel):
