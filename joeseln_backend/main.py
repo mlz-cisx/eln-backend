@@ -173,7 +173,7 @@ async def lifespan(app: FastAPI):
     await ws_client.close()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, docs_url="/api/docs")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ORIGINS,

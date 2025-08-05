@@ -451,11 +451,9 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
 
         # changerecord = [field_name,old_value,new_value]
         # changerecords = [changerecord, changerecord, .....]
-        if old_description == elem.description:
-            changerecords = [['title', old_title, elem.title]]
-        else:
-            changerecords = [['title', old_title, elem.title],
-                             ['description', old_description, elem.description]]
+
+        changerecords = [['title', old_title, elem.title],
+                         ['description', old_description, elem.description]]
         # changeset_types:
         # U : edited/updated, R : restored, S: trashed , I initialized/created
         create_file_update_history_entry(db=db,
@@ -495,11 +493,9 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
 
             return db_file
 
-        if old_description == elem.description:
-            changerecords = [['title', old_title, elem.title]]
-        else:
-            changerecords = [['title', old_title, elem.title],
-                             ['description', old_description, elem.description]]
+        changerecords = [['title', old_title, elem.title],
+                         ['description', old_description, elem.description]]
+
         # changeset_types:
         # U : edited/updated, R : restored, S: trashed , I initialized/created
         create_file_update_history_entry(db=db,
