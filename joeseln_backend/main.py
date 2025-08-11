@@ -27,6 +27,8 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse
+from fastapi.openapi.docs import get_swagger_ui_html
 from keycloak import KeycloakOpenID
 from sqlalchemy.orm import Session
 
@@ -187,7 +189,7 @@ async def lifespan(app: FastAPI):
     await ws_client.close()
 
 
-app = FastAPI(lifespan=lifespan, docs_url="/api/docs", redoc_url="/api/redoc")
+app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url="/api/redoc")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ORIGINS,
@@ -200,6 +202,50 @@ keycloak_openid = KeycloakOpenID(server_url=KEYCLOAK_SERVER_URL,
                                  client_id=KEYCLOAK_CLIENT_ID,
                                  realm_name=KEYCLOAK_REALM_NAME,
                                  client_secret_key=KEYCLOAK_CLIENT_SECRET)
+
+
+@app.get("/api/docs", include_in_schema=False)
+async def custom_swagger_ui():
+    html = get_swagger_ui_html(
+        openapi_url="/openapi.json",
+        title="Custom OAuth2 Swagger UI",
+        swagger_ui_parameters={"persistAuthorization": True}
+    )
+
+    custom_js = """
+    <script>
+    window.onload = function() {
+        const observer = new MutationObserver(() => {
+            const modal = document.querySelector('.modal-dialog-ux');
+            if (modal) {
+                const hideField = (selector) => {
+                    const el = modal.querySelector(selector);
+                    if (el) {
+                        const wrapper = el.closest('.wrapper');
+                        if (wrapper) wrapper.style.display = 'none';
+                    }
+                };
+
+                hideField('input#client_id');
+                hideField('input#client_secret');
+                hideField('select#password_type');
+                hideField('input[data-name="scope"]');
+
+                // Optional: hide labels too
+                ['client_id', 'client_secret', 'password_type'].forEach(id => {
+                    const label = modal.querySelector(`label[for="${id}"]`);
+                    if (label) label.style.display = 'none';
+                });
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    };
+    </script>
+    """
+
+    return HTMLResponse(content=html.body.decode() + custom_js, status_code=200)
+
 
 @app.get("/api/health/", response_model=simple_messege_response)
 def get_health(db: Session = Depends(get_db)):
