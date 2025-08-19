@@ -1,11 +1,27 @@
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from typesense.client import Client
 from typing_extensions import TypedDict
 
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 from joeseln_backend.models import models
 from joeseln_backend.services.user.user_schema import UserExtended
-from joeseln_backend.services.user_to_group.user_to_group_service import get_user_groups
+from joeseln_backend.services.user_to_group.user_to_group_service import \
+    get_user_groups
+
+
+def encode_umlauts_to_html(text):
+    replacements = {
+        'ä': '&auml;',
+        'ö': '&ouml;',
+        'ü': '&uuml;',
+        'Ä': '&Auml;',
+        'Ö': '&Ouml;',
+        'Ü': '&Uuml;',
+        'ß': '&szlig;',
+    }
+    for char, entity in replacements.items():
+        text = text.replace(char, entity)
+    return text
 
 
 class search_result_type(TypedDict):
@@ -20,7 +36,6 @@ def search_with_model(db, model, search_text, user, typesense: Client):
     result_array = []
     # query for labbook_id that user has access right
     user_groups = get_user_groups(db=db, username=user.username)
-    lbs = []
     if LABBOOK_QUERY_MODE == 'match':
         lbs = db.query(models.Labbook).filter(
             or_(*[models.Labbook.title.contains(name) for name in
@@ -61,9 +76,23 @@ def search_with_model(db, model, search_text, user, typesense: Client):
 
         # subject content
     if 'file' in model:
+        encoded_search_text = encode_umlauts_to_html(search_text)
+        cleaned_f = func.regexp_replace(
+            func.regexp_replace(
+                models.File.description,
+                r'data:([a-zA-Z0-9]+/[a-zA-Z0-9.+-]+);base64,[A-Za-z0-9+/=]+',
+                '',
+                'g'
+            ),
+            r'<[^>]+>',
+            '',
+            'g'
+        )
+
         results = db.query(models.File).filter(
             or_(models.File.title.like(f'%{search_text}%'),
-                models.File.description.like(f'%{search_text}%'))).all()
+                func.lower(cleaned_f).ilike(f'%{encoded_search_text.lower()}%'))).all()
+
         for result in results:
             lb_elem = db.query(models.Labbookchildelement).get(result.elem_id)
             if lb_elem and str(lb_elem.labbook_id) in labbook_ids:
@@ -94,9 +123,24 @@ def search_with_model(db, model, search_text, user, typesense: Client):
                 result_array.append(res_dic)
         # title
     if 'labbook' in model:
+        encoded_search_text = encode_umlauts_to_html(search_text)
+        cleaned_l = func.regexp_replace(
+            func.regexp_replace(
+                models.Labbook.description,
+                r'data:([a-zA-Z0-9]+/[a-zA-Z0-9.+-]+);base64,[A-Za-z0-9+/=]+',
+                '',
+                'g'
+            ),
+            r'<[^>]+>',
+            '',
+            'g'
+        )
+
         results = db.query(models.Labbook).filter(
             or_(models.Labbook.title.like(f'%{search_text}%'),
-                models.Labbook.description.like(f'%{search_text}%'))).all()
+                func.lower(cleaned_l).ilike(f'%{encoded_search_text.lower()}%')
+                )).all()
+
         for result in results:
             if str(result.id) in labbook_ids:
                 created_by = db.query(models.User).get(
