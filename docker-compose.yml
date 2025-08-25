@@ -3,11 +3,8 @@ version: '3.8'
 # file structure
 # .
 # ├── frontend/
-# │   └── joeselnfrontend/
-# │       └── Dockerfile 
+# │   └── Dockerfile
 # ├── backend/
-# │   └── Dockerfile 
-# ├── rabbit2mlzeln/
 # │   └── Dockerfile
 # └── docker-compose.yml
 #
@@ -41,8 +38,9 @@ services:
       TYPESENSE_HOST: "eln-typesense"
       TYPESENSE_PORT: 8108
       TYPESENSE_API_KEY: "#super_secret#"
-      # url
-      URL_BASE_PATH: "http://wojians-macbook.local/api/"  # with tailing slash
+      # urls
+      APP_BASE_PATH: "http://wojians-macbook.local/" # with trailing slash
+      URL_BASE_PATH: "http://wojians-macbook.local/api/"  # with trailing slash
       WS_URL: "ws://wojians-macbook.local/ws/"
       WS_PORT: 8011
       ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
@@ -73,8 +71,9 @@ services:
       KEYCLOAK_SERVER_URL: "http://wojians-macbook.local/auth"
       KEYCLOAK_CLIENT_ID: "client_backend"
       KEYCLOAK_CLIENT_SECRET: "cfAAazDMTwst5JgVVbtLjO5hsXQlTziL"
-      # url
-      URL_BASE_PATH: "http://wojians-macbook.local/api/"  # with tailing slash
+      # urls
+      APP_BASE_PATH: "http://wojians-macbook.local/" # with trailing slash
+      URL_BASE_PATH: "http://wojians-macbook.local/api/"  # with trailing slash
       WS_URL: "ws://wojians-macbook.local/ws/"
       WS_PORT: 8011
       ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
@@ -84,10 +83,10 @@ services:
   eln-frontend:
     image: eln-frontend
     build:
-      context: ./frontend/joeselnfrontend/
+      context: ./frontend/
     environment:
       SERVER_NAME: "wojians-macbook.local" # optional
-      API_URL: "http://wojians-macbook.local/api" # without tailing slash
+      API_URL: "http://wojians-macbook.local/api" # without trailing slash
       WS_URL: "ws://wojians-macbook.local/ws"
       KEYCLOAK_URL: "http://wojians-macbook.local/auth"
       KEYCLOAK_REALM: "joe"
@@ -114,23 +113,6 @@ services:
       - ./data/postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  # eln-rabbit2mlzeln:
-  #   image: eln-rabbit2mlzeln
-  #   build:
-  #     context: ./rabbit2mlzeln/
-  #   environment:
-  #     RABBIT_URL=wojians-macbook.local
-  #     RABBIT_PORT=5673
-  #     RABBIT_VIRTUAL_HOST=/
-  #     RABBIT_USERNAME=guest
-  #     RABBIT_PASSWORD=guest
-  #     RABBIT_STATIC_QUEUE=test_queue
-  #     WORKBENCH_URL=http://wojians-macbook.local:8010/
-  #     AUTH_TOKEN=#super_secret#
-  #     CSRF_TOKEN=jhDS4TpoDRmX66r1meuwWAInInghCmxzoSZckriOfYQmKg8LegYNtuGEVAhahTOy
-  #     LB_NOT_AVAILABLE=create
-  #     INSTRUMENT=default
-  #     LB_MAX_SIZE=200
 
   keycloak:
     # ports:

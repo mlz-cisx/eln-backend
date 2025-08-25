@@ -22,13 +22,13 @@ PICTURES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/pictures/'
 FILES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/files/'
 
 # MLZ-ELN URL
-URL_BASE_PATH = 'http://172.25.74.236:8010/api/'
+URL_BASE_PATH = 'http://localhost:8010/api/'
 
 # Frontend url
-APP_BASE_PATH = ''
+APP_BASE_PATH = 'http://localhost:4500/'
 
 # WS ELN URL
-WS_URL = 'ws://172.25.74.236:4501/ws/'
+WS_URL = 'ws://localhost:4501/ws/'
 WS_PORT = 4501
 WS_INTERNAL_IP = '0.0.0.0'
 
