@@ -573,6 +573,15 @@ def get_labbook_for_export(db: Session, labbook_pk):
     return db_labbook
 
 
+def get_labbook_by_title(db: Session, title: str, user):
+    if user.admin:
+        db_labbook = (
+            db.query(models.Labbook).filter(models.Labbook.title == title).first()
+        )
+        return [db_labbook.id] if db_labbook else []
+    return None
+
+
 def get_labbook_with_privileges(db: Session, labbook_pk, user):
     if user.admin:
         lb = db.query(models.Labbook).filter(models.Labbook.deleted == False,

@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import Annotated, Any
+from typing import Annotated, Any, List
 from urllib.parse import urlencode
 from uuid import UUID
 
@@ -304,6 +304,19 @@ def read_labbook(labbook_pk: UUID,
     if labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return labbook
+
+
+@app.get("/api/labbooks/labbook_title/", response_model=List[UUID])
+def get_labbook_by_title(
+    title: str = Query(),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    # logger.info(user)
+    labbook_pk = labbook_service.get_labbook_by_title(db=db, title=title, user=user)
+    if labbook_pk is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return labbook_pk
 
 
 @app.get("/api/labbooks/{labbook_pk}/export/", response_class=FileResponse)

@@ -1,4 +1,5 @@
 import requests
+from joeseln_backend.conf.base_conf import STATIC_ADMIN_TOKEN
 
 ELN_URL = 'http://localhost:8010/api/'
 
@@ -7,7 +8,9 @@ class BackendConnector:
 
     def __init__(self):
         self.eln_url = ELN_URL
-        self.headers = {'accept': 'application/json'}
+        self.static_token = STATIC_ADMIN_TOKEN
+        self.headers = {'accept': 'application/json',
+                        "Authorization": f'Bearer {self.static_token}'}
 
     def get_labbooks(self):
         r = requests.get(url=f'{self.eln_url}labbooks/',
@@ -34,6 +37,11 @@ class BackendConnector:
                           headers=self.headers)
         return r
 
+    def get_labbook_by_title(self, labbook_title):
+        r = requests.get(
+            url=f'{self.eln_url}labbooks/labbook_title/?title={labbook_title}',
+            headers=self.headers)
+        return r
 
 # backend_connector = BackendConnector()
-# print(backend_connector.get_labbook_export_data(labbook_pk='6b75e7c7-3608-4742-9e46-2f379792c154'))
+# print(backend_connector.get_labbook_by_title('picversiontest'))
