@@ -3,7 +3,7 @@ import pathlib
 
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy.sql import text
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
@@ -433,18 +433,28 @@ def get_all_labbook_ids_from_non_admin_user(db: Session, user):
 def get_labbooks_from_user(db: Session, params, user):
     order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
     if user.admin:
-        if params.get('search'):
-            search_text = params.get('search')
-            lbs = db.query(models.Labbook).filter(
-                models.Labbook.title.ilike(f'%{search_text}%')).filter_by(
-                deleted=bool(params.get('deleted'))).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
-                params.get('limit')).all()
+        if params.get("search"):
+            search_text = params.get("search")
+            lbs = (
+                db.query(models.Labbook)
+                .options(defer(models.Labbook.description))
+                .filter(models.Labbook.title.ilike(f"%{search_text}%"))
+                .filter_by(deleted=bool(params.get("deleted")))
+                .order_by(text(order_params))
+                .offset(params.get("offset"))
+                .limit(params.get("limit"))
+                .all()
+            )
         else:
-            lbs = db.query(models.Labbook).filter_by(
-                deleted=bool(params.get('deleted'))).order_by(
-                text(order_params)).offset(params.get('offset')).limit(
-                params.get('limit')).all()
+            lbs = (
+                db.query(models.Labbook)
+                .options(defer(models.Labbook.description))
+                .filter_by(deleted=bool(params.get("deleted")))
+                .order_by(text(order_params))
+                .offset(params.get("offset"))
+                .limit(params.get("limit"))
+                .all()
+            )
         for lb in lbs:
             db_user_created = db.query(models.User).get(lb.created_by_id)
             db_user_modified = db.query(models.User).get(

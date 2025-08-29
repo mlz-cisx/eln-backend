@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, List, Optional
+from typing import Annotated, Any, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, Json
@@ -37,6 +37,7 @@ class Labbook(BaseModel):
 
 class LabbookWithLen(Labbook):
     length: int
+    description: Annotated[str, Field(exclude=True)]
 
 
 class LabbookCreate(BaseModel):
