@@ -235,7 +235,6 @@ def get_all_deleted_pics(db: Session):
 def get_picture_with_privileges(db: Session, picture_pk, user, If_None_Match):
     db_picture = db.query(models.Picture).get(picture_pk)
     if db_picture:
-
         etag = f'{db_picture.id}-{db_picture.last_modified_at}'
         if If_None_Match == etag:
             raise HTTPException(status_code=304) 
@@ -701,7 +700,7 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
         transmit({'model_name': 'picture', 'model_pk': str(pk)})
 
         # refresh download token
-        security.invalidate_download_token(user)
+        security.invalidate_download_token(pk)
         pic = build_download_url_with_token(
             picture=deepcopy(db_picture), user=user)
 
@@ -712,7 +711,7 @@ def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
 
 def build_download_url_with_token(picture, user):
 
-    access_token = security.build_download_token(user)
+    access_token = security.build_download_token(user, picture.id)
 
     picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'

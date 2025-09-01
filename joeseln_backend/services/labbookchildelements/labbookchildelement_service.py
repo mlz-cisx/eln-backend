@@ -122,9 +122,6 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return None
 
-    access_token = security.build_download_token(user)
-    jwt = security.Token(access_token=access_token, token_type="bearer").access_token
-
     created_by = aliased(models.User)
     last_modified_by = aliased(models.User)
 
@@ -204,20 +201,23 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
     )
     results = db.execute(query).fetchall()
 
-    pictures = [
-        {
-            **item[0].__dict__,
-            'child_object': {**item[1].__dict__,
-                             'created_by': item[2], 
-                             'last_modified_by': item[3],
-                             'background_image': f'{URL_BASE_PATH}pictures/{item[1].id}/bi_download/?jwt={jwt}',
-                             'rendered_image': f'{URL_BASE_PATH}pictures/{item[1].id}/ri_download/?jwt={jwt}',
-                             'shapes_image': f'{URL_BASE_PATH}pictures/{item[1].id}/shapes/?jwt={jwt}'
-                            },
-            'num_related_comments': item[4]
-        }
-        for item in results
-    ]
+    pictures = []
+    for item in results:
+        token = security.build_download_token(user, item[1].id)
+        pictures.append(
+            {
+                **item[0].__dict__,
+                "child_object": {
+                    **item[1].__dict__,
+                    "created_by": item[2],
+                    "last_modified_by": item[3],
+                    "background_image": f"{URL_BASE_PATH}pictures/{item[1].id}/bi_download/?jwt={token}",
+                    "rendered_image": f"{URL_BASE_PATH}pictures/{item[1].id}/ri_download/?jwt={token}",
+                    "shapes_image": f"{URL_BASE_PATH}pictures/{item[1].id}/shapes/?jwt={token}",
+                },
+                "num_related_comments": item[4],
+            }
+        )
 
     # file query
     query = (
@@ -248,12 +248,13 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
     files = [
         {
             **item[0].__dict__,
-            'child_object': {**item[1].__dict__,
-                             'created_by': item[2],
-                             'last_modified_by': item[3],
-                             'path': f'{URL_BASE_PATH}files/{item[1].id}/download?jwt={jwt}',
-                             },
-            'num_related_comments': item[4]
+            "child_object": {
+                **item[1].__dict__,
+                "created_by": item[2],
+                "last_modified_by": item[3],
+                "path": f"{URL_BASE_PATH}files/{item[1].id}/download?jwt={security.build_download_token(user, item[1].id)}",
+            },
+            "num_related_comments": item[4],
         }
         for item in results
     ]

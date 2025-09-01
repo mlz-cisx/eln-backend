@@ -89,16 +89,19 @@ def authenticate_user(db: Session, username: str, password: str):
     return user
 
 # token used to donwload picture and file
-token_cache = {}
-def invalidate_download_token(user):
-    cache_key = user.username
-    if cache_key in token_cache:
-        del token_cache[cache_key]
+token_cache = TTLCache(maxsize=1048576, ttl=DOWNLOAD_TOKEN_EXPIRE_MINUTES * 60)
 
-def build_download_token(user):
+def invalidate_download_token(resource_uuid):
+    keys_to_delete = [key for key in token_cache if key.endswith(f":{resource_uuid}")]
+    # Remove the tokens associated with the resource_id
+    for key in keys_to_delete:
+        del token_cache[key]
+
+
+def build_download_token(user, resource_uuid) -> str:
     current_time = time.time()
-    cache_key = user.username
-    access_token = None
+    cache_key = f"{user.username}:{resource_uuid}"
+    access_token = ""
 
     # Check if a valid token exists in the cache
     if cache_key in token_cache:
@@ -114,7 +117,7 @@ def build_download_token(user):
             minutes=DOWNLOAD_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
-        )
+        ).decode()
         expires_at = current_time + access_token_expires.total_seconds()
         token_cache[cache_key] = (access_token, expires_at)
 
