@@ -83,10 +83,10 @@ def create_note_below(db: Session, element_pk, user,
     new_x = db_labbook_elem.position_x
     new_y = elem_y
     new_width = db_labbook_elem.width
-    new_height = 5
+    new_height = 10
 
     has_to_be_shifted = False
-    rows = 5
+    rows = 10
     conflict_elem_position_y = 0
 
     for elem in query:
