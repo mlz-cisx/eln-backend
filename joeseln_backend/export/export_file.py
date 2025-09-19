@@ -10,7 +10,7 @@ from joeseln_backend.services.file.file_service import get_file, get_file_relati
 
 
 def get_export_data(db, file_pk, jwt):
-    user = get_user_from_jwt(token=jwt)
+    user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
     root = os.path.dirname(os.path.abspath(__file__))

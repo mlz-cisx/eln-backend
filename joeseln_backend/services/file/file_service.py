@@ -623,7 +623,7 @@ def build_download_url_with_token_for_zip_export(file_to_process):
 
 
 def build_file_download_response(file_pk, db, jwt):
-    user = get_user_from_jwt(token=jwt)
+    user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
     db_file = db.query(models.File).get(file_pk)

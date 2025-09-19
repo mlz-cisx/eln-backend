@@ -721,7 +721,7 @@ def build_download_url_with_token(picture, user):
 
 
 def build_bi_download_response(picture_pk, db, jwt):
-    user = get_user_from_jwt(token=jwt)
+    user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
     db_picture = db.query(models.Picture).get(picture_pk)
@@ -732,7 +732,7 @@ def build_bi_download_response(picture_pk, db, jwt):
 
 
 def build_ri_download_response(picture_pk, db, jwt, request):
-    user = get_user_from_jwt(token=jwt)
+    user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
     db_picture = db.query(models.Picture).get(picture_pk)
@@ -760,7 +760,7 @@ def build_ri_download_response(picture_pk, db, jwt, request):
 
 
 def build_shapes_response(picture_pk, db, jwt):
-    user = get_user_from_jwt(token=jwt)
+    user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
     db_picture = db.query(models.Picture).get(picture_pk)

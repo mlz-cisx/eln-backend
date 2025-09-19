@@ -135,12 +135,11 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-def get_user_from_jwt(token: Annotated[str, Depends(oauth2_scheme)]):
+def get_user_from_jwt(db: Session, token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         if token == STATIC_ADMIN_TOKEN:
             # logger.info('you can do everything')
-            user = get_user_by_uname(db=SessionLocal(),
-                                     username=INSTRUMENT_AS_ADMIN)
+            user = get_user_by_uname(db=db, username=INSTRUMENT_AS_ADMIN)
             return user
         else:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -148,8 +147,7 @@ def get_user_from_jwt(token: Annotated[str, Depends(oauth2_scheme)]):
             username: str = payload.get("sub")
             if username is None:
                 return
-            user = get_user_with_groups_by_uname(db=SessionLocal(),
-                                                 username=username)
+            user = get_user_with_groups_by_uname(db=db, username=username)
             if user is None:
                 return
             return user

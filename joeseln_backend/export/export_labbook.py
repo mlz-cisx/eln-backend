@@ -21,7 +21,7 @@ from joeseln_backend.services.labbookchildelements.labbookchildelement_service i
 
 
 def get_export_data(db, lb_pk, jwt):
-    user = get_user_from_jwt(token=jwt)
+    user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
     root = os.path.dirname(os.path.abspath(__file__))

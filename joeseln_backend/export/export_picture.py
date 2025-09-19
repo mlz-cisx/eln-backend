@@ -13,7 +13,7 @@ from joeseln_backend.services.picture.picture_service import (
 
 
 def get_export_data(db, picture_pk, jwt):
-    user = get_user_from_jwt(token=jwt)
+    user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
     root = os.path.dirname(os.path.abspath(__file__))
