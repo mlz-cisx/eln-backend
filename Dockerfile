@@ -12,10 +12,7 @@ WORKDIR /app
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
-  weasyprint=57.2-1 \
-  libpango-1.0=1.50.12+ds-1 \
-  libharfbuzz0b=6.0.0+dfsg-3 \
-  libpangoft2-1.0-0=1.50.12+ds-1 && \
+  weasyprint=62.3-1 && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
