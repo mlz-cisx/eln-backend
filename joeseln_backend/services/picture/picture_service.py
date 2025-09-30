@@ -167,6 +167,8 @@ def update_title(db: Session, picture_pk, user,
                  pic_payload: UpdatePictureTitle):
     db_picture = db.query(models.Picture).get(picture_pk)
 
+    old_title = db_picture.title
+
     db_picture.title = pic_payload.title
     db_picture.last_modified_at = datetime.datetime.now()
     db_picture.last_modified_by_id = user.id
@@ -198,6 +200,16 @@ def update_title(db: Session, picture_pk, user,
         pic = build_download_url_with_token(
             picture=deepcopy(db_picture), user=user)
 
+        changerecords = [['title', old_title, pic_payload.title]]
+        # changeset_types:
+        # U : edited/updated, R : restored, S: trashed , I initialized/created
+        create_history_entry(db=db,
+                             elem_id=picture_pk,
+                             user=user,
+                             object_type_id=40,
+                             changeset_type='U',
+                             changerecords=changerecords)
+
         return pic
 
     # picture not created by an admin
@@ -220,6 +232,16 @@ def update_title(db: Session, picture_pk, user,
         transmit({'model_name': 'picture', 'model_pk': str(picture_pk)})
         pic = build_download_url_with_token(
             picture=deepcopy(db_picture), user=user)
+
+        changerecords = [['title', old_title, pic_payload.title]]
+        # changeset_types:
+        # U : edited/updated, R : restored, S: trashed , I initialized/created
+        create_history_entry(db=db,
+                             elem_id=picture_pk,
+                             user=user,
+                             object_type_id=40,
+                             changeset_type='U',
+                             changerecords=changerecords)
 
         return pic
 
