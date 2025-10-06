@@ -1,13 +1,13 @@
-import io
+import base64
 import json
 import os
+import subprocess
 import zipfile
 from io import BytesIO
 
 from fastapi.responses import Response, StreamingResponse
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session
-from weasyprint import HTML
 
 from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.services.labbook.labbook_service import (
@@ -20,7 +20,15 @@ from joeseln_backend.services.labbookchildelements.labbookchildelement_service i
 )
 
 
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        encoded = base64.b64encode(img_file.read()).decode("utf-8")
+    return encoded
+
+
 def get_export_data(db, lb_pk, jwt):
+    parent_dir = os.path.dirname(os.path.abspath(__file__))
+    render_mathjax_path = os.path.join(parent_dir, "render_mathjax.js")
     user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
@@ -32,12 +40,28 @@ def get_export_data(db, lb_pk, jwt):
     elems = get_lb_childelements_for_export(db=db, labbook_pk=lb_pk,
                                             access_token=jwt, user=user,
                                             as_export=True)
+
+    for elem in elems:
+        if elem.child_object_content_type == 40:
+            base64_image = get_base64_image(elem.child_object.rendered_image)
+            elem.child_object.rendered_image = base64_image
+
     data = {'instance': lb, 'labbook_child_elements': elems}
-    buf = io.StringIO()
-    buf.write(template.render(data))
-    buf.seek(0)
-    export = HTML(buf).write_pdf()
-    return Response(export)
+    html = template.render(data)
+
+    result = subprocess.run(
+        ["node",
+         render_mathjax_path],
+        input=html.encode("utf-8"),
+        stdout=subprocess.PIPE,
+        check=True
+    )
+
+    return Response(
+        content=result.stdout,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "inline; filename=mathjax_output.pdf"}
+    )
 
 
 def create_export_zip_file(db: Session, labbook_pk, user):

@@ -5,15 +5,19 @@
 
 #### System Requirements
 
-- Tested on **Ubuntu 22.04.4** with **Python 3.10**
+- Tested on **Ubuntu 22.04.4 Desktop** with **Python 3.10**
 
 #### Installation Steps
 
 - Install required packages:
   ```bash
-  apt install weasyprint
-  apt install python3-pip libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
+  apt install python3-pip 
   ```
+- Install Node.js v22 and npm via NodeSource
+- Install the dependencies for puppeteer (assuming that your Ubuntu Desktop has all its necessary Chromium Dependencies installed, if not,  have a look at [Dockerfile](Dockerfile)) with:
+
+  ``` cd joeseln_backend/export && npm install ```
+
 - Create a virtual environment (e.g. `venv`)
 - Install dependencies from `requirements.txt`
 - Create a **PostgreSQL** database

@@ -1,15 +1,17 @@
-import io
 import os
+import subprocess
 
 from fastapi.responses import Response
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
 
 from joeseln_backend.auth.security import get_user_from_jwt
-from joeseln_backend.services.note.note_service import get_note, get_note_relations
+from joeseln_backend.services.note.note_service import get_note, \
+    get_note_relations
 
 
 def get_export_data(db, note_pk, jwt):
+    parent_dir = os.path.dirname(os.path.abspath(__file__))
+    render_mathjax_path = os.path.join(parent_dir, "render_mathjax.js")
     user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
@@ -23,8 +25,19 @@ def get_export_data(db, note_pk, jwt):
                                            params=None,
                                            user=user)
     data = {'instance': db_note, 'note_relations': db_note_relations}
-    buf = io.StringIO()
-    buf.write(template.render(data))
-    buf.seek(0)
-    export = HTML(buf).write_pdf()
-    return Response(export)
+
+    html = template.render(data)
+
+    result = subprocess.run(
+        ["node",
+         render_mathjax_path],
+        input=html.encode("utf-8"),
+        stdout=subprocess.PIPE,
+        check=True
+    )
+
+    return Response(
+        content=result.stdout,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "inline; filename=mathjax_output.pdf"}
+    )

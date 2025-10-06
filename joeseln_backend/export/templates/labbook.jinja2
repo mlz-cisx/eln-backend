@@ -1,4 +1,4 @@
-{% extends 'base_export.jinja2' %}
+{% extends 'base_mathjax.jinja2' %}
 
 
 {% block title %}
@@ -28,9 +28,7 @@
         {{ instance.description | safe }}
     </p>
 
-    <p> Metadata:
-        {{ instance }}
-    </p>
+
 
 
     <h3>Elements</h3>
@@ -83,7 +81,7 @@
                 </div>
 
                 {% if child_element.child_object.rendered_image %}
-                    <img src="file://{{ child_element.child_object.rendered_image }}"
+                    <img src="data:image/png;base64,{{ child_element.child_object.rendered_image }}"
                          style="max-height: 900px; max-width: 600px; height: auto">
                 {% endif %}
                 <div>
@@ -106,8 +104,7 @@
                     {% endfor %}
                 </div>
 
-                <p>Metadata
-                </p>
+
 
 
             {% endif %}
@@ -153,8 +150,6 @@
                     {% endfor %}
                 </div>
 
-                <p>Metadata:
-                </p>
             {% endif %}
         </div>
     {% endfor %}

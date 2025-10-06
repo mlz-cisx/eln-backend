@@ -1,4 +1,4 @@
-{% extends 'base_export.jinja2' %}
+{% extends 'base_mathjax.jinja2' %}
 
 {% block title %}
     Picture  {{ instance.title }}
@@ -14,8 +14,7 @@
     </div>
 
     {% if instance.rendered_image %}
-        <img src="file://{{ instance.rendered_image }}"
-             style="max-height: 900px; max-width: 600px; height: auto">
+       <img src="data:image/png;base64,{{ instance.rendered_image }}">
     {% endif %}
 
     <div>
