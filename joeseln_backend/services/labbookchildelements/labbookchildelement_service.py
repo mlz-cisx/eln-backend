@@ -135,7 +135,7 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
             )
         )
         .group_by(models.Relation.right_object_id)
-        .alias('related_comments')
+        .alias('num_related_comment')
     )
 
     # note query

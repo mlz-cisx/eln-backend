@@ -1,5 +1,6 @@
 import datetime
 from uuid import UUID
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -27,6 +28,8 @@ class Labbookchildelement(BaseModel):
     created_by_id: int
     last_modified_at: datetime.datetime
     last_modified_by_id: int
+
+    num_related_comments: Optional[int] = None
 
     class Config:
         populate_by_name = True
