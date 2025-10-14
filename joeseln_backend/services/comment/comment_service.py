@@ -56,7 +56,6 @@ def create_comment(db: Session, comment: CreateComment, user):
         db_relation = models.Relation(
             left_object_id=db_comment.id,
             right_object_id=comment.relates_to_pk,
-            private=comment.private,
             left_content_type=comment_content_type,
             left_content_type_model=comment_content_type_model,
             right_content_type=comment.relates_to_content_type_id,

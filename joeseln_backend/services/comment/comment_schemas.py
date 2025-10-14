@@ -36,6 +36,5 @@ class Comment(BaseModel):
 
 class CreateComment(BaseModel):
     content: str
-    private: bool
     relates_to_content_type_id: int
     relates_to_pk: int | str | UUID
