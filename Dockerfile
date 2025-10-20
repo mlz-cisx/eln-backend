@@ -14,41 +14,7 @@ RUN apt-get update && \
   apt-get install -y --no-install-recommends \
   npm \
   nodejs \
-  ca-certificates \
-  fonts-liberation \
-  libappindicator3-1 \
-  libasound2 \
-  libatk-bridge2.0-0 \
-  libatk1.0-0 \
-  libc6 \
-  libcairo2 \
-  libcups2 \
-  libdbus-1-3 \
-  libexpat1 \
-  libfontconfig1 \
-  libgbm1 \
-  libgcc1 \
-  libglib2.0-0 \
-  libgtk-3-0 \
-  libnspr4 \
-  libnss3 \
-  libpango-1.0-0 \
-  libx11-6 \
-  libx11-xcb1 \
-  libxcb1 \
-  libxcomposite1 \
-  libxcursor1 \
-  libxdamage1 \
-  libxext6 \
-  libxfixes3 \
-  libxi6 \
-  libxrandr2 \
-  libxrender1 \
-  libxss1 \
-  libxtst6 \
-  lsb-release \
-  wget \
-  xdg-utils \
+  chromium \
   && apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
@@ -61,6 +27,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy the rest of the application files
 COPY . .
 
+# chromium package managed by apt
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+# for non-root user to launch chromium
+ENV XDG_CONFIG_HOME=/tmp/.chromium
+ENV XDG_CACHE_HOME=/tmp/.chromium
 RUN cd joeseln_backend/export && npm install
 
 # Configure env variables
