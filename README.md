@@ -14,7 +14,7 @@
   apt install python3-pip 
   ```
 - Install Node.js v22 and npm via NodeSource
-- Install the dependencies for puppeteer (assuming that your Ubuntu Desktop has all its necessary Chromium Dependencies installed, if not,  have a look at [Dockerfile](Dockerfile)) with:
+- Install Chromium (/usr/bin/chromium), and install puppeteer with:
 
   ``` cd joeseln_backend/export && npm install ```
 
