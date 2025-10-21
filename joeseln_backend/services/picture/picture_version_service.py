@@ -4,11 +4,11 @@ import json
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from joeseln_backend.auth import security
 from joeseln_backend.conf.content_types import picture_content_type_version
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
-from joeseln_backend.services.labbook.labbook_service import \
-    check_for_labbook_access
+from joeseln_backend.services.labbook.labbook_service import check_for_labbook_access
 from joeseln_backend.services.labbookchildelements.labbookchildelement_service import (
     check_for_version_edit_access_on_lb_elem,
 )
@@ -67,6 +67,9 @@ def restore_picture_version(db: Session, picture_pk, version_pk, user):
                                      restored_ri_img=ri_img,
                                      restored_shapes=shapes,
                                      user=user)[0]
+
+    # refresh download token: client will download updated rendered image
+    security.invalidate_download_token(picture_pk)
 
     return db_picture
 
