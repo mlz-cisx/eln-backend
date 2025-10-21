@@ -38,7 +38,7 @@ from joeseln_backend.auth.security import (
     authenticate_user,
     create_access_token,
     get_current_user,
-    verify_jwt_with_leeway,
+    verify_jwt_with_leeway, TokenWithDelta, LEEWAY
 )
 from joeseln_backend.conf.base_conf import (
     APP_BASE_PATH,
@@ -50,6 +50,7 @@ from joeseln_backend.conf.base_conf import (
     ORIGINS,
     PICTURES_BASE_PATH,
     URL_BASE_PATH,
+    TOKEN_VALIDITY
 )
 from joeseln_backend.database.database import SessionLocal, get_db
 
@@ -1558,7 +1559,8 @@ async def login_for_access_token(
     password: Annotated[str, Form()],
     db: Session = Depends(get_db),
 ) -> Token:
-    user = authenticate_user(db=db, username=username, password=password)
+    user = authenticate_user(db=db, username=username.strip(),
+                             password=password.strip())
 
     if not user:
         raise HTTPException(
@@ -1587,6 +1589,25 @@ def refresh_access_token(access_token: Token) -> Token:
     except Exception as e:
         logger.warn(e)
         raise HTTPException(status_code=403)
+
+
+@app.get("/api/transfer")
+def get_transfer_token(
+        user: User = Depends(get_current_user)) -> TokenWithDelta:
+    if not user:
+        raise HTTPException(status_code=403)
+    # negative timedelta to reduce the leeway for refreshing
+    # makes qrcode invalid after TOKEN_VALIDITY seconds
+    access_token_expires = timedelta(
+        seconds=max(10, min(LEEWAY, TOKEN_VALIDITY)) - LEEWAY)
+    # we align to keycloak's sub
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return TokenWithDelta(access_token=access_token, token_type="bearer",
+                          token_validity=TOKEN_VALIDITY)
+
+
 
 
 @app.get("/api/search/", response_model=list[text_search.search_result_type])

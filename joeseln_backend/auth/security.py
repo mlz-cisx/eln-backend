@@ -23,11 +23,18 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 20
 ACCESS_TOKEN_EXPIRE_SECONDS = 1000
 DOWNLOAD_TOKEN_EXPIRE_MINUTES = 60 * 24
+LEEWAY = 300
 
 
 class Token(BaseModel):
     access_token: str
     token_type: str | None = None
+
+
+class TokenWithDelta(BaseModel):
+    access_token: str
+    token_type: str | None = None
+    token_validity: int
 
 
 class TokenData(BaseModel):
@@ -192,7 +199,7 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         logger.error(f'oidc user is considered as non oidc user: {e}')
 
 
-def verify_jwt_with_leeway(token, leeway=300):
+def verify_jwt_with_leeway(token, leeway=LEEWAY):
     payload  = jwt.decode(token.access_token.encode(), SECRET_KEY, algorithms=[ALGORITHM], leeway=leeway)
     username = payload.get("sub")
     return username

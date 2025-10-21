@@ -79,3 +79,6 @@ JAEGER_SERVICE_NAME = 'MLZ-ELN'
 
 # in kilobytes
 ELEM_MAXIMUM_SIZE = 5000
+
+# in seconds
+TOKEN_VALIDITY = 50
