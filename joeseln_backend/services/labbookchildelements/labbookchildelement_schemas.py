@@ -40,6 +40,13 @@ class Labbookchildelement_Create(BaseModel):
     child_object_content_type: int
 
 
+class Labbookchildelement_CreateBottom(BaseModel):
+    width: int
+    height: int
+    child_object_id: int | str | UUID
+    child_object_content_type: int
+
+
 class Labbookchildelement_Update(BaseModel):
     position_x: int
     position_y: int

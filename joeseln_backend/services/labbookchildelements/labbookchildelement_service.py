@@ -22,6 +22,7 @@ from joeseln_backend.services.labbook.labbook_service import (
 )
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import (
     Labbookchildelement_Create,
+    Labbookchildelement_CreateBottom,
 )
 from joeseln_backend.services.note.note_service import (
     get_note,
@@ -355,6 +356,42 @@ def create_lb_childelement(db: Session, labbook_pk,
     return db_labbook_elem
 
 
+def create_lb_childelement_bottom(
+    db: Session,
+    labbook_pk,
+    labbook_childelem: Labbookchildelement_CreateBottom,
+    user,
+    typesense: Client,
+):
+    # first avaliable position_y
+    posY = (
+        db.query(
+            func.max(
+                models.Labbookchildelement.position_y
+                + models.Labbookchildelement.height
+            )
+        )
+        .filter(
+            models.Labbookchildelement.labbook_id == labbook_pk,
+            models.Labbookchildelement.deleted == False,
+        )
+        .scalar()
+    )
+
+    posY = 0 if posY is None else posY
+
+    elem = Labbookchildelement_Create(
+        position_x=0,
+        position_y=posY,
+        height=labbook_childelem.height,
+        width=labbook_childelem.width,
+        child_object_id=labbook_childelem.child_object_id,
+        child_object_content_type=labbook_childelem.child_object_content_type,
+    )
+
+    return create_lb_childelement(db, labbook_pk, elem, user, typesense)
+
+
 def update_all_lb_childelements(db: Session,
                                 labbook_childelems, labbook_pk, user):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
@@ -410,5 +447,3 @@ def update_child_element(db_labbook_elem, child_object_content_type,
         except SQLAlchemyError as e:
             logger.error(e)
             db.close()
-
-

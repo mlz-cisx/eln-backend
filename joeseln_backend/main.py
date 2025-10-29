@@ -31,7 +31,7 @@ from fastapi.responses import (
     FileResponse,
     HTMLResponse,
     RedirectResponse,
-    StreamingResponse,
+    StreamingResponse
 )
 from keycloak import KeycloakOpenID
 from sqlalchemy.orm import Session
@@ -423,16 +423,44 @@ def read_labbook_elems(labbook_pk: UUID,
 @app.post("/api/labbooks/{labbook_pk}/elements/",
           response_model=labbookchildelement_schemas.Labbookchildelement)
 async def create_labbook_elem(
-        labbook_pk: UUID,
-        elem: labbookchildelement_schemas.Labbookchildelement_Create,
-        db: Session = Depends(get_db),
-        typesense_client = Depends(get_typesense_client),
-        user: User = Depends(get_current_user)):
+    labbook_pk: UUID,
+    elem: labbookchildelement_schemas.Labbookchildelement_Create,
+    db: Session = Depends(get_db),
+    typesense_client=Depends(get_typesense_client),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
     # all groupmembers
-    lb_element = labbookchildelement_service. \
-        create_lb_childelement(db=db, labbook_pk=labbook_pk,
-                               labbook_childelem=elem, user=user, typesense=typesense_client)
+    lb_element = labbookchildelement_service.create_lb_childelement(
+        db=db,
+        labbook_pk=labbook_pk,
+        labbook_childelem=elem,
+        user=user,
+        typesense=typesense_client,
+    )
+    if lb_element is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return lb_element
+
+
+@app.post(
+    "/api/labbooks/{labbook_pk}/elements/bottom",
+    response_model=labbookchildelement_schemas.Labbookchildelement,
+)
+async def create_labbook_elem_bottom(
+    labbook_pk: UUID,
+    elem: labbookchildelement_schemas.Labbookchildelement_CreateBottom,
+    db: Session = Depends(get_db),
+    typesense_client=Depends(get_typesense_client),
+    user: User = Depends(get_current_user),
+):
+    lb_element = labbookchildelement_service.create_lb_childelement_bottom(
+        db=db,
+        labbook_pk=labbook_pk,
+        labbook_childelem=elem,
+        user=user,
+        typesense=typesense_client,
+    )
     if lb_element is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_element
