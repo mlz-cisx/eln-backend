@@ -285,8 +285,6 @@ def patch_lb_childelement(db: Session, labbook_pk, element_pk,
     db_labbook_elem.position_y = labbook_childelem.position_y
     db_labbook_elem.width = labbook_childelem.width
     db_labbook_elem.height = labbook_childelem.height
-    db_labbook_elem.last_modified_at = datetime.datetime.now()
-    db_labbook_elem.last_modified_by_id = user.id
 
     lb_to_update = db.query(models.Labbook).get(db_labbook_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
@@ -341,10 +339,7 @@ def create_lb_childelement(db: Session, labbook_pk,
         child_object_content_type_model=map_to_child_object_model(
             child_object_content_type=labbook_childelem.child_object_content_type),
         version_number=0,
-        created_at=datetime.datetime.now(),
         created_by_id=user.id,
-        last_modified_at=datetime.datetime.now(),
-        last_modified_by_id=user.id
     )
     db.add(db_labbook_elem)
 
@@ -413,15 +408,12 @@ def update_all_lb_childelements(db: Session,
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return
 
-    now = datetime.datetime.now()
     update_data = [{
         'id': lb_childelem.id,
         'position_x': lb_childelem.position_x,
         'position_y': lb_childelem.position_y,
         'width': lb_childelem.width,
         'height': lb_childelem.height,
-        'last_modified_at': now,
-        'last_modified_by_id': user.id
     } for lb_childelem in labbook_childelems]
 
     db.bulk_update_mappings(models.Labbookchildelement, update_data)

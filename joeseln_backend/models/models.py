@@ -73,10 +73,7 @@ class Labbookchildelement(Base):
     child_object_content_type = Column(Integer)
     child_object_content_type_model = Column(String)
     version_number = Column(Integer)
-    created_at = Column(DateTime)
     created_by_id = Column(BigInteger, ForeignKey(User.id))
-    last_modified_at = Column(DateTime)
-    last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
 
 
 class Note(Base):

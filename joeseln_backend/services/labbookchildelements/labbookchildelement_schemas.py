@@ -1,6 +1,5 @@
-import datetime
-from uuid import UUID
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -23,11 +22,7 @@ class Labbookchildelement(BaseModel):
     child_object_content_type_model: str
     version_number: int
     child_object: Picture | Note | File | None
-
-    created_at: datetime.datetime
     created_by_id: int
-    last_modified_at: datetime.datetime
-    last_modified_by_id: int
 
     num_related_comments: Optional[int] = None
 
