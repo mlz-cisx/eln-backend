@@ -275,54 +275,6 @@ def check_for_version_edit_access_on_lb_elem(db: Session, lb_elem, user):
                                               user=user)
 
 
-def patch_lb_childelement(db: Session, labbook_pk, element_pk,
-                          labbook_childelem, user):
-    if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
-        return None
-
-    db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
-    db_labbook_elem.position_x = labbook_childelem.position_x
-    db_labbook_elem.position_y = labbook_childelem.position_y
-    db_labbook_elem.width = labbook_childelem.width
-    db_labbook_elem.height = labbook_childelem.height
-
-    lb_to_update = db.query(models.Labbook).get(db_labbook_elem.labbook_id)
-    lb_to_update.last_modified_at = datetime.datetime.now()
-    lb_to_update.last_modified_by_id = user.id
-
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
-        return db_labbook_elem
-
-    db.refresh(db_labbook_elem)
-
-    if db_labbook_elem.child_object_content_type == 30:
-        db_labbook_elem.child_object = get_note(db=db,
-                                                note_pk=db_labbook_elem.child_object_id)
-        db_labbook_elem.num_related_comments = get_note_related_comments_count(
-            db=db,
-            note_pk=db_labbook_elem.child_object_id, user=user)
-    if db_labbook_elem.child_object_content_type == 40:
-        db_labbook_elem.child_object = picture_service.get_picture(db=db,
-                                                                   picture_pk=db_labbook_elem.child_object_id,
-                                                                   user=user)
-        db_labbook_elem.num_related_comments = get_picture_related_comments_count(
-            db=db, picture_pk=db_labbook_elem.child_object_id, user=user)
-
-    if db_labbook_elem.child_object_content_type == 50:
-        db_labbook_elem.child_object = file_service.get_file(db=db,
-                                                             file_pk=db_labbook_elem.child_object_id,
-                                                             user=user)
-        db_labbook_elem.num_related_comments = get_file_related_comments_count(
-            db=db,
-            file_pk=db_labbook_elem.child_object_id, user=user)
-
-    return db_labbook_elem
-
-
 def create_lb_childelement(db: Session, labbook_pk,
                            labbook_childelem: Labbookchildelement_Create, user, typesense: Client):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):

@@ -26,9 +26,13 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
-from fastapi.responses import HTMLResponse
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from keycloak import KeycloakOpenID
 from sqlalchemy.orm import Session
 
@@ -429,26 +433,6 @@ async def create_labbook_elem(
     lb_element = labbookchildelement_service. \
         create_lb_childelement(db=db, labbook_pk=labbook_pk,
                                labbook_childelem=elem, user=user, typesense=typesense_client)
-    if lb_element is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
-    return lb_element
-
-
-@app.patch("/api/labbooks/{labbook_pk}/elements/{element_pk}/",
-           response_model=labbookchildelement_schemas.Labbookchildelement)
-async def patch_labbook_elem(
-        labbook_pk: UUID,
-        element_pk: UUID,
-        elem: labbookchildelement_schemas.Labbookchildelement_Create,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    # logger.info(user)
-    lb_element = labbookchildelement_service. \
-        patch_lb_childelement(db=db,
-                              labbook_pk=labbook_pk,
-                              element_pk=element_pk,
-                              labbook_childelem=elem,
-                              user=user)
     if lb_element is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return lb_element
