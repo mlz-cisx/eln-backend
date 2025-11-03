@@ -36,8 +36,10 @@ def create_comment(db: Session, comment: CreateComment, user):
     else:
         return
 
-    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                user=user):
+    if (
+        check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id, user=user)
+        == "Write"
+    ):
 
         db_comment = models.Comment(
             content=sanitize_html(comment.content),

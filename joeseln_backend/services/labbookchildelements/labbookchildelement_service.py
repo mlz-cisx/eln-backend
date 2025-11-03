@@ -278,7 +278,7 @@ def check_for_version_edit_access_on_lb_elem(db: Session, lb_elem, user):
 
 def create_lb_childelement(db: Session, labbook_pk,
                            labbook_childelem: Labbookchildelement_Create, user, typesense: Client):
-    if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
+    if check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user) != "Write":
         return None
 
     db_labbook_elem = models.Labbookchildelement(

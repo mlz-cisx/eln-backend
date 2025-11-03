@@ -29,12 +29,12 @@ from joeseln_backend.services.privileges.privileges_service import (
     create_labbook_privileges,
 )
 from joeseln_backend.services.user_to_group.user_to_group_service import (
+    check_for_guest_role,
     get_user_group_roles,
     get_user_group_roles_with_match,
     get_user_groups,
     get_user_groups_role_groupadmin,
     get_user_groups_role_user,
-    check_for_guest_role,
 )
 from joeseln_backend.ws.ws_client import transmit
 
@@ -89,10 +89,13 @@ def create_note_below(db: Session, element_pk, user,
     except ValueError:
         return False
 
-    if not db_labbook_elem or \
-            not check_for_labbook_access(db=db,
-                                         labbook_pk=db_labbook_elem.labbook_id,
-                                         user=user):
+    if (
+        not db_labbook_elem
+        or check_for_labbook_access(
+            db=db, labbook_pk=db_labbook_elem.labbook_id, user=user
+        )
+        != "Write"
+    ):
         return False
 
     labbook_id = db_labbook_elem.labbook_id
@@ -257,10 +260,13 @@ def create_note_aside(db: Session, element_pk, user,
     except ValueError:
         return False
 
-    if not db_labbook_elem or \
-            not check_for_labbook_access(db=db,
-                                         labbook_pk=db_labbook_elem.labbook_id,
-                                         user=user):
+    if (
+        not db_labbook_elem
+        or check_for_labbook_access(
+            db=db, labbook_pk=db_labbook_elem.labbook_id, user=user
+        )
+        != "Write"
+    ):
         return False
 
     labbook_id = db_labbook_elem.labbook_id
