@@ -174,10 +174,7 @@ def create_note_below(db: Session, element_pk, user,
         child_object_content_type=30,
         child_object_content_type_model='shared_elements.note',
         version_number=0,
-        created_at=datetime.datetime.now(),
-        created_by_id=user.id,
-        last_modified_at=datetime.datetime.now(),
-        last_modified_by_id=user.id
+        created_by_id=user.id
     )
 
     db.add(db_labbook_elem)
@@ -331,10 +328,7 @@ def create_note_aside(db: Session, element_pk, user,
         child_object_content_type=30,
         child_object_content_type_model='shared_elements.note',
         version_number=0,
-        created_at=datetime.datetime.now(),
-        created_by_id=user.id,
-        last_modified_at=datetime.datetime.now(),
-        last_modified_by_id=user.id
+        created_by_id=user.id
     )
 
     db.add(db_labbook_elem)
