@@ -1,5 +1,6 @@
 import datetime
 import pathlib
+from typing import Literal, Optional
 
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -32,29 +33,53 @@ from joeseln_backend.services.user_to_group.user_to_group_service import (
     get_user_group_roles_with_match,
     get_user_groups,
     get_user_groups_role_groupadmin,
+    get_user_groups_role_user,
+    check_for_guest_role,
 )
 from joeseln_backend.ws.ws_client import transmit
 
 
-def check_for_labbook_access(db: Session, labbook_pk, user):
-    if not user.admin:
-        user_groups = get_user_groups(db=db, username=user.username)
+def check_for_labbook_access(
+    db: Session, labbook_pk, user
+) -> Optional[Literal["Write", "Read"]]:
+    if user.admin:
+        return "Write"
 
-        if len(user_groups) == 0:
-            return False
-        if LABBOOK_QUERY_MODE == 'match':
-            db_lb = db.query(models.Labbook).filter(
-                or_(*[models.Labbook.title.contains(name) for name in
-                      user_groups])).filter(
-                models.Labbook.id == labbook_pk).first()
+    # users with role 'user' has write access to the labbook
+    user_groups_role_user = get_user_groups_role_user(db=db, username=user.username)
+    if user_groups_role_user:
+        if LABBOOK_QUERY_MODE == "match":
+            writeable_lb = (
+                db.query(models.Labbook)
+                .filter(models.Labbook.id == labbook_pk)
+                .filter(
+                    or_(
+                        *[
+                            models.Labbook.title.contains(name)
+                            for name in user_groups_role_user
+                        ]
+                    )
+                )
+                .first()
+            )
         else:
-            db_lb = db.query(models.Labbook).filter(
-                models.Labbook.title.in_(user_groups),
-                models.Labbook.id == labbook_pk).first()
+            writeable_lb = (
+                db.query(models.Labbook)
+                .filter(
+                    models.Labbook.title.in_(user_groups_role_user),
+                    models.Labbook.id == labbook_pk,
+                )
+                .first()
+            )
 
-        if not db_lb:
-            return False
-    return True
+        if writeable_lb:
+            return "Write"
+
+    # guset user have read access
+    if check_for_guest_role(db, labbook_pk, user):
+        return "Read"
+
+    return None
 
 
 def create_note_below(db: Session, element_pk, user,
