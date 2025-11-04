@@ -311,9 +311,18 @@ def get_file_relations(db: Session, file_pk, params, user):
 def delete_file_relation(db: Session, file_pk, relation_pk, user):
     db_file = db.query(models.File).get(file_pk)
     lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
-    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                user=user):
-        db_relation = db.query(models.Relation).get(relation_pk)
+    db_relation = db.query(models.Relation).get(relation_pk)
+    # comment can only be deteled by its creator or groupadmins
+    if (
+        db_relation
+        and lb_elem
+        and (
+            db_relation.created_by_id == user.id
+            or check_for_labbook_admin_access(
+                db=db, labbook_pk=lb_elem.labbook_id, user=user
+            )
+        )
+    ):
         db_relation.deleted = True
         try:
             db.commit()
@@ -330,7 +339,7 @@ def delete_file_relation(db: Session, file_pk, relation_pk, user):
         transmit({'model_name': 'comments', 'model_pk': str(file_pk),
                   'comments_count': comments_count})
 
-        return get_file_relations(db=db, file_pk=file_pk, params='', user=user)
+        return True
     return None
 
 

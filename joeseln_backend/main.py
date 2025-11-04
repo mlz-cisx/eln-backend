@@ -31,18 +31,20 @@ from fastapi.responses import (
     FileResponse,
     HTMLResponse,
     RedirectResponse,
-    StreamingResponse
+    StreamingResponse,
 )
 from keycloak import KeycloakOpenID
 from sqlalchemy.orm import Session
 
 from joeseln_backend.auth.security import (
     ACCESS_TOKEN_EXPIRE_SECONDS,
+    LEEWAY,
     Token,
+    TokenWithDelta,
     authenticate_user,
     create_access_token,
     get_current_user,
-    verify_jwt_with_leeway, TokenWithDelta, LEEWAY
+    verify_jwt_with_leeway,
 )
 from joeseln_backend.conf.base_conf import (
     APP_BASE_PATH,
@@ -53,8 +55,8 @@ from joeseln_backend.conf.base_conf import (
     KEYCLOAK_SERVER_URL,
     ORIGINS,
     PICTURES_BASE_PATH,
+    TOKEN_VALIDITY,
     URL_BASE_PATH,
-    TOKEN_VALIDITY
 )
 from joeseln_backend.database.database import SessionLocal, get_db
 
@@ -841,20 +843,20 @@ def get_note_relations(
 
 @app.delete(
     "/api/notes/{note_pk}/relations/{relation_pk}/",
-    response_model=list[relation_schemas.Relation],
+    response_model=simple_messege_response,
 )
 def delete_note_relation(
-        note_pk: UUID,
-        relation_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    note_rel = note_service.delete_note_relation(db=db, note_pk=note_pk,
-                                                 relation_pk=relation_pk,
-                                                 user=user)
+    note_pk: UUID,
+    relation_pk: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if note_service.delete_note_relation(
+        db=db, note_pk=note_pk, relation_pk=relation_pk, user=user
+    ):
 
-    if note_rel is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
-    return note_rel
+        return "ok"
+    return "nok"
 
 
 @app.post("/api/pictures/", response_model=picture_schemas.Picture)
@@ -1209,10 +1211,11 @@ def delete_picture_relation(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    picture_service.delete_picture_relation(
+    if picture_service.delete_picture_relation(
         db=db, picture_pk=picture_pk, relation_pk=relation_pk, user=user
-    )
-    return "ok"
+    ):
+        return "ok"
+    return "nok"
 
 
 @app.post("/api/files/", response_model=file_schemas.File)
@@ -1459,16 +1462,18 @@ def preview_file_version(
     return version_metadata
 
 
-@app.get("/api/files/{file_pk}/relations/",
-         response_model=list[relation_schemas.Relation])
+@app.get("/api/files/{file_pk}/relations/", response_model=simple_messege_response)
 def get_file_relations(
-        request: Request,
-        file_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
-    return file_service.get_file_relations(db=db, file_pk=file_pk,
-                                           params=request.query_params._dict,
-                                           user=user)
+    request: Request,
+    file_pk: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if file_service.get_file_relations(
+        db=db, file_pk=file_pk, params=request.query_params._dict, user=user
+    ):
+        return "ok"
+    return "nok"
 
 
 @app.delete(

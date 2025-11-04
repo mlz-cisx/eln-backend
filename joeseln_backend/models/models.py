@@ -23,7 +23,7 @@ from joeseln_backend.database.database import Base
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.ws.ws_client import transmit
 
-simple_messege_response = Literal["ok"]
+simple_messege_response = Literal["ok", "nok"]
 export_link = dict[Literal["url", "filename"], str]
 
 class User(Base):
