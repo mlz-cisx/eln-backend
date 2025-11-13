@@ -15,7 +15,7 @@ const puppeteer = require("puppeteer");
   const htmlContent = await getStdin();
 
   const browser = await puppeteer.launch({
-    executablePath: '/usr/bin/chromium',
+    executablePath: '/usr/bin/chromium', // or '/snap/bin/chromium'
     headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });

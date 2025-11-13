@@ -14,7 +14,7 @@
   apt install python3-pip 
   ```
 - Install Node.js v22 and npm via NodeSource
-- Install Chromium (/usr/bin/chromium), and install puppeteer with:
+- Install Chromium (in /usr/bin/chromium or in /snap/bin/chromium), adjust executablePath in [joeseln_backend/export/render_mathjax.js](joeseln_backend/export/render_mathjax.js) and install puppeteer with:
 
   ``` cd joeseln_backend/export && npm install ```
 
