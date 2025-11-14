@@ -1312,7 +1312,7 @@ def download_file(
         request: Request,
         file_pk: UUID,
         db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+):
     # logger.info(user)
     dwldable_file = file_service.build_file_download_response(file_pk=file_pk,
                                                               db=db,
