@@ -556,7 +556,7 @@ def process_file_upload_form(form, db, contents, user):
                 labbook_pk=labbook_pk)
             if description:
                 updated_db_file = db.query(models.File).get(db_file.id)
-                updated_db_file.description = description
+                updated_db_file.description = sanitize_html(description)
                 try:
                     db.commit()
                 except SQLAlchemyError as e:
@@ -1030,14 +1030,16 @@ def eln_format(eln_line):
 
 
 def create_file_from_spec_scan(db, dataframe, info, user, plot_data):
-    db_file = create_file(db=db,
-                          title=info['title'],
-                          name=info['name'],
-                          file_size=info['file_size'],
-                          description=info['description'],
-                          mime_type=info['mime_type'],
-                          user=user,
-                          plot_data=plot_data)
+    db_file = create_file(
+        db=db,
+        title=info["title"],
+        name=info["name"],
+        file_size=info["file_size"],
+        description=sanitize_html(info["description"]),
+        mime_type=info["mime_type"],
+        user=user,
+        plot_data=plot_data,
+    )
     if not db_file:
         return None
     file_path = f'{FILES_BASE_PATH}{db_file.path}'

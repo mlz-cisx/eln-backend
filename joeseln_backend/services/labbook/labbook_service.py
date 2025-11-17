@@ -16,7 +16,10 @@ from joeseln_backend.conf.base_conf import (
     PICTURES_BASE_PATH,
     URL_BASE_PATH,
 )
-from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
+from joeseln_backend.full_text_search.html_stripper import (
+    sanitize_html,
+    strip_html_and_binary,
+)
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
@@ -39,14 +42,25 @@ from joeseln_backend.services.user_to_group.user_to_group_service import (
 from joeseln_backend.ws.ws_client import transmit
 
 
+def is_clean_title(s: str) -> bool:
+    # Check non-empty
+    if not s:
+        return False
+    # Check printable
+    if not s.isprintable():
+        return False
+    return True
+
+
 def check_for_labbook_access(
-    db: Session, labbook_pk, user
+        db: Session, labbook_pk, user
 ) -> Optional[Literal["Write", "Read"]]:
     if user.admin:
         return "Write"
 
     # users with role 'user' has write access to the labbook
-    user_groups_role_user = get_user_groups_role_user(db=db, username=user.username)
+    user_groups_role_user = get_user_groups_role_user(db=db,
+                                                      username=user.username)
     if user_groups_role_user:
         if LABBOOK_QUERY_MODE == "match":
             writeable_lb = (
@@ -563,7 +577,9 @@ def get_labbooks_from_user(db: Session, params, user):
 
 def create_labbook(db: Session, labbook: LabbookCreate, user):
     db_labbook = None
-    if user.admin:
+    labbook.title = labbook.title.strip()
+    if user.admin and is_clean_title(labbook.title):
+        labbook.description = sanitize_html(labbook.description)
         db_labbook = models.Labbook(version_number=0,
                                     title=labbook.title,
                                     description=labbook.description,
@@ -692,10 +708,10 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
     changerecords = []
     if lb_privileges['edit']:
         # it is patched with form-input labbook page
-        if labbook.title:
+        if labbook.title and is_clean_title(labbook.title.strip()):
             old_labbook_title = db_labbook.title
             old_labbook_strict_mode = db_labbook.strict_mode
-            db_labbook.title = labbook.title
+            db_labbook.title = labbook.title.strip()
             db_labbook.strict_mode = labbook.strict_mode
 
             changerecords = [['title', old_labbook_title, labbook.title],
@@ -705,9 +721,9 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
         # it is patched with description modal
         elif not labbook.title:
             old_labbook_description = db_labbook.description
-            db_labbook.description = f'{labbook.description} '
+            db_labbook.description = f'{sanitize_html(labbook.description)} '
             changerecords = [['description', old_labbook_description,
-                              f'{labbook.description} ']]
+                              f'{sanitize_html(labbook.description)} ']]
         db_labbook.last_modified_at = datetime.datetime.now()
         db_labbook.last_modified_by_id = user.id
         try:
