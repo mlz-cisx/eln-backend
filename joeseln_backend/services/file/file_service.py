@@ -564,16 +564,6 @@ def process_file_upload_form(form, db, contents, user):
         except KeyError:
             pass
 
-    if db_file.mime_type == 'text/csv' or (
-            'plottable' in form.keys() and int(form['plottable']) == 1):
-        plot_data = get_plot_content_from_file(file_to_process=db_file)
-        updated_db_file = db.query(models.File).get(db_file.id)
-        updated_db_file.plot_data = plot_data
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
-
     file_to_process = db.query(models.File).get(db_file.id)
     ret_file = build_download_url_with_token(
         file_to_process=file_to_process,
@@ -988,28 +978,6 @@ def remove_soft_deleted_file(db: Session, file_pk):
     return
 
 
-def get_plot_content_from_file(file_to_process):
-    file_path = f'{FILES_BASE_PATH}{file_to_process.path}'
-    # something wrong with the file
-    try:
-        df = pd.read_csv(file_path, sep=r"\s+|,|;", engine='python')
-    except Exception as e:
-        logger.error(e)
-        return json.dumps([])
-    # wrong header
-    for key in df.to_dict().keys():
-        if "Unnamed" in key:
-            return json.dumps([])
-    # cannot be converted to json string or has null values
-    try:
-        if df.isnull().any().any():
-            return json.dumps([])
-        return json.dumps([[file_to_process.name, df.to_dict()]])
-    except Exception as e:
-        logger.error(e)
-        return json.dumps([])
-
-
 def create_plot_content_from_spec_file(file_to_process, db, user, labbook_pk):
     file_path = f'{FILES_BASE_PATH}{file_to_process.path}'
     if not spec.is_spec_file(file_path):
@@ -1033,9 +1001,6 @@ def create_plot_content_from_spec_file(file_to_process, db, user, labbook_pk):
         info = {}
         if len(scan.data) > 0:
             df = pd.DataFrame(scan.data)
-            # empty spaces in column name produces error in re-import
-            df.columns = [col.strip().replace(' ', '_') for col in df.columns]
-
             info['title'] = f'Scan {scanNum}  {scan.scanCmd}'
             info['name'] = f'Scan_{scanNum}.csv'
             scan_description = ''
@@ -1049,8 +1014,7 @@ def create_plot_content_from_spec_file(file_to_process, db, user, labbook_pk):
             info['description'] = scan_description
             info['file_size'] = sys.getsizeof(df)
             info['mime_type'] = 'text/csv'
-            plot_data = json.dumps(
-                [[f'Scan {scanNum}  {scan.scanCmd}', df.to_dict()]])
+            plot_data = json.dumps([])
             file = create_file_from_spec_scan(db=db, dataframe=df, info=info,
                                               user=user, plot_data=plot_data)
             add_spec_scan_as_file_to_labbook(db=db, labbook_pk=labbook_pk,
@@ -1108,10 +1072,7 @@ def add_spec_scan_as_file_to_labbook(db, labbook_pk, file_pk, user, position_y):
         child_object_content_type=childelem.child_object_content_type,
         child_object_content_type_model='shared_elements.file',
         version_number=0,
-        created_at=datetime.datetime.now(),
         created_by_id=user.id,
-        last_modified_at=datetime.datetime.now(),
-        last_modified_by_id=user.id
     )
     db.add(db_labbook_elem)
 
