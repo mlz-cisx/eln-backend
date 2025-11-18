@@ -357,11 +357,19 @@ def get_lb_pk_from_file(db: Session, file_pk):
     return elem.labbook_id
 
 
-def create_file(db: Session, title: str,
-                name: str, file_size: int, description: str, mime_type: str,
-                user, plot_data='[]'):
-    if file_size > ELEM_MAXIMUM_SIZE << 10 or sys.getsizeof(
-            description) > ELEM_MAXIMUM_SIZE << 10:
+def create_file(
+    db: Session,
+    title: str,
+    name: str,
+    file_size: int,
+    description: str,
+    mime_type: str,
+    user,
+):
+    if (
+        file_size > ELEM_MAXIMUM_SIZE << 10
+        or sys.getsizeof(description) > ELEM_MAXIMUM_SIZE << 10
+    ):
         return
 
     description = sanitize_html(description)
@@ -378,7 +386,6 @@ def create_file(db: Session, title: str,
                           title=title,
                           name=name,
                           original_filename=name,
-                          plot_data=plot_data,
                           display=name,
                           imported=False,
                           # editor content
@@ -533,13 +540,17 @@ def process_file_upload_form(form, db, contents, user):
     # print(form['path'].content_type)  # mime_type
     # print(form['path'].filename)  # is form[name]
 
-    db_file = create_file(db=db, title=form['title'],
-                          name=form['name'],
-                          file_size=form['path'].size,
-                          description=sanitize_html(form[
-                              'description']) if 'description' in form.keys() else None,
-                          mime_type=form['path'].content_type,
-                          user=user)
+    db_file = create_file(
+        db=db,
+        title=form["title"],
+        name=form["name"],
+        file_size=form["path"].size,
+        description=(
+            sanitize_html(form["description"]) if "description" in form.keys() else ""
+        ),
+        mime_type=form["path"].content_type,
+        user=user,
+    )
     if not db_file:
         return None
     file_path = f'{FILES_BASE_PATH}{db_file.path}'
@@ -563,11 +574,11 @@ def process_file_upload_form(form, db, contents, user):
                     logger.error(e)
         except KeyError:
             pass
+    db.refresh(db_file)
+    db.close()
 
-    file_to_process = db.query(models.File).get(db_file.id)
-    ret_file = build_download_url_with_token(
-        file_to_process=file_to_process,
-        user=user)
+    ret_file = build_download_url_with_token(file_to_process=deepcopy(db_file),
+                                             user=user)
 
     ret_file.created_by = user
     ret_file.last_modified_by = user
@@ -1001,25 +1012,24 @@ def create_plot_content_from_spec_file(file_to_process, db, user, labbook_pk):
         info = {}
         if len(scan.data) > 0:
             df = pd.DataFrame(scan.data)
-            info['title'] = f'Scan {scanNum}  {scan.scanCmd}'
-            info['name'] = f'Scan_{scanNum}.csv'
-            scan_description = ''
-            scan_description += eln_format(
-                f'SPEC file name: {spec_data.specFile}')
-            scan_description += eln_format(
-                f'SPEC date: {spec_data.headers[0].date}')
-            scan_description += eln_format(f'Scan {scanNum}  {scan.scanCmd}')
-            scan_description += eln_format(
-                f'Date: {scan.date} Duration: {scan.T} sec')
-            info['description'] = scan_description
-            info['file_size'] = sys.getsizeof(df)
-            info['mime_type'] = 'text/csv'
-            plot_data = json.dumps([])
-            file = create_file_from_spec_scan(db=db, dataframe=df, info=info,
-                                              user=user, plot_data=plot_data)
-            add_spec_scan_as_file_to_labbook(db=db, labbook_pk=labbook_pk,
-                                             file_pk=file.id,
-                                             user=user, position_y=position_y)
+            info["title"] = f"Scan {scanNum}  {scan.scanCmd}"
+            info["name"] = f"Scan_{scanNum}.csv"
+            scan_description = ""
+            scan_description += eln_format(f"SPEC file name: {spec_data.specFile}")
+            scan_description += eln_format(f"SPEC date: {spec_data.headers[0].date}")
+            scan_description += eln_format(f"Scan {scanNum}  {scan.scanCmd}")
+            scan_description += eln_format(f"Date: {scan.date} Duration: {scan.T} sec")
+            info["description"] = scan_description
+            info["file_size"] = sys.getsizeof(df)
+            info["mime_type"] = "text/csv"
+            file = create_file_from_spec_scan(db=db, dataframe=df, info=info, user=user)
+            add_spec_scan_as_file_to_labbook(
+                db=db,
+                labbook_pk=labbook_pk,
+                file_pk=file.id,
+                user=user,
+                position_y=position_y,
+            )
             position_y = position_y + 8
 
     return description
@@ -1029,7 +1039,7 @@ def eln_format(eln_line):
     return f'<pre style="margin: 0px !important;">{eln_line}</pre>'
 
 
-def create_file_from_spec_scan(db, dataframe, info, user, plot_data):
+def create_file_from_spec_scan(db, dataframe, info, user):
     db_file = create_file(
         db=db,
         title=info["title"],
@@ -1038,7 +1048,6 @@ def create_file_from_spec_scan(db, dataframe, info, user, plot_data):
         description=sanitize_html(info["description"]),
         mime_type=info["mime_type"],
         user=user,
-        plot_data=plot_data,
     )
     if not db_file:
         return None

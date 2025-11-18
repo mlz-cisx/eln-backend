@@ -2,7 +2,7 @@ import datetime
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, aliased, defer
+from sqlalchemy.orm import Session, aliased
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
 
@@ -243,7 +243,7 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
                 models.Labbookchildelement.child_object_content_type == 50
             )
         )
-    ).options(defer(models.File.plot_data))
+    )
     results = db.execute(query).fetchall()
 
     files = [

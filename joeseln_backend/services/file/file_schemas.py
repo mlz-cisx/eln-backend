@@ -35,8 +35,6 @@ class File(BaseModel):
     # download url we overwrite path
     path: str = Field(..., alias='download')
 
-    plot_data: str | None = None
-
     container_id: str | None = None
     envelope_id: str | None = None
     mime_type: str | None
