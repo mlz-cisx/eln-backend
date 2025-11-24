@@ -84,11 +84,8 @@ def create_export_zip_file(db: Session, labbook_pk, user):
 
         elem['child_object_id'] = str(elem['child_object_id'])
 
-        del elem['created_at']
         del elem['id']
         del elem['labbook_id']
-        del elem['last_modified_at']
-        del elem['last_modified_by_id']
 
         del elem['child_object']['_sa_instance_state']
         del elem['child_object']['created_at']
