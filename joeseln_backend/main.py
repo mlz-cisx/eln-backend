@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 from uuid import UUID
 
 import jwt
+import gzip
 from fastapi import (
     Body,
     Depends,
@@ -841,27 +842,6 @@ def get_note_relations(
                                            user=user)
 
 
-# @app.post("/api/notes/{note_pk}/relations/")
-# def add_note_relation(
-#         request: Request,
-#         note_pk: UUID,
-#         db: Session = Depends(get_db),
-#         user: User = Depends(get_current_user)):
-#     logger.info(request.query_params._dict)
-#     return ['ok']
-#     # DONE not in use
-
-
-# @app.put("/api/notes/{note_pk}/relations/{relation_pk}/")
-# def put_note_relation(
-#         request: Request,
-#         note_pk: UUID,
-#         relation_pk: UUID,
-#         db: Session = Depends(get_db),
-#         user: User = Depends(get_current_user)):
-#     logger.info(request.query_params._dict)
-#     return ['ok']
-#     # DONE not in use
 
 
 @app.delete(
@@ -885,31 +865,26 @@ def delete_note_relation(
 @app.post("/api/pictures/", response_model=picture_schemas.Picture)
 async def upload_image(
     request: Request,
-    width: Annotated[int, Form(...)],
-    height: Annotated[int, Form(...)],
     title: Annotated[str, Form(...)],
     background_image: Annotated[UploadFile | None, File()] = None,
-    rendered_image: Annotated[UploadFile | None, File()] = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     # logger.info(user)
-    ret_vals = None
     async with request.form() as form:
-        # picture upload
+        # picture upload from instrument without canvas content
         if background_image:
             contents = await background_image.read()
             ret_vals = picture_service.process_picture_upload_form(form=form,
                                                                    db=db,
                                                                    contents=contents,
                                                                    user=user)
-        # sketch upload
-        elif rendered_image:
-            contents = await rendered_image.read()
-            ret_vals = picture_service.process_sketch_upload_form(form=form,
-                                                                  db=db,
-                                                                  contents=contents,
-                                                                  user=user)
+        # sketch upload for creating via gui and copy via gui
+        else:
+            ret_vals = await picture_service.process_sketch_upload_form(
+                form=form,
+                db=db,
+                user=user)
 
         if ret_vals is None:
             raise HTTPException(status_code=204)
@@ -921,21 +896,18 @@ async def upload_image(
 async def clone_image(
     request: Request,
     background_image: Annotated[UploadFile, File()],
-    rendered_image: Annotated[UploadFile, File()],
-    shapes_image: Annotated[UploadFile, File()],
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     # logger.info(user)
     async with request.form() as form:
         bi_img_contents = await background_image.read()
-        ri_img_contents = await rendered_image.read()
-        shapes_contents = await shapes_image.read()
+        info_file = form.get("info")
+        info_bytes = await info_file.read()
+        info_text = gzip.decompress(info_bytes).decode("utf-8")
         db_picture = picture_service.clone_picture(db=db,
                                                    bi_img_contents=bi_img_contents,
-                                                   ri_img_contents=ri_img_contents,
-                                                   shapes_contents=shapes_contents,
-                                                   info = form['info'],
+                                                   info=info_text,
                                                    user=user)
 
         if db_picture is None:
@@ -993,32 +965,6 @@ def get_bi_picture(jwt: str, picture_pk: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Labbook not found")
     return bi_picture
 
-
-@app.get("/api/pictures/{picture_pk}/ri_download/", response_class=FileResponse)
-def get_ri_picture(
-    request: Request,
-    picture_pk: UUID,
-    If_None_Match: Annotated[str | None, Header()] = None,
-    If_Modified_Since: Annotated[str | None, Header()] = None,
-    db: Session = Depends(get_db),
-):
-    ri_picture = picture_service.build_ri_download_response(
-        picture_pk=picture_pk,
-        db=db,
-        jwt=request.query_params._dict['jwt'], request=request)
-    if ri_picture is None:
-        raise HTTPException(status_code=404, detail="token expired")
-    return ri_picture
-
-
-@app.get("/api/pictures/{picture_pk}/shapes/", response_class=FileResponse)
-def get_shapes(jwt: str, picture_pk: UUID, db: Session = Depends(get_db)):
-    shapes = picture_service.build_shapes_response(
-        picture_pk=picture_pk, db=db, jwt=jwt
-    )
-    if shapes is None:
-        raise HTTPException(status_code=404, detail="token expired")
-    return shapes
 
 
 @app.get("/api/pictures/{picture_pk}/export/",
@@ -1098,35 +1044,37 @@ def update_title_picture(
     return db_pic
 
 
-@app.patch("/api/pictures/{picture_pk}/",
+@app.patch("/api/pictures/{picture_pk}/canvas_content/",
            response_model=picture_schemas.Picture)
-async def patch_picture(
-    request: Request,
-    picture_pk: UUID,
-    background_image: Annotated[UploadFile, File()],
-    rendered_image: Annotated[UploadFile, File()],
-    shapes_image: Annotated[UploadFile, File()],
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
+def update_canvas_content_picture(
+        pic_payload: picture_schemas.PictureUpload,
+        picture_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
     # logger.info(user)
-    # for all users
-    async with request.form() as form:
-        bi_img_contents = await background_image.read()
-        ri_img_contents = await rendered_image.read()
-        shapes_contents = await shapes_image.read()
-        db_picture = picture_service.update_picture(pk=picture_pk,
-                                                    db=db,
-                                                    form=form,
-                                                    bi_img_contents=bi_img_contents,
-                                                    ri_img_contents=ri_img_contents,
-                                                    shapes_contents=shapes_contents,
-                                                    user=user)
+    db_pic = picture_service.update_canvas_content(db=db, picture_pk=picture_pk,
+                                                   user=user,
+                                                   pic_payload=pic_payload)
+    if db_pic is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
 
-        if db_picture is None:
-            raise HTTPException(status_code=404)
+    return db_pic
 
-        return db_picture
+
+@app.get("/api/pictures/{picture_pk}/canvas_content/",
+           response_model=picture_schemas.PictureCanvas)
+def get_canvas_content_picture(
+        picture_pk: UUID,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    # logger.info(user)
+    db_pic = picture_service.get_canvas_content(db=db, picture_pk=picture_pk,
+                                                   user=user)
+    if db_pic is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+
+    return db_pic
+
 
 
 @app.get("/api/pictures/{picture_pk}/history/",

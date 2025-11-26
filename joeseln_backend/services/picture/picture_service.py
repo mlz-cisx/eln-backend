@@ -1,11 +1,13 @@
+import base64
 import datetime
+import gzip
 import json
 import pathlib
-import shutil
+import sys
 from copy import deepcopy
 
 from fastapi.exceptions import HTTPException
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -27,13 +29,15 @@ from joeseln_backend.services.entry_path.entry_path_service import (
     create_entry,
     create_path,
 )
-from joeseln_backend.services.history.history_service import create_history_entry
+from joeseln_backend.services.history.history_service import \
+    create_history_entry
 from joeseln_backend.services.labbook.labbook_service import (
     check_for_labbook_access,
     check_for_labbook_admin_access,
     get_all_labbook_ids_from_non_admin_user,
 )
-from joeseln_backend.services.picture.picture_schemas import UpdatePictureTitle
+from joeseln_backend.services.picture.picture_schemas import UpdatePictureTitle, \
+    PictureUpload
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import (
     ADMIN,
 )
@@ -163,6 +167,21 @@ def get_picture(db: Session, picture_pk, user):
     return pic
 
 
+def get_canvas_content(db: Session, picture_pk, user):
+    db_picture = db.query(models.Picture).get(picture_pk)
+    if db_picture:
+        lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+        if not lb_elem:
+            return None
+        if user.admin:
+            return db_picture
+        if not check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                        user=user):
+            return None
+        return db_picture
+    return None
+
+
 def update_title(db: Session, picture_pk, user,
                  pic_payload: UpdatePictureTitle):
     db_picture = db.query(models.Picture).get(picture_pk)
@@ -196,7 +215,7 @@ def update_title(db: Session, picture_pk, user,
         db_picture.created_by = db_user_created
         db_picture.last_modified_by = user
         db.close()
-        transmit({'model_name': 'picture', 'model_pk': str(picture_pk)})
+        transmit({'model_name': 'picture_title', 'model_pk': str(picture_pk)})
         pic = build_download_url_with_token(
             picture=deepcopy(db_picture), user=user)
 
@@ -229,11 +248,67 @@ def update_title(db: Session, picture_pk, user,
         db_picture.created_by = db_user_created
         db_picture.last_modified_by = user
         db.close()
-        transmit({'model_name': 'picture', 'model_pk': str(picture_pk)})
+        transmit({'model_name': 'picture_title', 'model_pk': str(picture_pk)})
         pic = build_download_url_with_token(
             picture=deepcopy(db_picture), user=user)
 
         changerecords = [['title', old_title, pic_payload.title]]
+        # changeset_types:
+        # U : edited/updated, R : restored, S: trashed , I initialized/created
+        create_history_entry(db=db,
+                             elem_id=picture_pk,
+                             user=user,
+                             object_type_id=40,
+                             changeset_type='U',
+                             changerecords=changerecords)
+
+        return pic
+
+    return None
+
+
+def update_canvas_content(db: Session, picture_pk, user,
+                          pic_payload: PictureUpload):
+    db_picture = db.query(models.Picture).get(picture_pk)
+    db_picture.canvas_content = pic_payload.canvas_content
+    db_picture.last_modified_at = datetime.datetime.now()
+    db_picture.last_modified_by_id = user.id
+
+    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_by_id = user.id
+
+
+
+    if not user.admin and lb_to_update.strict_mode \
+            and user.id != db_picture.created_by_id:
+        return None
+
+    # picture can be edited by every user if not in strict mode
+    if check_for_labbook_access(db=db,
+                                labbook_pk=lb_elem.labbook_id,
+                                user=user):
+
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return
+
+        db.refresh(db_picture)
+        db_user_created = db.query(models.User).get(db_picture.created_by_id)
+        db_picture.created_by = db_user_created
+        db_picture.last_modified_by = user
+        db.close()
+        transmit({'model_name': 'picture_content', 'origin': pic_payload.origin,
+                  'model_pk': str(picture_pk)})
+        pic = build_download_url_with_token(
+            picture=deepcopy(db_picture), user=user)
+
+        changerecords = [['canvas_content', '...', '...']]
         # changeset_types:
         # U : edited/updated, R : restored, S: trashed , I initialized/created
         create_history_entry(db=db,
@@ -418,7 +493,11 @@ def get_picture_for_export(db: Session, picture_pk):
     db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
     db_picture.created_by = db_user_created
     db_picture.last_modified_by = db_user_modified
-    db_picture.rendered_image = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
+    elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+    db_picture.canvas_width = \
+        round(84 * elem.width * 0.9)  # 84px default width per col
+    db_picture.canvas_height = \
+        round(36 * elem.height * 0.8)  # 36px default height per row
     return db_picture
 
 
@@ -427,37 +506,15 @@ def get_picture_filename(db: Session, picture_pk):
     return pic.title
 
 
-def get_picture_in_lb_init(db: Session, picture_pk, access_token, as_export):
-    db_picture = db.query(models.Picture).get(picture_pk)
 
-    db_user_created = db.query(models.User).get(db_picture.created_by_id)
-    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
-    db_picture.created_by = db_user_created
-    db_picture.last_modified_by = db_user_modified
-
-    picture = deepcopy(db_picture)
-
-    picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-    if as_export:
-        picture.rendered_image = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
-    else:
-        picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-
-    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-
-    return picture
 
 def get_picture_for_zip_export(db: Session, picture_pk):
     db_picture = db.query(models.Picture).get(picture_pk)
-
     db_user_created = db.query(models.User).get(db_picture.created_by_id)
     db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
     db_picture.created_by = db_user_created
     db_picture.last_modified_by = db_user_modified
-
-    db_picture.rendered_image = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
     db_picture.background_image = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
-    db_picture.shapes_image = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
 
     return db_picture
 
@@ -468,58 +525,23 @@ def get_lb_pk_from_picture(db: Session, picture_pk):
     return elem.labbook_id
 
 
-def copy_and_update_picture(db: Session, picture_pk, restored_ri=None,
-                            restored_shapes=None):
-    new_ri_img_path = f'{create_path(db=db)}'
-    new_shapes_path = f'{create_path(db=db)}.json'
-    db_picture = db.query(models.Picture).get(picture_pk)
-    if restored_ri is not None:
-        old_ri_img_path = restored_ri
-        old_shapes_path = restored_shapes
-    else:
-        old_ri_img_path = db_picture.rendered_image
-        old_shapes_path = db_picture.shapes_image
-
-    shutil.copyfile(f'{PICTURES_BASE_PATH}{old_ri_img_path}',
-                    f'{PICTURES_BASE_PATH}{new_ri_img_path}')
-    shutil.copyfile(f'{PICTURES_BASE_PATH}{old_shapes_path}',
-                    f'{PICTURES_BASE_PATH}{new_shapes_path}')
-
-    db_picture.rendered_image = new_ri_img_path
-    db_picture.shapes_image = new_shapes_path
-    try:
-        db.commit()
-        db.refresh(db_picture)
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
-
-    return [old_ri_img_path,
-            old_shapes_path]
-
-
 def create_picture(db: Session, title: str, display: str,
-                   width: int, height: int, size: int, user):
-    if size > ELEM_MAXIMUM_SIZE << 10:
+                   user, size: int = 0, canvas_content: str = None):
+    canvas_content = '{"version":"6.9.0","objects":[],"background":"#F8F8FF"}' \
+        if canvas_content is None else canvas_content
+    if size > ELEM_MAXIMUM_SIZE << 10 or sys.getsizeof(
+            canvas_content) > ELEM_MAXIMUM_SIZE << 10:
         return
 
     bi_file_path = f'{create_path(db=db)}'
-    ri_file_path = f'{create_path(db=db)}'
-    shapes_path = f'{create_path(db=db)}.json'
 
     upload_entry_id = create_entry(db=db)
     db_picture = models.Picture(version_number=0,
                                 uploaded_picture_entry_id=upload_entry_id,
                                 title=title,
                                 display=display,
-                                width=width,
-                                height=height,
                                 background_image=bi_file_path,
-                                background_image_size=size,
-                                rendered_image=ri_file_path,
-                                rendered_image_size=size,
-                                shapes_image=shapes_path,
-                                shapes_image_size=0,
+                                canvas_content=canvas_content,
                                 created_at=datetime.datetime.now(),
                                 created_by_id=user.id,
                                 last_modified_at=datetime.datetime.now(),
@@ -550,37 +572,26 @@ def create_picture(db: Session, title: str, display: str,
     return db_picture
 
 
-def clone_picture(db, bi_img_contents, ri_img_contents,
-                  shapes_contents, info, user):
+def clone_picture(db, bi_img_contents, info, user):
     if not user.admin:
         return
     info = json.loads(info)
     db_picture = create_picture(db=db,
                                 title=info['title'],
                                 display=info['display'],
-                                width=info['width'],
-                                height=info['height'],
-                                size=info['size'],
+                                canvas_content=info['canvas_content'],
                                 user=user)
 
     if not db_picture:
         return None
 
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
-    ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
-    shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
+
 
     with open(bi_img_path, 'wb') as image:
         image.write(bi_img_contents)
         image.close()
 
-    with open(ri_img_path, 'wb') as image:
-        image.write(ri_img_contents)
-        image.close()
-
-    with open(shapes_path, 'wb') as shapes:
-        shapes.write(shapes_contents)
-        shapes.close()
 
     pic = build_download_url_with_token(
         picture=deepcopy(db_picture), user=user)
@@ -594,31 +605,33 @@ def clone_picture(db, bi_img_contents, ri_img_contents,
 def process_picture_upload_form(form, db, contents, user):
     db_picture = create_picture(db=db, title=form['title'],
                                 display=form['background_image'].filename,
-                                width=form['width'], height=form['height'],
                                 size=form['background_image'].size, user=user)
 
     if not db_picture:
         return None
 
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
-    ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
-    shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
 
-    # print(filetype.guess(contents))
+    base64_string = base64.b64encode(contents).decode("utf-8")
 
     with open(bi_img_path, 'wb') as image:
         image.write(contents)
         image.close()
 
-    with open(ri_img_path, 'wb') as image:
-        image.write(contents)
-        image.close()
 
-    with open(shapes_path, 'wb') as shapes:
-        shapes.close()
+    deepcopied_pic = deepcopy(db_picture)
+    pic_to_update = db.query(models.Picture).get(deepcopied_pic.id)
+    pic_to_update.canvas_content = get_canvas_content_with_imgbase64(
+        img_src=base64_string)
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return
 
     pic = build_download_url_with_token(
-        picture=deepcopy(db_picture), user=user)
+        picture=deepcopied_pic, user=user)
 
     pic.created_by = user
     pic.last_modified_by = user
@@ -626,33 +639,21 @@ def process_picture_upload_form(form, db, contents, user):
     return pic
 
 
-def process_sketch_upload_form(form, db, contents, user):
-    # print(form['title'])
-    # print(form['rendered_image'].filename)
-    # print(form['width'])
-    # print(form['height'])
-    # print(form['rendered_image'].size)
-    # print(filetype.guess(contents))
+async def process_sketch_upload_form(form, db, user):
+    content = None
+    canvas_content = form.get("canvas_content")
+    if canvas_content:
+        info_bytes = await canvas_content.read()
+        content = gzip.decompress(info_bytes).decode("utf-8")
 
     db_picture = create_picture(db=db, title=form['title'],
                                 display=form['title'],
-                                width=form['width'], height=form['height'],
-                                size=form['rendered_image'].size, user=user)
+                                user=user, canvas_content=content)
 
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
-    ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
-    shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
 
-    with open(bi_img_path, 'wb') as image:
-        image.write(contents)
-        image.close()
-
-    with open(ri_img_path, 'wb') as image:
-        image.write(contents)
-        image.close()
-
-    with open(shapes_path, 'wb') as shapes:
-        shapes.close()
+    with open(bi_img_path, 'wb'):
+        pass  # do nothing, file is created empty
 
     pic = build_download_url_with_token(
         picture=deepcopy(db_picture), user=user)
@@ -663,88 +664,11 @@ def process_sketch_upload_form(form, db, contents, user):
     return pic
 
 
-def update_picture(pk, form, db, bi_img_contents, ri_img_contents,
-                   shapes_contents, user):
-    db_picture = db.query(models.Picture).get(pk)
-    if db_picture.background_image_size > ELEM_MAXIMUM_SIZE << 10:
-        return
-    db_picture.width = form['width']
-    db_picture.height = form['height']
-    db_picture.scale = form['scale']
-    db_picture.last_modified_at = datetime.datetime.now()
-    db_picture.last_modified_by_id = user.id
-
-    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
-    lb_elem.last_modified_at = datetime.datetime.now()
-    lb_elem.last_modified_by_id = user.id
-
-    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
-    lb_to_update.last_modified_at = datetime.datetime.now()
-    # lb_to_update.last_modified_by_id = user.id
-
-    if not user.admin and lb_to_update.strict_mode \
-            and user.id != db_picture.created_by_id:
-        return None
-
-    if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                user=user):
-
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
-            db.close()
-            return
-
-        changerecords = [['shapes', '...', '...']]
-        # changeset_types:
-        # U : edited/updated, R : restored, S: trashed , I initialized/created
-        create_history_entry(db=db,
-                             elem_id=db_picture.id,
-                             user=user,
-                             object_type_id=40,
-                             changeset_type='U',
-                             changerecords=changerecords)
-
-        db.refresh(db_picture)
-
-        db_user_created = db.query(models.User).get(db_picture.created_by_id)
-        db_picture.created_by = db_user_created
-        db_picture.last_modified_by = user
-
-        # bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
-        ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
-        shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
-
-        with open(ri_img_path, 'wb') as image:
-            image.write(ri_img_contents)
-            image.close()
-
-        with open(shapes_path, 'wb') as shapes:
-            shapes.write(shapes_contents)
-            shapes.close()
-
-        db.close()
-
-        transmit({'model_name': 'picture', 'model_pk': str(pk)})
-
-        # refresh download token
-        security.invalidate_download_token(pk)
-        pic = build_download_url_with_token(
-            picture=deepcopy(db_picture), user=user)
-
-        return pic
-
-    return None
 
 
 def build_download_url_with_token(picture, user):
-
     access_token = security.build_download_token(user, picture.id)
-
     picture.background_image = f'{URL_BASE_PATH}pictures/{picture.id}/bi_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-    picture.rendered_image = f'{URL_BASE_PATH}pictures/{picture.id}/ri_download/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
-    picture.shapes_image = f'{URL_BASE_PATH}pictures/{picture.id}/shapes/?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
 
     return picture
 
@@ -760,43 +684,7 @@ def build_bi_download_response(picture_pk, db, jwt):
     return value
 
 
-def build_ri_download_response(picture_pk, db, jwt, request):
-    user = get_user_from_jwt(db=db, token=jwt)
-    if user is None:
-        return
-    db_picture = db.query(models.Picture).get(picture_pk)
-    ri_img_path = f'{PICTURES_BASE_PATH}{db_picture.rendered_image}'
-    last_modified = db_picture.last_modified_at
-    etag = f'{db_picture.id}-{last_modified.timestamp()}'
 
-    if request.headers.get('If-None-Match') == etag:
-        return Response(status_code=304)
-
-    if request.headers.get('If-Modified-Since'):
-        if_modified_since = datetime.datetime.strptime(
-            request.headers.get('If-Modified-Since'), "%a, %d %b %Y %H:%M:%S GMT"
-        )
-        if last_modified <= if_modified_since:
-            return Response(status_code=304)
-
-    value = FileResponse(ri_img_path, headers={
-        "ETag": etag,
-        "Last-Modified": last_modified.strftime("%a, %d %b %Y %H:%M:%S GMT"),
-        "Cache-Control": "private, max-age=86400"
-    })
-
-    return value
-
-
-def build_shapes_response(picture_pk, db, jwt):
-    user = get_user_from_jwt(db=db, token=jwt)
-    if user is None:
-        return
-    db_picture = db.query(models.Picture).get(picture_pk)
-    shapes_path = f'{PICTURES_BASE_PATH}{db_picture.shapes_image}'
-    value = FileResponse(shapes_path)
-
-    return value
 
 
 def get_picture_export_link(db: Session, picture_pk, user):
@@ -1099,9 +987,7 @@ def restore_picture(db: Session, picture_pk, user):
 def remove_soft_deleted_picture(db: Session, picture_pk):
     pic_to_remove = db.query(models.Picture).get(picture_pk)
 
-    ri_img_path = f'{PICTURES_BASE_PATH}{pic_to_remove.rendered_image}'
     bi_img_path = f'{PICTURES_BASE_PATH}{pic_to_remove.background_image}'
-    shapes_path = f'{PICTURES_BASE_PATH}{pic_to_remove.shapes_image}'
 
     if pic_to_remove and pic_to_remove.deleted:
         lb_elem = db.query(models.Labbookchildelement).get(
@@ -1128,24 +1014,31 @@ def remove_soft_deleted_picture(db: Session, picture_pk):
             print(e)
             db.close()
             return
-
-        try:
-            file_to_rem = pathlib.Path(ri_img_path)
-            file_to_rem.unlink()
-        except FileNotFoundError as e:
-            print(e)
-            return
         try:
             file_to_rem = pathlib.Path(bi_img_path)
             file_to_rem.unlink()
         except FileNotFoundError as e:
             print(e)
             return
-        try:
-            file_to_rem = pathlib.Path(shapes_path)
-            file_to_rem.unlink()
-        except FileNotFoundError as e:
-            print(e)
-            return
         return True
     return
+
+
+def get_canvas_content_with_imgbase64(img_src=None):
+    bi_template = '{"version":"6.9.0","objects":[{"cropX":0,"cropY":0,' \
+                  '"type":"Image","version":"6.9.0","originX":"left",' \
+                  '"originY":"top","left":0,"top":0,"width":950,' \
+                  '"height":750,"fill":"rgb(0,0,0)",' \
+                  '"stroke":null,"strokeWidth":0,"strokeDashArray":null,' \
+                  '"strokeLineCap":"butt","strokeDashOffset":0,' \
+                  '"strokeLineJoin":"miter","strokeUniform":false,' \
+                  '"strokeMiterLimit":4,"scaleX":1,"scaleY":1,' \
+                  '"angle":0,"flipX":false,"flipY":false,"opacity":1,' \
+                  '"shadow":null,"visible":true,"backgroundColor":"",' \
+                  '"fillRule":"nonzero","paintFirst":"fill",' \
+                  '"globalCompositeOperation":"source-over",' \
+                  '"skewX":0,"skewY":0,' \
+                  '"src":"data:image/png;base64,' + img_src + '","crossOrigin":"anonymous",' \
+                                                              '"filters":[]}],"background":"#F8F8FF"}'
+
+    return bi_template

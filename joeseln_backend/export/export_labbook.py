@@ -43,8 +43,26 @@ def get_export_data(db, lb_pk, jwt):
 
     for elem in elems:
         if elem.child_object_content_type == 40:
-            base64_image = get_base64_image(elem.child_object.rendered_image)
-            elem.child_object.rendered_image = base64_image
+            render_fabric_js_path = os.path.join(parent_dir, "render_fabric.js")
+            canvas_content = json.loads(elem.child_object.canvas_content)
+
+            fabric_data = {
+                "canvasWidth": elem.child_object.canvas_width,
+                "canvasHeight": elem.child_object.canvas_height,
+                "canvas_content": canvas_content
+            }
+
+            img = subprocess.run(
+                ["node",
+                 render_fabric_js_path],
+                input=json.dumps(fabric_data).encode("utf-8"),
+                stdout=subprocess.PIPE,
+                check=True
+            )
+            png_bytes = img.stdout
+            # Encode to base64 string
+            encoded = base64.b64encode(png_bytes).decode("utf-8")
+            elem.child_object.rendered_image = encoded
 
     data = {'instance': lb, 'labbook_child_elements': elems}
     html = template.render(data)
@@ -144,34 +162,21 @@ def create_export_zip_file(db: Session, labbook_pk, user):
                         data=json.dumps(info))
 
 
-
-
-
             elif elem['child_object_content_type_model'] == 'pictures.picture':
                 dirname = elem['child_object_id']
                 try:
                     zip_archive.write(
                         filename=elem['child_object']['background_image'],
                         arcname=f'pictures/{dirname}/bi.png')
-                    zip_archive.write(
-                        filename=elem['child_object']['rendered_image'],
-                        arcname=f'pictures/{dirname}/ri.png')
-                    zip_archive.write(
-                        filename=elem['child_object']['shapes_image'],
-                        arcname=f'pictures/{dirname}/shapes.json')
                 except FileNotFoundError:
                     del elem
                 else:
                     del elem['child_object']['background_image']
-                    del elem['child_object']['rendered_image']
-                    del elem['child_object']['shapes_image']
-
                     info = {'title': elem['child_object']['title'],
                             'display': elem['child_object']['display'],
-                            'width': elem['child_object']['width'],
-                            'height': elem['child_object']['height'],
-                            'size': elem['child_object'][
-                                'background_image_size']}
+                            'canvas_content': elem['child_object']['canvas_content']}
+
+                    del elem['child_object']['canvas_content']
 
                     zip_archive.writestr(
                         zinfo_or_arcname=f'pictures/{dirname}/info.json',

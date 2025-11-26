@@ -80,15 +80,13 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
             version = db.query(models.Version).get(
                 elem['child_object_version_id'])
             title = version.version_metadata['title']
-            ri_img = version.version_metadata['ri_img']
-            shapes = version.version_metadata['shapes']
+            canvas_content = version.version_metadata['canvas_content']
             picture_version_service.add_picture_version(db=db,
                                                         picture_pk=elem[
                                                             'child_object_id'],
                                                         summary=summary,
                                                         restored_title=title,
-                                                        restored_ri_img=ri_img,
-                                                        restored_shapes=shapes,
+                                                        restored_canvas_content=canvas_content,
                                                         user=user)
         if elem['type'] == 'File':
             version = db.query(models.Version).get(

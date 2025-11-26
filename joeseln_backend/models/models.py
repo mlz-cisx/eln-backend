@@ -115,8 +115,6 @@ class Picture(Base):
     deleted = Column(Boolean, default=False)
     title = Column(Text, default='')
     display = Column(Text, default='')
-    width = Column(Integer)
-    height = Column(Integer)
     version_number = Column(Integer)
     created_at = Column(DateTime)
     created_by_id = Column(BigInteger, ForeignKey(User.id))
@@ -124,15 +122,8 @@ class Picture(Base):
     last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
     # png file path if it is background image for sketch,
     background_image = Column(Text, default='')
-    # png file path if it is rendered image if you upload
-    rendered_image = Column(Text, default='')
-    # json file path for the shapes
-    shapes_image = Column(Text, default='')
+    canvas_content = Column(Text, default='')
     # in bytes
-    background_image_size = Column(BigInteger)
-    rendered_image_size = Column(BigInteger)
-    shapes_image_size = Column(BigInteger)
-    scale = Column(Float, default=1)
     # __ts_vector__ = Column(TSVector(), Computed(
     #      "to_tsvector('english', title )",
     #      persisted=True))

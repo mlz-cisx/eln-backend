@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 import subprocess
 
@@ -21,6 +22,7 @@ def get_base64_image(image_path):
 def get_export_data(db, picture_pk, jwt):
     parent_dir = os.path.dirname(os.path.abspath(__file__))
     render_mathjax_path = os.path.join(parent_dir, "render_mathjax.js")
+    render_fabric_js_path = os.path.join(parent_dir, "render_fabric.js")
 
     user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
@@ -34,9 +36,28 @@ def get_export_data(db, picture_pk, jwt):
     db_picture_relations = get_picture_relations(db=db, picture_pk=picture_pk,
                                                  params=None, user=user)
 
-    base64_image = get_base64_image(db_picture.rendered_image)
+    canvas_content = json.loads(db_picture.canvas_content)
 
-    db_picture.rendered_image = base64_image
+    fabric_data = {
+        "canvasWidth": db_picture.canvas_width,
+        "canvasHeight": db_picture.canvas_height,
+        "canvas_content": canvas_content
+    }
+
+    img = subprocess.run(
+        ["node",
+         render_fabric_js_path],
+        input=json.dumps(fabric_data).encode("utf-8"),
+        stdout=subprocess.PIPE,
+        check=True
+    )
+
+    png_bytes = img.stdout
+
+    # Encode to base64 string
+    encoded = base64.b64encode(png_bytes).decode("utf-8")
+
+    db_picture.rendered_image = encoded
 
     data = {'instance': db_picture, 'picture_relations': db_picture_relations}
     html = template.render(data)

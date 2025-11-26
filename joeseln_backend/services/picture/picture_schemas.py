@@ -25,13 +25,6 @@ class Picture(BaseModel):
     deleted: bool
     # src path from uploaded_picture_entry_id with jwt token
     background_image: str = Field(..., alias='download_background_image')
-    # src path from uploaded_picture_entry_id with jwt token
-    rendered_image: str = Field(..., alias='download_rendered_image')
-    # src path for shapes uploaded_picture_entry_id
-    shapes_image: str = Field(..., alias='download_shapes')
-    height: int
-    width: int
-    scale: float
     title: str
 
     content_type: int = picture_content_type
@@ -74,6 +67,7 @@ class PictureVersion(BaseModel):
 class PicturePreviewVersion(BaseModel):
     title: str
     uploaded_file_entry: int | str | UUID | None = 'foo'
+    canvas_content: str
 
     class Config:
         populate_by_name = True
@@ -87,6 +81,15 @@ class PictureWithPrivileges(BaseModel):
 
 class UpdatePictureTitle(BaseModel):
     title: str
+
+
+class PictureCanvas(BaseModel):
+    canvas_content: str
+
+
+class PictureUpload(BaseModel):
+    canvas_content: str
+    origin: str | UUID
 
 
 class PictureWithLbTitle(Picture):

@@ -61,11 +61,8 @@ def get_lb_childelements_for_export(db: Session, labbook_pk, access_token, user,
                                                 user=user)
 
         if elem.child_object_content_type == 40:
-            elem.child_object = picture_service.get_picture_in_lb_init(db=db,
-                                                                       picture_pk=elem.child_object_id,
-                                                                       access_token=access_token,
-                                                                       as_export=as_export)
-
+            elem.child_object = picture_service.get_picture_for_export(db=db,
+                                                                       picture_pk=elem.child_object_id)
             elem.relations = get_picture_relations(db=db,
                                                    picture_pk=elem.child_object_id,
                                                    params='',
@@ -213,8 +210,6 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
                     "created_by": item[2],
                     "last_modified_by": item[3],
                     "background_image": f"{URL_BASE_PATH}pictures/{item[1].id}/bi_download/?jwt={token}",
-                    "rendered_image": f"{URL_BASE_PATH}pictures/{item[1].id}/ri_download/?jwt={token}",
-                    "shapes_image": f"{URL_BASE_PATH}pictures/{item[1].id}/shapes/?jwt={token}",
                 },
                 "num_related_comments": item[4],
             }
