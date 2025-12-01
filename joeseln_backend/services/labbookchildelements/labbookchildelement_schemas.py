@@ -46,6 +46,10 @@ class Labbookchildelement_CreateBottom(BaseModel):
     child_object_id: int | str | UUID
     child_object_content_type: int
 
+class Labbookchildelement_PatchHeight(BaseModel):
+    height: int
+
+
 
 class Labbookchildelement_Update(BaseModel):
     position_x: int

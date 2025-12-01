@@ -22,7 +22,7 @@ from joeseln_backend.services.labbook.labbook_service import (
 )
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import (
     Labbookchildelement_Create,
-    Labbookchildelement_CreateBottom,
+    Labbookchildelement_CreateBottom, Labbookchildelement_PatchHeight,
 )
 from joeseln_backend.services.note.note_service import (
     get_note,
@@ -354,6 +354,28 @@ def create_lb_childelement(db: Session, labbook_pk,
         logger.error(e)
 
     return db_labbook_elem
+
+
+def patch_lb_childelement_height(db: Session, labbook_pk,
+                                 element_pk,
+                                 labbook_childelem: Labbookchildelement_PatchHeight,
+                                 user):
+    if check_for_labbook_access(db=db, labbook_pk=labbook_pk,
+                                user=user) != "Write":
+        return None
+    lb_elem = db.query(models.Labbookchildelement).get(element_pk)
+    lb_elem.height = labbook_childelem.height
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+        return "nok"
+    try:
+        transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
+    except RuntimeError as e:
+        logger.error(e)
+    return "ok"
 
 
 def create_lb_childelement_bottom(

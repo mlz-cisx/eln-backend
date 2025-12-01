@@ -445,6 +445,29 @@ async def create_labbook_elem(
     return lb_element
 
 
+@app.patch("/api/labbooks/{labbook_pk}/elements/{element_pk}/",
+           response_model=simple_messege_response)
+async def patch_labbook_elem_height(
+        labbook_pk: UUID,
+        element_pk: UUID,
+        elem: labbookchildelement_schemas.Labbookchildelement_PatchHeight,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user),
+):
+    # logger.info(user)
+    # all groupmembers
+    message = labbookchildelement_service.patch_lb_childelement_height(
+        db=db,
+        labbook_pk=labbook_pk,
+        element_pk=element_pk,
+        labbook_childelem=elem,
+        user=user
+    )
+    if message is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return message
+
+
 @app.post(
     "/api/labbooks/{labbook_pk}/elements/bottom",
     response_model=labbookchildelement_schemas.Labbookchildelement,
