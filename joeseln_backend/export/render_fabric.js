@@ -15,8 +15,8 @@ const getStdin = async () => {
 
     const data = JSON.parse(json);   // parse stdin JSON
     const canvasJson = data.canvas_content; // actual Fabric JSON
-    const canvasWidth = 950;
-    const canvasHeight = 800;
+    const canvasWidth = 1000;
+    const canvasHeight = 750;
 
 
     const browser = await puppeteer.launch({
@@ -63,8 +63,8 @@ const getStdin = async () => {
         });
 
         window.exportAsImage = function() {
-          const exportWidth = 950;
-          const exportHeight = 800;
+          const exportWidth = 1000;
+          const exportHeight = 750;
 
           const canvasWidth = window.fabricCanvas.getWidth();
           const canvasHeight = window.fabricCanvas.getHeight();
