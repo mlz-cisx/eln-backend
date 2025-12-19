@@ -474,13 +474,36 @@ async def patch_labbook_elem_height(
     response_model=labbookchildelement_schemas.Labbookchildelement,
 )
 async def create_labbook_elem_bottom(
-    labbook_pk: UUID,
-    elem: labbookchildelement_schemas.Labbookchildelement_CreateBottom,
-    db: Session = Depends(get_db),
-    typesense_client=Depends(get_typesense_client),
-    user: User = Depends(get_current_user),
+        labbook_pk: UUID,
+        elem: labbookchildelement_schemas.Labbookchildelement_CreateRow,
+        db: Session = Depends(get_db),
+        typesense_client=Depends(get_typesense_client),
+        user: User = Depends(get_current_user),
 ):
     lb_element = labbookchildelement_service.create_lb_childelement_bottom(
+        db=db,
+        labbook_pk=labbook_pk,
+        labbook_childelem=elem,
+        user=user,
+        typesense=typesense_client,
+    )
+    if lb_element is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return lb_element
+
+
+@app.post(
+    "/api/labbooks/{labbook_pk}/elements/row",
+    response_model=labbookchildelement_schemas.Labbookchildelement,
+)
+async def create_labbook_elem_at_row(
+        labbook_pk: UUID,
+        elem: labbookchildelement_schemas.Labbookchildelement_CreateRow,
+        db: Session = Depends(get_db),
+        typesense_client=Depends(get_typesense_client),
+        user: User = Depends(get_current_user),
+):
+    lb_element = labbookchildelement_service.create_lb_childelement_row(
         db=db,
         labbook_pk=labbook_pk,
         labbook_childelem=elem,

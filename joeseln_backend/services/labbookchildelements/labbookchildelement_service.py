@@ -22,7 +22,8 @@ from joeseln_backend.services.labbook.labbook_service import (
 )
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import (
     Labbookchildelement_Create,
-    Labbookchildelement_CreateBottom, Labbookchildelement_PatchHeight,
+    Labbookchildelement_PatchHeight,
+    Labbookchildelement_CreateRow,
 )
 from joeseln_backend.services.note.note_service import (
     get_note,
@@ -374,11 +375,11 @@ def patch_lb_childelement_height(db: Session, labbook_pk,
 
 
 def create_lb_childelement_bottom(
-    db: Session,
-    labbook_pk,
-    labbook_childelem: Labbookchildelement_CreateBottom,
-    user,
-    typesense: Client,
+        db: Session,
+        labbook_pk,
+        labbook_childelem: Labbookchildelement_CreateRow,
+        user,
+        typesense: Client,
 ):
     # first avaliable position_y
     posY = (
@@ -400,6 +401,98 @@ def create_lb_childelement_bottom(
     elem = Labbookchildelement_Create(
         position_x=0,
         position_y=posY,
+        height=labbook_childelem.height,
+        width=labbook_childelem.width,
+        child_object_id=labbook_childelem.child_object_id,
+        child_object_content_type=labbook_childelem.child_object_content_type,
+    )
+
+    return create_lb_childelement(db, labbook_pk, elem, user, typesense)
+
+
+def create_lb_childelement_row(
+        db: Session,
+        labbook_pk,
+        labbook_childelem: Labbookchildelement_CreateRow,
+        user,
+        typesense: Client,
+):
+    raw_pos = labbook_childelem.position
+
+    if raw_pos in (None, "top"):
+        position = 0
+    elif raw_pos == "bottom":
+        return create_lb_childelement_bottom(db=db,
+                                             labbook_pk=labbook_pk,
+                                             labbook_childelem=labbook_childelem,
+                                             user=user,
+                                             typesense=typesense)
+    else:
+        position = int(raw_pos)
+
+    # Base query filters
+    base_filters = [
+        models.Labbookchildelement.labbook_id == labbook_pk,
+        models.Labbookchildelement.deleted.is_(False),
+        models.Labbookchildelement.position_x < labbook_childelem.width,
+    ]
+
+    # Find the first overlapping element
+    first_elem = (
+        db.query(models.Labbookchildelement)
+        .filter(
+            *base_filters,
+            (
+                    models.Labbookchildelement.position_y + models.Labbookchildelement.height) > position,
+            models.Labbookchildelement.position_y < (
+                    labbook_childelem.height + position),
+        )
+        .order_by(models.Labbookchildelement.position_y)
+        .first()
+    )
+
+    # Determine position below
+    position_below = position
+    overlaps = first_elem and (first_elem.position_y - position) <= 0
+    if overlaps:
+        position_below = (
+            first_elem.position_y
+            if raw_pos == "top"
+            else first_elem.position_y + first_elem.height
+        )
+
+    # Query elements below
+    query = []
+    if first_elem:
+        query = (
+            db.query(models.Labbookchildelement)
+            .filter(
+                *base_filters,
+                (
+                        models.Labbookchildelement.position_y + models.Labbookchildelement.height) > position_below,
+            )
+            .order_by(models.Labbookchildelement.position_y)
+            .all()
+        )
+
+    # Calculate delta
+    delta = query[0].position_y - position_below if query else 0
+
+    # Adjust positions
+    for elem in query:
+        elem.position_y += labbook_childelem.height - delta
+
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
+        db.close()
+
+        return False
+
+    elem = Labbookchildelement_Create(
+        position_x=0,
+        position_y=position_below,
         height=labbook_childelem.height,
         width=labbook_childelem.width,
         child_object_id=labbook_childelem.child_object_id,

@@ -89,7 +89,6 @@ class FilePreviewVersion(BaseModel):
     title: str
     description: str
 
-    directory: None = None
     uploaded_file_entry: int | str | UUID | None = 'foo'
 
     class Config:
