@@ -1,11 +1,13 @@
 import base64
 import datetime
 import gzip
+import io
 import json
 import pathlib
 import sys
 from copy import deepcopy
 
+from PIL import Image
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import or_
@@ -1024,21 +1026,42 @@ def remove_soft_deleted_picture(db: Session, picture_pk):
     return
 
 
-def get_canvas_content_with_imgbase64(img_src=None):
-    bi_template = '{"version":"6.9.0","objects":[{"cropX":0,"cropY":0,' \
-                  '"type":"Image","version":"6.9.0","originX":"left",' \
-                  '"originY":"top","left":0,"top":0,"width":950,' \
-                  '"height":750,"fill":"rgb(0,0,0)",' \
-                  '"stroke":null,"strokeWidth":0,"strokeDashArray":null,' \
-                  '"strokeLineCap":"butt","strokeDashOffset":0,' \
-                  '"strokeLineJoin":"miter","strokeUniform":false,' \
-                  '"strokeMiterLimit":4,"scaleX":1,"scaleY":1,' \
-                  '"angle":0,"flipX":false,"flipY":false,"opacity":1,' \
-                  '"shadow":null,"visible":true,"backgroundColor":"",' \
-                  '"fillRule":"nonzero","paintFirst":"fill",' \
-                  '"globalCompositeOperation":"source-over",' \
-                  '"skewX":0,"skewY":0,' \
-                  '"src":"data:image/png;base64,' + img_src + '","crossOrigin":"anonymous",' \
-                                                              '"filters":[]}],"background":"#F8F8FF"}'
+def get_canvas_content_with_imgbase64(img_src: str, canvas_width=950,
+                                      canvas_height=712):
+    w, h = get_image_size_from_base64(img_src)
 
-    return bi_template
+    obj = {
+        "version": "6.9.0",
+        "objects": [
+            {
+                "type": "Image",
+                "version": "6.9.1",
+                "originX": "center",
+                "originY": "center",
+                "left": canvas_width / 2,
+                "top": canvas_height / 2,
+                "width": w,
+                "height": h,
+                "scaleX": 1,
+                "scaleY": 1,
+                "angle": 0,
+                "src": f"data:image/png;base64,{img_src}",
+                "crossOrigin": "anonymous",
+                "filters": []
+            }
+        ],
+        "background": "#F8F8FF"
+    }
+
+    return json.dumps(obj)
+
+
+def get_image_size_from_base64(img_base64: str):
+    # strip header if present
+    if img_base64.startswith("data:image"):
+        img_base64 = img_base64.split(",")[1]
+
+    img_bytes = base64.b64decode(img_base64)
+    img = Image.open(io.BytesIO(img_bytes))
+
+    return img.width, img.height
