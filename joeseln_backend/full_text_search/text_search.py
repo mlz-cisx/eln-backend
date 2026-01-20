@@ -1,12 +1,11 @@
-from sqlalchemy import or_, func
+from sqlalchemy import func, or_
 from typesense.client import Client
 from typing_extensions import TypedDict
 
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE
 from joeseln_backend.models import models
 from joeseln_backend.services.user.user_schema import UserExtended
-from joeseln_backend.services.user_to_group.user_to_group_service import \
-    get_user_groups
+from joeseln_backend.services.user_to_group.user_to_group_service import get_user_groups
 
 
 def encode_umlauts_to_html(text):
@@ -107,21 +106,35 @@ def search_with_model(db, model, search_text, user, typesense: Client):
                 result_array.append(res_dic)
         # title description
     if 'picture' in model:
-        results = db.query(models.Picture).filter(
-            or_(models.Picture.title.like(f'%{search_text}%'))).all()
-        for result in results:
-            lb_elem = db.query(models.Labbookchildelement).get(result.elem_id)
-            if lb_elem and str(lb_elem.labbook_id) in labbook_ids:
-                created_by = db.query(models.User).get(
-                    lb_elem.created_by_id)
-                res_dic = {'content_type_model': 'pictures.picture',
-                           'display': result.title,
-                           'created_by': created_by,
-                           'pk': str(lb_elem.labbook_id),
-                           'labbook_pos_y': lb_elem.position_y,
-                           'element_pk': str(result.id)}
+        search_queries = []
+        search_queries.append({
+            'collection': 'pictures',
+            'q': search_text,
+            'filter_by': f"labbook_id:[{','.join(labbook_ids)}] && soft_delete:=false",
+            'query_by': 'subject,content',
+            'fuzzy': True
+        })
+        search_res = typesense.multi_search.perform(
+            {'searches': search_queries},
+            {}
+        )['results'][0]['hits']
+
+        for result in search_res:
+            result = result["document"]
+            lb_elem = db.query(models.Labbookchildelement).get(
+                result["elem_id"])
+            if lb_elem:
+                created_by = db.query(models.User).get(lb_elem.created_by_id)
+                res_dic = {
+                    "content_type_model": "pictures.picture",
+                    "display": result["subject"],
+                    "created_by": created_by,
+                    "pk": str(lb_elem.labbook_id),
+                    "labbook_pos_y": lb_elem.position_y,
+                    "element_pk": str(result["id"]),
+                }
                 result_array.append(res_dic)
-        # title
+
     if 'labbook' in model:
         encoded_search_text = encode_umlauts_to_html(search_text)
         cleaned_l = func.regexp_replace(

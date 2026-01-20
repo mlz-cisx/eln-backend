@@ -1,5 +1,10 @@
+from typing import Dict
+
 import typesense
+from typesense.client import Client
+from typesense.configuration import ConfigDict
 from typesense.exceptions import ObjectNotFound
+from typesense.types.collection import CollectionCreateSchema
 
 from joeseln_backend.conf.base_conf import (
     TYPESENSE_API_KEY,
@@ -10,16 +15,40 @@ from joeseln_backend.conf.base_conf import (
 
 
 class TypesenseService:
-    COLLECTION_NAME = "notes"
-    COLLECTION_SCHEMA = {
-        "name": COLLECTION_NAME,
+    def __init__(
+        self, COLLECTIONS: Dict[str, CollectionCreateSchema], CONFIG: ConfigDict
+    ) -> None:
+        self.client = None
+        self.collections = COLLECTIONS
+        self.config = CONFIG
+
+    def connect_typesense_client(self) -> None:
+        self.client = typesense.client.Client(self.config)
+
+    def create_collection(self) -> None:
+        if self.client is None:
+            raise ConnectionError("typesense disconnected")
+        for schema in self.collections.keys():
+            try:
+                self.client.collections[schema].retrieve()
+            except ObjectNotFound:
+                self.client.collections.create(self.collections[schema])
+
+    def get_client(self) -> Client:
+        if self.client is None:
+            raise ConnectionError("typesense disconnected")
+        return self.client
+
+
+collections: Dict[str, CollectionCreateSchema] = {
+    "notes": {
+        "name": "notes",
         "fields": [
             {"name": "id", "type": "string"},
             {"name": "elem_id", "type": "string"},
             {
                 "name": "subject",
                 "type": "string",
-                "tokenizer": "word",
                 "index": True,
                 "infix": True,
                 "facet": True,
@@ -27,7 +56,6 @@ class TypesenseService:
             {
                 "name": "content",
                 "type": "string",
-                "tokenizer": "word",
                 "index": True,
                 "infix": True,
                 "facet": True,
@@ -37,38 +65,48 @@ class TypesenseService:
             {"name": "soft_delete", "type": "bool"},
         ],
         "default_sorting_field": "last_modified_at",
-    }
-
-    def __init__(self) -> None:
-        self.client = None
-
-    def connect_typesense_client(self):
-        self.client = typesense.client.Client(
+    },
+    "pictures": {
+        "name": "pictures",
+        "fields": [
+            {"name": "id", "type": "string"},
+            {"name": "elem_id", "type": "string"},
             {
-                "api_key": TYPESENSE_API_KEY,
-                "nodes": [
-                    {
-                        "host": TYPESENSE_HOST,
-                        "port": TYPESENSE_PORT,
-                        "protocol": TYPESENSE_PROTOCOL,
-                    }
-                ],
-                "connection_timeout_seconds": 2,
-            }
-        )
+                "name": "subject",
+                "type": "string",
+                "index": True,
+                "infix": True,
+                "facet": True,
+            },
+            {
+                "name": "content",
+                "type": "string",
+                "index": True,
+                "infix": True,
+                "facet": True,
+            },
+            {"name": "last_modified_at", "type": "int64"},
+            {"name": "labbook_id", "type": "string"},
+            {"name": "soft_delete", "type": "bool"},
+        ],
+        "default_sorting_field": "last_modified_at",
+    },
+}
 
-    def create_collection(self):
-        if self.client is not None:
-            try:
-                self.client.collections[self.COLLECTION_NAME].retrieve()
-            except ObjectNotFound:
-                self.client.collections.create(self.COLLECTION_SCHEMA)
+config: ConfigDict = {
+    "api_key": TYPESENSE_API_KEY,
+    "nodes": [
+        {
+            "host": TYPESENSE_HOST,
+            "port": TYPESENSE_PORT,
+            "protocol": TYPESENSE_PROTOCOL,
+        }
+    ],
+    "timeout_seconds": 2,
+}
 
-    def get_client(self):
-        return self.client
 
-
-typesense_client = TypesenseService()
+typesense_client = TypesenseService(collections, config)
 
 
 def get_typesense_client():

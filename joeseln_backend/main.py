@@ -4,6 +4,7 @@ import sys
 # append path of parent dir to have joeseln_backend as module
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
+import gzip
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Annotated, Any, List
@@ -11,7 +12,6 @@ from urllib.parse import urlencode
 from uuid import UUID
 
 import jwt
-import gzip
 from fastapi import (
     Body,
     Depends,
@@ -1073,9 +1073,12 @@ def update_canvas_content_picture(
         pic_payload: picture_schemas.PictureUpload,
         picture_pk: UUID,
         db: Session = Depends(get_db),
+        tsClient = Depends(get_typesense_client),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_pic = picture_service.update_canvas_content(db=db, picture_pk=picture_pk,
+    db_pic = picture_service.update_canvas_content(db=db,
+                                                   tsClient=tsClient,
+                                                   picture_pk=picture_pk,
                                                    user=user,
                                                    pic_payload=pic_payload)
     if db_pic is None:

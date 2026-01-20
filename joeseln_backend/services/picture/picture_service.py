@@ -7,13 +7,15 @@ import pathlib
 import sys
 from copy import deepcopy
 
-from PIL import Image
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse
+from PIL import Image
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
+from typesense.client import Client
+from typesense.exceptions import TypesenseClientError
 
 from joeseln_backend.auth import security
 from joeseln_backend.auth.security import get_user_from_jwt
@@ -31,15 +33,16 @@ from joeseln_backend.services.entry_path.entry_path_service import (
     create_entry,
     create_path,
 )
-from joeseln_backend.services.history.history_service import \
-    create_history_entry
+from joeseln_backend.services.history.history_service import create_history_entry
 from joeseln_backend.services.labbook.labbook_service import (
     check_for_labbook_access,
     check_for_labbook_admin_access,
     get_all_labbook_ids_from_non_admin_user,
 )
-from joeseln_backend.services.picture.picture_schemas import UpdatePictureTitle, \
-    PictureUpload
+from joeseln_backend.services.picture.picture_schemas import (
+    PictureUpload,
+    UpdatePictureTitle,
+)
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import (
     ADMIN,
 )
@@ -269,7 +272,7 @@ def update_title(db: Session, picture_pk, user,
     return None
 
 
-def update_canvas_content(db: Session, picture_pk, user,
+def update_canvas_content(db: Session, tsClient: Client, picture_pk, user,
                           pic_payload: PictureUpload):
     db_picture = db.query(models.Picture).get(picture_pk)
     db_picture.canvas_content = pic_payload.canvas_content
@@ -282,7 +285,10 @@ def update_canvas_content(db: Session, picture_pk, user,
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
-
+    # store texts into typesense for searching
+    objects = json.loads(pic_payload.canvas_content)['objects']
+    texts = ' '.join([obj.get('text') for obj in objects if 'text' in obj])
+    update_pic_typesense(db_picture, texts, tsClient)
 
     if not user.admin and lb_to_update.strict_mode \
             and user.id != db_picture.created_by_id:
@@ -652,6 +658,7 @@ async def process_sketch_upload_form(form, db, user):
                                 display=form['title'],
                                 user=user, canvas_content=content)
 
+
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
 
     with open(bi_img_path, 'wb'):
@@ -666,6 +673,15 @@ async def process_sketch_upload_form(form, db, user):
     return pic
 
 
+def update_pic_typesense(pic: models.Picture, content: str, typesense: Client):
+    try:
+        document = {
+                'subject': pic.title, 
+                'content': content, 
+                'last_modified_at': int(pic.last_modified_at.timestamp())}
+        typesense.collections['pictures'].documents[str(pic.id)].update(document)
+    except TypesenseClientError as e:
+        logger.error(e)
 
 
 def build_download_url_with_token(picture, user):

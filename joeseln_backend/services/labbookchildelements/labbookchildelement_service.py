@@ -22,8 +22,8 @@ from joeseln_backend.services.labbook.labbook_service import (
 )
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import (
     Labbookchildelement_Create,
-    Labbookchildelement_PatchHeight,
     Labbookchildelement_CreateRow,
+    Labbookchildelement_PatchHeight,
 )
 from joeseln_backend.services.note.note_service import (
     get_note,
@@ -32,6 +32,7 @@ from joeseln_backend.services.note.note_service import (
 )
 from joeseln_backend.services.picture import picture_service
 from joeseln_backend.services.picture.picture_service import (
+    get_picture,
     get_picture_related_comments_count,
     get_picture_relations,
 )
@@ -330,11 +331,23 @@ def create_lb_childelement(db: Session, labbook_pk,
             logger.error(e)
 
     if db_labbook_elem.child_object_content_type == 40:
+        pic = get_picture(db=db, picture_pk=db_labbook_elem.child_object_id, user=user)
         db_labbook_elem.child_object = picture_service.get_picture(db=db,
                                                                    picture_pk=db_labbook_elem.child_object_id,
                                                                    user=user)
         db_labbook_elem.num_related_comments = get_picture_related_comments_count(
             db=db, picture_pk=db_labbook_elem.child_object_id, user=user)
+        try:
+            # insert picture title to typesense for searching purpose
+            typesense.collections['pictures'].documents.upsert({'id': str(pic.id),
+                                                            'elem_id': str(db_labbook_elem.id),
+                                                            'subject': pic.title,
+                                                            'content': '',
+                                                            'last_modified_at': int(pic.last_modified_at.timestamp()),
+                                                            'labbook_id': str(labbook_pk),
+                                                            'soft_delete': False})
+        except TypesenseClientError as e:
+            logger.error(e)
 
     if db_labbook_elem.child_object_content_type == 50:
         db_labbook_elem.child_object = file_service.get_file(db=db,
