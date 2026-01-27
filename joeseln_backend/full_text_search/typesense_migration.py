@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from pathlib import Path
@@ -6,14 +7,15 @@ sys.path.append(os.path.abspath(Path(__file__).parent.parent.parent))
 
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
-from joeseln_backend.full_text_search.typesense_service import TypesenseService
+from joeseln_backend.full_text_search.typesense_service import (
+    get_typesense_client,
+    typesense_client,
+)
 from joeseln_backend.models import models
 from joeseln_backend.services.note.note_service import get_note
 
-typesense_client = TypesenseService()
 typesense_client.connect_typesense_client()
-typesense = typesense_client.get_client()
-
+client = get_typesense_client()
 db = SessionLocal()
 
 try:
@@ -24,7 +26,7 @@ try:
             note = get_note(db=db, note_pk=elem.child_object_id)
 
             stripped_content = strip_html_and_binary(note.content)
-            typesense.collections["notes"].documents.upsert(
+            client.collections["notes"].documents.upsert(
                 {
                     "id": str(note.id),
                     "elem_id": str(elem.id),
@@ -33,6 +35,23 @@ try:
                     "last_modified_at": int(note.last_modified_at.timestamp()),
                     "labbook_id": str(elem.labbook_id),
                     "soft_delete": bool(note.deleted),
+                }
+            )
+
+        if elem.child_object_content_type == 40:
+            pic = db.query(models.Picture).get(elem.child_object_id)
+            objects = json.loads(pic.canvas_content)["objects"]
+            texts = " ".join([obj.get("text") for obj in objects if "text" in obj])
+
+            client.collections["pictures"].documents.upsert(
+                {
+                    "id": str(pic.id),
+                    "elem_id": str(elem.id),
+                    "subject": pic.title,
+                    "content": texts,
+                    "last_modified_at": int(pic.last_modified_at.timestamp()),
+                    "labbook_id": str(elem.labbook_id),
+                    "soft_delete": bool(pic.deleted),
                 }
             )
 
