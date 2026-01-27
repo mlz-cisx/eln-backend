@@ -3,7 +3,7 @@ from typing import Dict
 import typesense
 from typesense.client import Client
 from typesense.configuration import ConfigDict
-from typesense.exceptions import ObjectNotFound
+from typesense.exceptions import ObjectNotFound, TypesenseClientError
 from typesense.types.collection import CollectionCreateSchema
 
 from joeseln_backend.conf.base_conf import (
@@ -12,6 +12,8 @@ from joeseln_backend.conf.base_conf import (
     TYPESENSE_PORT,
     TYPESENSE_PROTOCOL,
 )
+from joeseln_backend.models.models import Note, Picture
+from joeseln_backend.mylogging.root_logger import logger
 
 
 class TypesenseService:
@@ -111,3 +113,15 @@ typesense_client = TypesenseService(collections, config)
 
 def get_typesense_client():
     return typesense_client.get_client()
+
+
+def update_delete_status_typesense(
+    elem: Note | Picture, deleted: bool, typesense: Client
+):
+    try:
+        table = "notes" if isinstance(elem, Note) else "pictures"
+        typesense.collections[table].documents[str(elem.id)].update(
+            {"soft_delete": deleted}
+        )
+    except TypesenseClientError as e:
+        logger.error(e)

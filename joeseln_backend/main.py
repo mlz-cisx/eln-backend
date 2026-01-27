@@ -1022,14 +1022,20 @@ def export_link_picture(
 @app.patch("/api/pictures/{picture_pk}/soft_delete/",
            response_model=picture_schemas.Picture)
 def soft_delete_picture(
-        picture_pk: UUID,
-        labbook_data: labbookchildelement_schemas.Labbookchildelement_Delete,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+    picture_pk: UUID,
+    labbook_data: labbookchildelement_schemas.Labbookchildelement_Delete,
+    db: Session = Depends(get_db),
+    client=Depends(get_typesense_client),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
-    db_pic = picture_service.soft_delete_picture(db=db, picture_pk=picture_pk,
-                                                 labbook_data=labbook_data,
-                                                 user=user)
+    db_pic = picture_service.soft_delete_picture(
+        db=db,
+        tsClient=client,
+        picture_pk=picture_pk,
+        labbook_data=labbook_data,
+        user=user,
+    )
     if db_pic is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
 
@@ -1039,12 +1045,15 @@ def soft_delete_picture(
 @app.patch("/api/pictures/{picture_pk}/restore/",
            response_model=picture_schemas.Picture)
 def restore_picture(
-        picture_pk: UUID,
-        db: Session = Depends(get_db),
-        user: User = Depends(get_current_user)):
+    picture_pk: UUID,
+    db: Session = Depends(get_db),
+    client=Depends(get_typesense_client),
+    user: User = Depends(get_current_user),
+):
     # logger.info(user)
-    db_pic = picture_service.restore_picture(db=db, picture_pk=picture_pk,
-                                             user=user)
+    db_pic = picture_service.restore_picture(
+        db=db, tsClient=client, picture_pk=picture_pk, user=user
+    )
     if db_pic is None:
         raise HTTPException(status_code=204, detail="Labbook not found")
 

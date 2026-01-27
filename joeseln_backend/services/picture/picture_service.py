@@ -25,6 +25,9 @@ from joeseln_backend.conf.base_conf import (
     PICTURES_BASE_PATH,
     URL_BASE_PATH,
 )
+from joeseln_backend.full_text_search.typesense_service import (
+    update_delete_status_typesense,
+)
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
@@ -737,7 +740,7 @@ def build_picture_download_url_with_token(picture_to_process, user):
 
 
 # needs to be heavily factorized
-def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
+def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data, user):
     pic_to_update = db.query(models.Picture).get(picture_pk)
     pic_to_update.deleted = True
     pic_to_update.last_modified_at = datetime.datetime.now()
@@ -783,6 +786,7 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
                              object_type_id=40,
                              changeset_type='S',
                              changerecords=[])
+        update_delete_status_typesense(pic_to_update, True, tsClient)
         return pic_to_update
 
     if not user.admin and lb_to_update.strict_mode \
@@ -826,6 +830,7 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
                                  object_type_id=40,
                                  changeset_type='S',
                                  changerecords=[])
+            update_delete_status_typesense(pic_to_update, True, tsClient)
             return pic_to_update
         else:
             return None
@@ -868,12 +873,13 @@ def soft_delete_picture(db: Session, picture_pk, labbook_data, user):
                              changeset_type='S',
                              changerecords=[])
 
+        update_delete_status_typesense(pic_to_update, True, tsClient)
         return pic_to_update
 
     return None
 
 
-def restore_picture(db: Session, picture_pk, user):
+def restore_picture(db: Session, tsClient: Client, picture_pk, user):
     pic_to_update = db.query(models.Picture).get(picture_pk)
     pic_to_update.deleted = False
     pic_to_update.last_modified_at = datetime.datetime.now()
@@ -919,6 +925,7 @@ def restore_picture(db: Session, picture_pk, user):
                              object_type_id=40,
                              changeset_type='R',
                              changerecords=[])
+        update_delete_status_typesense(pic_to_update, False, tsClient)
         return pic_to_update
 
     # Second possibility: it's a note created by admin
@@ -957,6 +964,7 @@ def restore_picture(db: Session, picture_pk, user):
                                  object_type_id=40,
                                  changeset_type='R',
                                  changerecords=[])
+            update_delete_status_typesense(pic_to_update, False, tsClient)
             return pic_to_update
         else:
             return None
@@ -997,6 +1005,7 @@ def restore_picture(db: Session, picture_pk, user):
                              object_type_id=40,
                              changeset_type='R',
                              changerecords=[])
+        update_delete_status_typesense(pic_to_update, False, tsClient)
         return pic_to_update
 
     return None

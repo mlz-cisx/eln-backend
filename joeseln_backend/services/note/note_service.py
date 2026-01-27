@@ -19,6 +19,9 @@ from joeseln_backend.full_text_search.html_stripper import (
     sanitize_html,
     strip_html_and_binary,
 )
+from joeseln_backend.full_text_search.typesense_service import (
+    update_delete_status_typesense,
+)
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
@@ -481,11 +484,6 @@ def update_note(db: Session, note_pk, note: NoteCreate, user, typesense: Client)
 
     return None
 
-def soft_delete_note_typesense(note: Note, typesense: Client):
-    try:
-        typesense.collections["notes"].documents[str(note.id)].update({"soft_delete": True})
-    except TypesenseClientError as e:
-        logger.error(e)
 
 # needs to be heavily factorized
 def soft_delete_note(db: Session, note_pk, labbook_data, user, typesense: Client):
@@ -537,7 +535,7 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user, typesense: Client
                              object_type_id=30,
                              changeset_type='S',
                              changerecords=[])
-        soft_delete_note_typesense(note_to_update, typesense)
+        update_delete_status_typesense(note_to_update, True, typesense)
         return note_to_update
 
     if lb_to_update.strict_mode and user.id != note_to_update.created_by_id:
@@ -577,8 +575,7 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user, typesense: Client
                                  object_type_id=30,
                                  changeset_type='S',
                                  changerecords=[])
-
-            soft_delete_note_typesense(note_to_update, typesense)
+            update_delete_status_typesense(note_to_update, True, typesense)
             return note_to_update
         else:
             return None
@@ -616,16 +613,11 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user, typesense: Client
                              object_type_id=30,
                              changeset_type='S',
                              changerecords=[])
-        soft_delete_note_typesense(note_to_update, typesense)
+        update_delete_status_typesense(note_to_update, True, typesense)
         return note_to_update
 
     return None
 
-def restore_note_typesense(note: Note, typesense: Client):
-    try:
-        typesense.collections["notes"].documents[str(note.id)].update({"soft_delete": False})
-    except TypesenseClientError as e:
-        logger.error(e)
 
 def restore_note(db: Session, note_pk, user, typesense: Client):
     note_to_update = db.query(models.Note).get(note_pk)
@@ -663,7 +655,7 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
                              object_type_id=30,
                              changeset_type='R',
                              changerecords=[])
-        restore_note_typesense(note_to_update, typesense)
+        update_delete_status_typesense(note_to_update, False, typesense)
         return note_to_update
 
     # Second possibility: it's a note created by admin
@@ -690,7 +682,7 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
                                  object_type_id=30,
                                  changeset_type='R',
                                  changerecords=[])
-            restore_note_typesense(note_to_update, typesense)
+            update_delete_status_typesense(note_to_update, False, typesense)
             return note_to_update
         else:
             return None
@@ -719,7 +711,7 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
                              object_type_id=30,
                              changeset_type='R',
                              changerecords=[])
-        restore_note_typesense(note_to_update, typesense)
+        update_delete_status_typesense(note_to_update, False, typesense)
         return note_to_update
 
     return None
