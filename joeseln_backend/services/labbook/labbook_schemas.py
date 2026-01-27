@@ -1,5 +1,6 @@
 import datetime
-from typing import Annotated, Any, List, Optional
+from typing import Annotated, Any
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, Json
@@ -99,3 +100,10 @@ class LabbookPreviewVersion(BaseModel):
 class LabbookWithPrivileges(BaseModel):
     labbook: Labbook | None
     privileges: Privileges | None
+
+
+class ExportFilter(BaseModel):
+    containTypes: Optional[List[int]] = Field(default=None)
+    users: Optional[List[int]] = Field(default=None)
+    startTime: Optional[datetime.datetime] = None
+    endTime: Optional[datetime.datetime] = None

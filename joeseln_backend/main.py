@@ -4,10 +4,11 @@ import sys
 # append path of parent dir to have joeseln_backend as module
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
+import datetime
 import gzip
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import Annotated, Any, List
+from typing import Annotated, Any, List, Optional
 from urllib.parse import urlencode
 from uuid import UUID
 
@@ -329,11 +330,21 @@ def get_labbook_by_title(
 
 @app.get("/api/labbooks/{labbook_pk}/export/", response_class=FileResponse)
 def export_labbook_content(
-    jwt: str,
-    labbook_pk: UUID,
-    db: Session = Depends(get_db),
+        jwt: str,
+        labbook_pk: UUID,
+        containTypes: Optional[List[int]] = Query(None),
+        users: Optional[List[int]] = Query(None),
+        startTime: Optional[datetime.datetime] = None,
+        endTime: Optional[datetime.datetime] = None,
+        db: Session = Depends(get_db),
 ):
-    dwldable_labbook = export_labbook.get_export_data(db=db, lb_pk=labbook_pk, jwt=jwt)
+    export_filter = labbook_schemas.ExportFilter(containTypes=containTypes,
+                                                 users=users,
+                                                 startTime=startTime,
+                                                 endTime=endTime, )
+    dwldable_labbook = export_labbook.get_export_data(
+        db=db, export_filter=export_filter, lb_pk=labbook_pk, jwt=jwt
+    )
     if dwldable_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_labbook
