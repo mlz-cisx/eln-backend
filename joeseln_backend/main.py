@@ -362,14 +362,23 @@ def export_link_labbook(labbook_pk: UUID,
     return export_link
 
 
-@app.get("/api/labbooks/{labbook_pk}/export_as_zip/", response_class=StreamingResponse)
+@app.get("/api/labbooks/{labbook_pk}/export_as_zip/",
+         response_class=StreamingResponse)
 def export_labbook_content_zip(
-    labbook_pk: UUID,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+        labbook_pk: UUID,
+        containTypes: Optional[List[int]] = Query(None),
+        users: Optional[List[int]] = Query(None),
+        startTime: Optional[datetime.datetime] = None,
+        endTime: Optional[datetime.datetime] = None,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user),
 ):
+    export_filter = labbook_schemas.ExportFilter(containTypes=containTypes,
+                                                 users=users,
+                                                 startTime=startTime,
+                                                 endTime=endTime, )
     zipped_labbook = export_labbook.create_export_zip_file(
-        db=db, labbook_pk=labbook_pk, user=user
+        db=db, labbook_pk=labbook_pk, user=user, export_filter=export_filter
     )
     if zipped_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")

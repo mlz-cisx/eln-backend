@@ -126,7 +126,8 @@ def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter):
     )
 
 
-def create_export_zip_file(db: Session, labbook_pk, user):
+def create_export_zip_file(db: Session, labbook_pk, user,
+                           export_filter: ExportFilter):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return None
 
@@ -135,6 +136,44 @@ def create_export_zip_file(db: Session, labbook_pk, user):
     elems = get_lb_childelements_for_zip_export(db=db, labbook_pk=labbook_pk,
                                                 user=user,
                                                 as_export=True)
+
+    contain_types = export_filter.containTypes or []
+    # Remove 70 for filtering logic
+    types = [t for t in contain_types if t != 70]
+    # Apply filtering if any non-70 types remain
+    if types:
+        elems = [elem for elem in elems if
+                 elem.child_object_content_type in types]
+
+    # Clear relations only if user did NOT select comments
+    if 70 not in contain_types:
+        for elem in elems:
+            elem.relations.clear()
+    # filter by  user
+    if export_filter.users:
+        elems = [elem for elem in elems if
+                 elem.created_by in export_filter.users]
+    # filter by startTime endTime
+    if export_filter.startTime and export_filter.startTime.tzinfo is not None:
+        filter_start = export_filter.startTime.replace(tzinfo=None)
+    else:
+        filter_start = export_filter.startTime
+    if export_filter.endTime and export_filter.endTime.tzinfo is not None:
+        filter_end = export_filter.endTime.replace(tzinfo=None)
+    else:
+        filter_end = export_filter.endTime
+    if filter_start:
+        elems = [
+            elem
+            for elem in elems
+            if elem.child_object.created_at > filter_start
+        ]
+    if filter_end:
+        elems = [
+            elem
+            for elem in elems
+            if elem.child_object.created_at < filter_end
+        ]
 
     elems = [ob.__dict__ for ob in elems]
 
