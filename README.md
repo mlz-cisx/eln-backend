@@ -13,17 +13,16 @@
   ```bash
   apt install python3-pip 
   ```
-- Install Node.js v22 and npm via NodeSource
-- Install Chromium (in /usr/bin/chromium or in /snap/bin/chromium), adjust executablePath in [joeseln_backend/export/render_mathjax.js](joeseln_backend/export/render_mathjax.js) and install puppeteer with:
-
-  ``` cd joeseln_backend/export && npm install ```
-
 - Create a virtual environment (e.g. `venv`)
 - Install dependencies from `requirements.txt`
 - Create a **PostgreSQL** database
 - Create a **Typesense** service, e.g. with:
   ```bash
   docker-compose up typesense
+  ```
+- Create a **Playwright** service, e.g. with:
+  ```bash
+  docker-compose up playwright
   ```
 - Create two folders for storing uploaded pictures and files, with its paths PICTURES_BASE_PATH and FILES_BASE_PATH
 

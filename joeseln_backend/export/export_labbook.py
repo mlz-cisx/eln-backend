@@ -1,15 +1,17 @@
 import base64
 import json
 import os
-import subprocess
 import zipfile
 from io import BytesIO
+from typing import List
 
 from fastapi.responses import Response, StreamingResponse
 from jinja2 import Environment, FileSystemLoader
+from playwright.async_api import async_playwright
 from sqlalchemy.orm import Session
 
 from joeseln_backend.auth.security import get_user_from_jwt
+from joeseln_backend.conf.base_conf import PLAYWRIGHT_WS
 from joeseln_backend.services.labbook.labbook_schemas import ExportFilter
 from joeseln_backend.services.labbook.labbook_service import (
     check_for_labbook_access,
@@ -21,15 +23,145 @@ from joeseln_backend.services.labbookchildelements.labbookchildelement_service i
 )
 
 
+async def wait_for_mathjax(page):
+    # 1. Wait until MathJax is loaded
+    await page.wait_for_function("window.MathJax !== undefined")
+
+    # 2. Wait until MathJax startup is ready
+    await page.wait_for_function("MathJax.startup && MathJax.startup.promise")
+
+    # 3. Wait for MathJax startup to finish
+    await page.evaluate("MathJax.startup.promise")
+
+    # 4. Force a full typeset pass
+    await page.evaluate("MathJax.typesetPromise()")
+
+    # 5. Wait until rendered math appears in DOM
+    await page.wait_for_function(
+        "() => document.querySelector('.mjx-chtml, .MathJax') !== null || !document.body.innerText.match(/[$][^$]+[$]/)"
+    )
+
+
 def get_base64_image(image_path):
     with open(image_path, "rb") as img_file:
         encoded = base64.b64encode(img_file.read()).decode("utf-8")
     return encoded
 
 
-def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter):
-    parent_dir = os.path.dirname(os.path.abspath(__file__))
-    render_mathjax_path = os.path.join(parent_dir, "render_mathjax.js")
+async def render_fabric_with_puppeteer(page, canvas_data) -> List[str]:
+    """
+    batch canvas render
+    :param page: pyppeteer page
+    :param canvas_data: list of canvas content (raw no parse)
+    :return image_buffers: list of image in base64
+    """
+    canvasHeight = 750
+    canvasWidth = 1000
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    </head>
+    <body>
+    <canvas id="c"></canvas>
+    <script>
+        window.fabricCanvas = new fabric.Canvas('c', {{
+          width: {canvasWidth},
+          height:  {canvasHeight},
+          backgroundColor: '#F4F4F4'
+        }});
+        window.reorderAlwaysOnTop = function() {{
+          const objs = window.fabricCanvas.getObjects();
+          objs.forEach(obj => {{
+            if (obj.alwaysOnTop) {{
+              const idx = window.fabricCanvas._objects.indexOf(obj);
+              if (idx > -1) {{
+                window.fabricCanvas._objects.splice(idx, 1);
+                window.fabricCanvas._objects.push(obj);
+              }}
+            }}
+          }});
+          window.fabricCanvas.renderAll();
+        }};
+
+        // Hook: whenever a new object is added, re‑push flagged one
+        window.fabricCanvas.on('object:added', () => {{
+          window.reorderAlwaysOnTop();
+        }});
+
+        window.exportAsImage = function() {{
+          const exportWidth = {canvasWidth};
+          const exportHeight = {canvasHeight};
+
+          const canvasWidth = window.fabricCanvas.getWidth();
+          const canvasHeight = window.fabricCanvas.getHeight();
+
+          const scaleX = exportWidth / canvasWidth;
+          const scaleY = exportHeight / canvasHeight;
+          const scale = Math.min(scaleX, scaleY);
+
+          window.fabricCanvas.getObjects().forEach(obj => {{
+            obj.scaleX *= scale;
+            obj.scaleY *= scale;
+            obj.left *= scale;
+            obj.top *= scale;
+            obj.setCoords();
+          }});
+
+          window.fabricCanvas.renderAll();
+
+          const dataUrl = window.fabricCanvas.toDataURL({{
+            format: 'png',
+            quality: 1,
+            width: exportWidth,
+            height: exportHeight,
+            multiplier: 1
+          }});
+
+          // restore
+          window.fabricCanvas.getObjects().forEach(obj => {{
+            obj.scaleX /= scale;
+            obj.scaleY /= scale;
+            obj.left /= scale;
+            obj.top /= scale;
+            obj.setCoords();
+          }});
+          window.fabricCanvas.setWidth(canvasWidth);
+          window.fabricCanvas.setHeight(canvasHeight);
+          window.fabricCanvas.renderAll();
+          return dataUrl;
+        }};
+    </script>
+    </body>
+    </html>
+    """
+    await page.set_content(html_content)
+    await page.wait_for_selector("#c")  # wail until fabricCanvas is up
+
+    img_buffers = []
+    for canvas_json in canvas_data:
+        await page.evaluate(
+            """(canvas_json) => {{
+            return new Promise(resolve => {{
+                const canvas = JSON.parse(canvas_json);
+                window.fabricCanvas.loadFromJSON(canvas, () => {{
+                    window.fabricCanvas.requestRenderAll();
+                    resolve();
+                }});
+            }});
+        }}""",
+            canvas_json,
+        )
+
+        data_url = await page.evaluate("() => window.exportAsImage()")
+        base64_data = data_url.replace("data:image/png;base64,", "")
+        img_buffers.append(base64_data)
+
+    return img_buffers
+
+
+async def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter):
     user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
@@ -59,7 +191,8 @@ def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter):
 
     # filter by  user
     if export_filter.users:
-        elems = [elem for elem in elems if elem.created_by in export_filter.users]
+        elems = [elem for elem in elems if
+                 elem.created_by in export_filter.users]
     # filter by startTime endTime
     if export_filter.startTime and export_filter.startTime.tzinfo is not None:
         filter_start = export_filter.startTime.replace(tzinfo=None)
@@ -85,42 +218,49 @@ def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter):
             if elem.child_object.created_at < filter_end
         ]
 
-    for elem in elems:
-        if elem.child_object_content_type == 40:
-            render_fabric_js_path = os.path.join(parent_dir, "render_fabric.js")
-            canvas_content = json.loads(elem.child_object.canvas_content)
+    async with async_playwright() as p:
+        # launch browser
+        browser = await p.chromium.connect(PLAYWRIGHT_WS)
+        page = await browser.new_page()
 
-            fabric_data = {
-                "canvasWidth": elem.child_object.canvas_width,
-                "canvasHeight": elem.child_object.canvas_height,
-                "canvas_content": canvas_content
-            }
+        # render fabric canvas into base64 image
+        farbic_to_render = [
+            (elem, elem.child_object.canvas_content)
+            for elem in elems
+            if elem.child_object_content_type == 40
+        ]
+        image_buffers = await render_fabric_with_puppeteer(
+            page, [canvas for _, canvas in farbic_to_render]
+        )
+        for (elem, _), img in zip(farbic_to_render, image_buffers):
+            elem.child_object.rendered_image = img
 
-            img = subprocess.run(
-                ["node",
-                 render_fabric_js_path],
-                input=json.dumps(fabric_data).encode("utf-8"),
-                stdout=subprocess.PIPE,
-                check=True
-            )
-            png_bytes = img.stdout
-            # Encode to base64 string
-            encoded = base64.b64encode(png_bytes).decode("utf-8")
-            elem.child_object.rendered_image = encoded
+        # apply export template
+        data = {'instance': lb, 'labbook_child_elements': elems}
+        html = template.render(data)
 
-    data = {'instance': lb, 'labbook_child_elements': elems}
-    html = template.render(data)
+        # render final pdf with mathjax support
+        await page.set_content(html)
+        # wait for all images to load
+        await page.evaluate(
+            """async () => {
+            const selectors = Array.from(document.images).map(img => {
+                if (img.complete) return null;
+                return new Promise(resolve => {
+                    img.addEventListener('load', resolve);
+                    img.addEventListener('error', resolve); // resolve even if image fails to load
+                });
+            }).filter(p => p !== null);
+            await Promise.all(selectors);
+        }"""
+        )
 
-    result = subprocess.run(
-        ["node",
-         render_mathjax_path],
-        input=html.encode("utf-8"),
-        stdout=subprocess.PIPE,
-        check=True
-    )
+        await wait_for_mathjax(page)
+        pdf_buffer = await page.pdf(format="A4")
+        await browser.close()
 
     return Response(
-        content=result.stdout,
+        content=pdf_buffer,
         media_type="application/pdf",
         headers={"Content-Disposition": "inline; filename=mathjax_output.pdf"}
     )
@@ -257,7 +397,8 @@ def create_export_zip_file(db: Session, labbook_pk, user,
                     del elem['child_object']['background_image']
                     info = {'title': elem['child_object']['title'],
                             'display': elem['child_object']['display'],
-                            'canvas_content': elem['child_object']['canvas_content']}
+                            'canvas_content': elem['child_object'][
+                                'canvas_content']}
 
                     del elem['child_object']['canvas_content']
 

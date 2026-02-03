@@ -10,14 +10,6 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-RUN apt-get update && \
-  apt-get install -y --no-install-recommends \
-  npm \
-  nodejs \
-  chromium \
-  && apt-get clean && \
-  rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -26,13 +18,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Copy the rest of the application files
 COPY . .
-
-# chromium package managed by apt
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-# for non-root user to launch chromium
-ENV XDG_CONFIG_HOME=/tmp/.chromium
-ENV XDG_CACHE_HOME=/tmp/.chromium
-RUN cd joeseln_backend/export && npm install
 
 # Configure env variables
 RUN mv /app/docker-env.py /app/joeseln_backend/conf/base_conf.py &&\

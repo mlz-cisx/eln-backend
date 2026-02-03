@@ -350,7 +350,7 @@ def search_in_labbook(
 
 
 @app.get("/api/labbooks/{labbook_pk}/export/", response_class=FileResponse)
-def export_labbook_content(
+async def export_labbook_content(
         jwt: str,
         labbook_pk: UUID,
         containTypes: Optional[List[int]] = Query(None),
@@ -363,7 +363,7 @@ def export_labbook_content(
                                                  users=users,
                                                  startTime=startTime,
                                                  endTime=endTime, )
-    dwldable_labbook = export_labbook.get_export_data(
+    dwldable_labbook = await export_labbook.get_export_data(
         db=db, export_filter=export_filter, lb_pk=labbook_pk, jwt=jwt
     )
     if dwldable_labbook is None:
@@ -1036,13 +1036,13 @@ def get_bi_picture(jwt: str, picture_pk: UUID, db: Session = Depends(get_db)):
 
 @app.get("/api/pictures/{picture_pk}/export/",
          response_class=FileResponse)
-def export_picture_content(
+async def export_picture_content(
     jwt: str,
     picture_pk: UUID,
     db: Session = Depends(get_db),
 ):
     # logger.info(user)
-    dwldable_pic = export_picture.get_export_data(db=db, picture_pk=picture_pk, jwt=jwt)
+    dwldable_pic = await export_picture.get_export_data(db=db, picture_pk=picture_pk, jwt=jwt)
     if dwldable_pic is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_pic

@@ -1,12 +1,13 @@
 import base64
-import json
 import os
-import subprocess
 
 from fastapi.responses import Response
 from jinja2 import Environment, FileSystemLoader
+from playwright.async_api import async_playwright
 
 from joeseln_backend.auth.security import get_user_from_jwt
+from joeseln_backend.conf.base_conf import PLAYWRIGHT_WS
+from joeseln_backend.export.export_labbook import render_fabric_with_puppeteer
 from joeseln_backend.services.picture.picture_service import (
     get_picture_for_export,
     get_picture_relations,
@@ -19,11 +20,7 @@ def get_base64_image(image_path):
     return encoded
 
 
-def get_export_data(db, picture_pk, jwt):
-    parent_dir = os.path.dirname(os.path.abspath(__file__))
-    render_mathjax_path = os.path.join(parent_dir, "render_mathjax.js")
-    render_fabric_js_path = os.path.join(parent_dir, "render_fabric.js")
-
+async def get_export_data(db, picture_pk, jwt):
     user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
@@ -36,42 +33,39 @@ def get_export_data(db, picture_pk, jwt):
     db_picture_relations = get_picture_relations(db=db, picture_pk=picture_pk,
                                                  params=None, user=user)
 
-    canvas_content = json.loads(db_picture.canvas_content)
+    async with async_playwright() as p:
+        # launch browser
+        browser = await p.chromium.connect(PLAYWRIGHT_WS)
+        page = await browser.new_page()
 
-    fabric_data = {
-        "canvasWidth": db_picture.canvas_width,
-        "canvasHeight": db_picture.canvas_height,
-        "canvas_content": canvas_content
-    }
+        image_buffer = await render_fabric_with_puppeteer(page, [
+            db_picture.canvas_content])
+        db_picture.rendered_image = image_buffer[0]
+        # apply export template
+        data = {'instance': db_picture,
+                'picture_relations': db_picture_relations}
+        html = template.render(data)
 
-    img = subprocess.run(
-        ["node",
-         render_fabric_js_path],
-        input=json.dumps(fabric_data).encode("utf-8"),
-        stdout=subprocess.PIPE,
-        check=True
-    )
-
-    png_bytes = img.stdout
-
-    # Encode to base64 string
-    encoded = base64.b64encode(png_bytes).decode("utf-8")
-
-    db_picture.rendered_image = encoded
-
-    data = {'instance': db_picture, 'picture_relations': db_picture_relations}
-    html = template.render(data)
-
-    result = subprocess.run(
-        ["node",
-         render_mathjax_path],
-        input=html.encode("utf-8"),
-        stdout=subprocess.PIPE,
-        check=True
-    )
+        # render final pdf
+        await page.set_content(html)
+        # wait for all images to load
+        await page.evaluate(
+            """async () => {
+            const selectors = Array.from(document.images).map(img => {
+                if (img.complete) return null;
+                return new Promise(resolve => {
+                    img.addEventListener('load', resolve);
+                    img.addEventListener('error', resolve); // resolve even if image fails to load
+                });
+            }).filter(p => p !== null);
+            await Promise.all(selectors);
+        }"""
+        )
+        pdf_buffer = await page.pdf(format="A4")
+        await browser.close()
 
     return Response(
-        content=result.stdout,
+        content=pdf_buffer,
         media_type="application/pdf",
         headers={"Content-Disposition": "inline; filename=mathjax_output.pdf"}
     )

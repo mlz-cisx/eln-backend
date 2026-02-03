@@ -25,6 +25,8 @@ services:
       DB_TABLE: "eln"
       DB_PORT: 5432
       DB_ADDR: "eln-postgres"
+      # playwright for export
+      PLAYWRIGHT_WS: 'ws://playwright:3000/'
       # token
       STATIC_ADMIN_TOKEN: "#super_secret#"
       STATIC_WS_TOKEN: "super_ws_secret"
@@ -35,7 +37,7 @@ services:
       KEYCLOAK_CLIENT_ID: "client_backend"
       KEYCLOAK_CLIENT_SECRET: "cfAAazDMTwst5JgVVbtLjO5hsXQlTziL"
       # typesense
-      TYPESENSE_HOST: "eln-typesense"
+      TYPESENSE_HOST: "typesense"
       TYPESENSE_PORT: 8108
       TYPESENSE_API_KEY: "#super_secret#"
       # urls
@@ -44,7 +46,7 @@ services:
       WS_URL: "ws://wojians-macbook.local/ws/"
       WS_PORT: 8011
       ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
-    command: ["uvicorn", "joeseln_backend.main:app", "--reload", "--port", "8010", "--host", "0.0.0.0", "--loop", "asyncio"]
+    command: [ "uvicorn", "joeseln_backend.main:app", "--reload", "--port", "8010", "--host", "0.0.0.0", "--loop", "asyncio" ]
     volumes:
       - ./data/pictures/:/data/pictures
       - ./data/files/:/data/files
@@ -78,7 +80,7 @@ services:
       WS_PORT: 8011
       ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
       WS_INTERNAL_IP: "0.0.0.0"
-    command: ["python", "-m", "joeseln_backend.ws.ws_server"]
+    command: [ "python", "-m", "joeseln_backend.ws.ws_server" ]
 
   eln-frontend:
     image: eln-frontend
@@ -132,4 +134,11 @@ services:
     volumes:
       - ./data/typesense_data:/data
     command: --data-dir /data --api-key="#super_secret#" --enable-cors
+
+  playwright:
+    ports:
+      - "3000:3000"
+    image: mcr.microsoft.com/playwright:v1.58.0-noble
+    command: /bin/sh -c "npx -y playwright@1.58.0 run-server --port 3000 --host
+        0.0.0.0"
 

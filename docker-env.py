@@ -7,6 +7,8 @@ DB_TABLE = os.getenv("DB_TABLE")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
 DB_ADDR = os.getenv("DB_ADDR")
 
+PLAYWRIGHT_WS = os.getenv("PLAYWRIGHT_WS")
+
 # Initial users
 INITIAL_ADMIN = os.getenv("INITIAL_ADMIN", "admin")
 INSTRUMENT_AS_ADMIN = os.getenv("INSTRUMENT_AS_ADMIN", "instrument")

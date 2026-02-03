@@ -5,6 +5,9 @@ DB_TABLE = 'joeseln'
 DB_PORT = 5440
 DB_ADDR = 'localhost'
 
+# playwright for export
+PLAYWRIGHT_WS = 'ws://127.0.0.1:3000/'
+
 # initial users should not be changed
 INITIAL_ADMIN = 'admin'
 INSTRUMENT_AS_ADMIN = 'instrument'
