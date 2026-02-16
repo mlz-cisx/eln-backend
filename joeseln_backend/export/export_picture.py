@@ -7,7 +7,6 @@ from playwright.async_api import async_playwright
 
 from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.conf.base_conf import PLAYWRIGHT_WS
-from joeseln_backend.export.export_labbook import render_fabric_with_puppeteer
 from joeseln_backend.services.picture.picture_service import (
     get_picture_for_export,
     get_picture_relations,
@@ -38,29 +37,46 @@ async def get_export_data(db, picture_pk, jwt):
         browser = await p.chromium.connect(PLAYWRIGHT_WS)
         page = await browser.new_page()
 
-        image_buffer = await render_fabric_with_puppeteer(page, [
-            db_picture.canvas_content])
-        db_picture.rendered_image = image_buffer[0]
         # apply export template
         data = {'instance': db_picture,
                 'picture_relations': db_picture_relations}
         html = template.render(data)
-
-        # render final pdf
         await page.set_content(html)
-        # wait for all images to load
+        canvas_id = "c"
         await page.evaluate(
-            """async () => {
-            const selectors = Array.from(document.images).map(img => {
-                if (img.complete) return null;
-                return new Promise(resolve => {
-                    img.addEventListener('load', resolve);
-                    img.addEventListener('error', resolve); // resolve even if image fails to load
-                });
-            }).filter(p => p !== null);
-            await Promise.all(selectors);
-        }"""
+            f"""
+            (canvas_json) => {{
+                return new Promise(resolve => {{
+                    window.fabricCanvas = new fabric.Canvas('{canvas_id}', {{
+                        width: 1000,
+                        height: 750,
+                        backgroundColor: '#F4F4F4'
+                    }});
+
+                    const canvas = JSON.parse(canvas_json);
+                    window.fabricCanvas.loadFromJSON(canvas, () => {{
+                        const canvasWidth = window.fabricCanvas.getWidth();
+                        const canvasHeight = window.fabricCanvas.getHeight();
+
+                        const scaleX = 1000 / canvasWidth;
+                        const scaleY = 750 / canvasHeight;
+                        const scale = Math.min(scaleX, scaleY);
+
+                        window.fabricCanvas.getObjects().forEach(obj => {{
+                            obj.scaleX *= scale;
+                            obj.scaleY *= scale;
+                            obj.left *= scale;
+                            obj.top *= scale;
+                            obj.setCoords();
+                        }});
+                        window.fabricCanvas.requestRenderAll();
+                        resolve();
+                    }});
+                }});
+            }}""",
+            db_picture.canvas_content,
         )
+
         pdf_buffer = await page.pdf(format="A4")
         await browser.close()
 

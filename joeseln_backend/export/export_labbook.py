@@ -1,13 +1,16 @@
+import asyncio
 import base64
 import json
 import os
+import tempfile
 import zipfile
 from io import BytesIO
-from typing import List
 
-from fastapi.responses import Response, StreamingResponse
+from fastapi import BackgroundTasks
+from fastapi.responses import StreamingResponse
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import async_playwright
+from pypdf import PdfWriter, PdfReader
 from sqlalchemy.orm import Session
 
 from joeseln_backend.auth.security import get_user_from_jwt
@@ -48,120 +51,8 @@ def get_base64_image(image_path):
     return encoded
 
 
-async def render_fabric_with_puppeteer(page, canvas_data) -> List[str]:
-    """
-    batch canvas render
-    :param page: pyppeteer page
-    :param canvas_data: list of canvas content (raw no parse)
-    :return image_buffers: list of image in base64
-    """
-    canvasHeight = 750
-    canvasWidth = 1000
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-    </head>
-    <body>
-    <canvas id="c"></canvas>
-    <script>
-        window.fabricCanvas = new fabric.Canvas('c', {{
-          width: {canvasWidth},
-          height:  {canvasHeight},
-          backgroundColor: '#F4F4F4'
-        }});
-        window.reorderAlwaysOnTop = function() {{
-          const objs = window.fabricCanvas.getObjects();
-          objs.forEach(obj => {{
-            if (obj.alwaysOnTop) {{
-              const idx = window.fabricCanvas._objects.indexOf(obj);
-              if (idx > -1) {{
-                window.fabricCanvas._objects.splice(idx, 1);
-                window.fabricCanvas._objects.push(obj);
-              }}
-            }}
-          }});
-          window.fabricCanvas.renderAll();
-        }};
-
-        // Hook: whenever a new object is added, re‑push flagged one
-        window.fabricCanvas.on('object:added', () => {{
-          window.reorderAlwaysOnTop();
-        }});
-
-        window.exportAsImage = function() {{
-          const exportWidth = {canvasWidth};
-          const exportHeight = {canvasHeight};
-
-          const canvasWidth = window.fabricCanvas.getWidth();
-          const canvasHeight = window.fabricCanvas.getHeight();
-
-          const scaleX = exportWidth / canvasWidth;
-          const scaleY = exportHeight / canvasHeight;
-          const scale = Math.min(scaleX, scaleY);
-
-          window.fabricCanvas.getObjects().forEach(obj => {{
-            obj.scaleX *= scale;
-            obj.scaleY *= scale;
-            obj.left *= scale;
-            obj.top *= scale;
-            obj.setCoords();
-          }});
-
-          window.fabricCanvas.renderAll();
-
-          const dataUrl = window.fabricCanvas.toDataURL({{
-            format: 'png',
-            quality: 1,
-            width: exportWidth,
-            height: exportHeight,
-            multiplier: 1
-          }});
-
-          // restore
-          window.fabricCanvas.getObjects().forEach(obj => {{
-            obj.scaleX /= scale;
-            obj.scaleY /= scale;
-            obj.left /= scale;
-            obj.top /= scale;
-            obj.setCoords();
-          }});
-          window.fabricCanvas.setWidth(canvasWidth);
-          window.fabricCanvas.setHeight(canvasHeight);
-          window.fabricCanvas.renderAll();
-          return dataUrl;
-        }};
-    </script>
-    </body>
-    </html>
-    """
-    await page.set_content(html_content)
-    await page.wait_for_selector("#c")  # wail until fabricCanvas is up
-
-    img_buffers = []
-    for canvas_json in canvas_data:
-        await page.evaluate(
-            """(canvas_json) => {{
-            return new Promise(resolve => {{
-                const canvas = JSON.parse(canvas_json);
-                window.fabricCanvas.loadFromJSON(canvas, () => {{
-                    window.fabricCanvas.requestRenderAll();
-                    resolve();
-                }});
-            }});
-        }}""",
-            canvas_json,
-        )
-
-        data_url = await page.evaluate("() => window.exportAsImage()")
-        base64_data = data_url.replace("data:image/png;base64,", "")
-        img_buffers.append(base64_data)
-
-    return img_buffers
-
-
-async def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter):
+async def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter,
+                          background_tasks: BackgroundTasks):
     user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
@@ -217,54 +108,106 @@ async def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter):
             for elem in elems
             if elem.child_object.created_at < filter_end
         ]
+    # --- chunking ---
+    CHUNK_SIZE = 20
+    chunks = [elems[i:i + CHUNK_SIZE] for i in range(0, len(elems), CHUNK_SIZE)]
 
     async with async_playwright() as p:
-        # launch browser
         browser = await p.chromium.connect(PLAYWRIGHT_WS)
-        page = await browser.new_page()
 
-        # render fabric canvas into base64 image
-        farbic_to_render = [
-            (elem, elem.child_object.canvas_content)
-            for elem in elems
-            if elem.child_object_content_type == 40
-        ]
-        image_buffers = await render_fabric_with_puppeteer(
-            page, [canvas for _, canvas in farbic_to_render]
-        )
-        for (elem, _), img in zip(farbic_to_render, image_buffers):
-            elem.child_object.rendered_image = img
+        pdf_parts = []
 
-        # apply export template
-        data = {'instance': lb, 'labbook_child_elements': elems}
-        html = template.render(data)
+        for chunk in chunks:
+            page = await browser.new_page()
 
-        # render final pdf with mathjax support
-        await page.set_content(html)
-        # wait for all images to load
-        await page.evaluate(
-            """async () => {
-            const selectors = Array.from(document.images).map(img => {
-                if (img.complete) return null;
-                return new Promise(resolve => {
-                    img.addEventListener('load', resolve);
-                    img.addEventListener('error', resolve); // resolve even if image fails to load
-                });
-            }).filter(p => p !== null);
-            await Promise.all(selectors);
-        }"""
-        )
+            data = {'instance': lb, 'labbook_child_elements': chunk}
+            html = template.render(data)
 
-        await wait_for_mathjax(page)
-        pdf_buffer = await page.pdf(format="A4")
+            await page.set_content(html)
+
+            # inject canvas content for this chunk only
+            await asyncio.gather(
+                *[
+                    page.evaluate(
+                        f"""
+                    (canvas_json) => {{
+                        return new Promise(resolve => {{
+                            window.fabricCanvas = new fabric.Canvas('{elem.child_object.id}', {{
+                                width: 1000,
+                                height: 750,
+                                backgroundColor: '#F4F4F4'
+                            }});
+
+                            const canvas = JSON.parse(canvas_json);
+                            window.fabricCanvas.loadFromJSON(canvas, () => {{
+                                const canvasWidth = window.fabricCanvas.getWidth();
+                                const canvasHeight = window.fabricCanvas.getHeight();
+
+                                const scaleX = 1000 / canvasWidth;
+                                const scaleY = 750 / canvasHeight;
+                                const scale = Math.min(scaleX, scaleY);
+
+                                window.fabricCanvas.getObjects().forEach(obj => {{
+                                    obj.scaleX *= scale;
+                                    obj.scaleY *= scale;
+                                    obj.left *= scale;
+                                    obj.top *= scale;
+                                    obj.setCoords();
+                                }});
+                                window.fabricCanvas.requestRenderAll();
+                                resolve();
+                            }});
+                        }});
+                    }}""",
+                        elem.child_object.canvas_content,
+                    )
+                    for elem in chunk
+                    if elem.child_object_content_type == 40
+                ]
+            )
+
+            await wait_for_mathjax(page)
+
+            pdf_bytes = await page.pdf(format="A4")
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+            tmp.write(pdf_bytes)
+            tmp.flush()
+            tmp.close()
+            pdf_parts.append(tmp.name)
+
+            await page.close()
+
         await browser.close()
 
-    return Response(
-        content=pdf_buffer,
-        media_type="application/pdf",
-        headers={"Content-Disposition": "inline; filename=mathjax_output.pdf"}
-    )
+    # merge PDFs into a tempfile
+    merged_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    merged_tmp.close()
+    writer = PdfWriter()
 
+    for path in pdf_parts:
+        reader = PdfReader(path)
+        for page in reader.pages:
+            writer.add_page(page)
+
+    with open(merged_tmp.name, "wb") as f:
+        writer.write(f)
+
+    # schedule cleanup of all tempfiles
+    for path in pdf_parts:
+        background_tasks.add_task(remove_file, path)
+    background_tasks.add_task(remove_file, merged_tmp.name)
+
+    # stream the merged PDF
+    def iterfile():
+        with open(merged_tmp.name, "rb") as f:
+            while chunk := f.read(1024 * 1024 * 4):
+                yield chunk
+
+    return StreamingResponse(
+        iterfile(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "inline; filename=labbook_export.pdf"}
+    )
 
 def create_export_zip_file(db: Session, labbook_pk, user,
                            export_filter: ExportFilter):
@@ -417,3 +360,10 @@ def create_export_zip_file(db: Session, labbook_pk, user,
         headers={
             "Content-Disposition": f"attachment; filename={user.username}.zip"},
     )
+
+
+def remove_file(path: str):
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass

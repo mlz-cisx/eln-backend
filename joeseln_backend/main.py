@@ -25,7 +25,7 @@ from fastapi import (
     Request,
     Response,
     UploadFile,
-    status,
+    status, BackgroundTasks
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -358,13 +358,15 @@ async def export_labbook_content(
         startTime: Optional[datetime.datetime] = None,
         endTime: Optional[datetime.datetime] = None,
         db: Session = Depends(get_db),
+        background_tasks: BackgroundTasks = None
 ):
     export_filter = labbook_schemas.ExportFilter(containTypes=containTypes,
                                                  users=users,
                                                  startTime=startTime,
                                                  endTime=endTime, )
     dwldable_labbook = await export_labbook.get_export_data(
-        db=db, export_filter=export_filter, lb_pk=labbook_pk, jwt=jwt
+        db=db, export_filter=export_filter, lb_pk=labbook_pk, jwt=jwt,
+        background_tasks=background_tasks
     )
     if dwldable_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")

@@ -13,12 +13,12 @@
         at {{ instance.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
     </div>
 
-    {% if instance.rendered_image %}
-       <img src="data:image/png;base64,{{ instance.rendered_image }}">
-    {% endif %}
 
-    <div>
-        {% for relation in picture_relations %}
+  <div style="page-break-inside: avoid;">
+    <canvas class="img-container" id='c'></canvas>
+  </div>
+  <div>
+    {% for relation in picture_relations %}
             <div style="margin-bottom: 20px">
                 {% if relation.left_content_type == 70 %}
                     <h3 class="object_title">
@@ -37,5 +37,5 @@
             </div>
         {% endfor %}
     </div>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 {% endblock %}

@@ -80,10 +80,9 @@
                     at {{ child_element.child_object.created_at.strftime("%Y-%m-%d %H:%M:%S") }}
                 </div>
 
-                {% if child_element.child_object.rendered_image %}
-                    <img src="data:image/png;base64,{{ child_element.child_object.rendered_image }}"
-                         style="max-height: 900px; max-width: 600px; height: auto">
-                {% endif %}
+                <div style="page-break-inside: avoid;">
+                  <canvas class="img-container" id={{ child_element.child_object.id }}></canvas>
+                </div>
                 <div>
                     {% for relation in child_element.relations %}
                         <div style="margin-bottom: 20px">
@@ -153,4 +152,5 @@
             {% endif %}
         </div>
     {% endfor %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 {% endblock %}
