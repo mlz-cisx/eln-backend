@@ -7,9 +7,9 @@ import pathlib
 import sys
 from copy import deepcopy
 
+from PIL import Image
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse
-from PIL import Image
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -36,7 +36,8 @@ from joeseln_backend.services.entry_path.entry_path_service import (
     create_entry,
     create_path,
 )
-from joeseln_backend.services.history.history_service import create_history_entry
+from joeseln_backend.services.history.history_service import \
+    create_history_entry
 from joeseln_backend.services.labbook.labbook_service import (
     check_for_labbook_access,
     check_for_labbook_admin_access,
@@ -600,10 +601,12 @@ def clone_picture(db, bi_img_contents, info, user):
 
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
 
-
     with open(bi_img_path, 'wb') as image:
-        image.write(bi_img_contents)
-        image.close()
+        if bi_img_contents:
+            image.write(bi_img_contents)
+            image.close()
+        else:
+            pass
 
 
     pic = build_download_url_with_token(

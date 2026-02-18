@@ -1,5 +1,5 @@
 import datetime
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, Json
@@ -94,3 +94,8 @@ class PictureUpload(BaseModel):
 
 class PictureWithLbTitle(Picture):
     lb_title: str | None
+
+
+class PictureClonePayload(BaseModel):
+    background_image_b64: Optional[str] = None
+    info_gzip_b64: Optional[str] = None

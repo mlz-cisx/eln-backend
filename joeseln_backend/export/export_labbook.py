@@ -7,6 +7,7 @@ import zipfile
 from io import BytesIO
 
 from fastapi import BackgroundTasks
+from fastapi.responses import FileResponse
 from fastapi.responses import StreamingResponse
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import async_playwright

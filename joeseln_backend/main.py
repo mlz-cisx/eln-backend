@@ -1,3 +1,4 @@
+import base64
 import os
 import sys
 
@@ -5,12 +6,12 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
 import datetime
-import gzip
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Annotated, Any, List, Optional
 from urllib.parse import urlencode
 from uuid import UUID
+import zlib
 
 import jwt
 from fastapi import (
@@ -965,26 +966,30 @@ async def upload_image(
 
 @app.post("/api/pictures/clone/", response_model=picture_schemas.Picture)
 async def clone_image(
-    request: Request,
-    background_image: Annotated[UploadFile, File()],
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+        payload: picture_schemas.PictureClonePayload,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user),
 ):
     # logger.info(user)
-    async with request.form() as form:
-        bi_img_contents = await background_image.read()
-        info_file = form.get("info")
-        info_bytes = await info_file.read()
-        info_text = gzip.decompress(info_bytes).decode("utf-8")
-        db_picture = picture_service.clone_picture(db=db,
-                                                   bi_img_contents=bi_img_contents,
-                                                   info=info_text,
-                                                   user=user)
+    bi_img_contents = (
+        base64.b64decode(payload.background_image_b64)
+        if payload.background_image_b64 else None
+    )
 
-        if db_picture is None:
-            raise HTTPException(status_code=204)
+    info_text = None
+    if payload.info_gzip_b64:
+        info_bytes = base64.b64decode(payload.info_gzip_b64)
+        info_text = zlib.decompress(info_bytes, 16 + zlib.MAX_WBITS).decode(
+            "utf-8")
 
-        return db_picture
+    db_picture = picture_service.clone_picture(
+        db=db,
+        bi_img_contents=bi_img_contents,
+        info=info_text,
+        user=user
+    )
+
+    return db_picture
 
 
 @app.get("/api/pictures/",
