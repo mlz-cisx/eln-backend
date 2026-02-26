@@ -1488,18 +1488,17 @@ def preview_file_version(
     return version_metadata
 
 
-@app.get("/api/files/{file_pk}/relations/", response_model=simple_messege_response)
+@app.get("/api/files/{file_pk}/relations/",
+         response_model=list[relation_schemas.Relation])
 def get_file_relations(
     request: Request,
     file_pk: UUID,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    if file_service.get_file_relations(
+    return file_service.get_file_relations(
         db=db, file_pk=file_pk, params=request.query_params._dict, user=user
-    ):
-        return "ok"
-    return "nok"
+    )
 
 
 @app.delete(
