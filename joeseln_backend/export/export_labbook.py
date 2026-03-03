@@ -4,7 +4,6 @@ import json
 import os
 import tempfile
 import zipfile
-from io import BytesIO
 
 from fastapi import BackgroundTasks
 from fastapi.responses import FileResponse
@@ -211,7 +210,8 @@ async def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter,
     )
 
 def create_export_zip_file(db: Session, labbook_pk, user,
-                           export_filter: ExportFilter):
+                           export_filter: ExportFilter,
+                           background_tasks: BackgroundTasks):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return None
 
@@ -295,9 +295,12 @@ def create_export_zip_file(db: Session, labbook_pk, user,
                 (relation['left_content_object'].__dict__)['content'])
         del elem['relations']
 
-    zip_buffer = BytesIO()
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    tmp_path = tmp.name
+    tmp.close()
+
     with zipfile.ZipFile(
-            file=zip_buffer,
+            file=tmp_path,
             mode="w",
             compression=zipfile.ZIP_DEFLATED,
             compresslevel=9,
@@ -353,15 +356,14 @@ def create_export_zip_file(db: Session, labbook_pk, user,
         zip_archive.writestr(zinfo_or_arcname=f'{lb.title}.json',
                              data=json.dumps(elems))
 
-    zip_buffer.seek(0)
+    # Schedule deletion after response is sent
+    background_tasks.add_task(remove_file, tmp_path)
 
-    return StreamingResponse(
-        zip_buffer,
+    return FileResponse(
+        tmp_path,
         media_type="application/zip",
-        headers={
-            "Content-Disposition": f"attachment; filename={user.username}.zip"},
+        filename=f"{user.username}.zip"
     )
-
 
 def remove_file(path: str):
     try:

@@ -34,7 +34,6 @@ from fastapi.responses import (
     FileResponse,
     HTMLResponse,
     RedirectResponse,
-    StreamingResponse,
 )
 from keycloak import KeycloakOpenID
 from sqlalchemy.orm import Session
@@ -389,7 +388,7 @@ def export_link_labbook(labbook_pk: UUID,
 
 
 @app.get("/api/labbooks/{labbook_pk}/export_as_zip/",
-         response_class=StreamingResponse)
+         response_class=FileResponse)
 def export_labbook_content_zip(
         labbook_pk: UUID,
         containTypes: Optional[List[int]] = Query(None),
@@ -398,13 +397,15 @@ def export_labbook_content_zip(
         endTime: Optional[datetime.datetime] = None,
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user),
+        background_tasks: BackgroundTasks = None
 ):
     export_filter = labbook_schemas.ExportFilter(containTypes=containTypes,
                                                  users=users,
                                                  startTime=startTime,
                                                  endTime=endTime, )
     zipped_labbook = export_labbook.create_export_zip_file(
-        db=db, labbook_pk=labbook_pk, user=user, export_filter=export_filter
+        db=db, labbook_pk=labbook_pk, user=user, export_filter=export_filter,
+        background_tasks=background_tasks
     )
     if zipped_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
