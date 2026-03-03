@@ -1304,23 +1304,33 @@ async def upload_file(
 
 @app.post("/api/files/clone/", response_model=file_schemas.File)
 async def clone_file(
-    request: Request,
-    info: Annotated[str, Form(...)],
-    path: Annotated[UploadFile, File()],
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+        payload: file_schemas.FileClonePayload,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user),
+
 ):
-    # logger.info(user)
-    async with request.form() as _:
-        contents = await path.read()
-        ret_vals = file_service.clone_file(
-            db=db, contents=contents, info=info, user=user
-        )
+    # Decode file bytes
+    file_contents = (
+        base64.b64decode(payload.path_b64)
+        if payload.path_b64 else None
+    )
 
-        if ret_vals is None:
-            raise HTTPException(status_code=204)
+    if payload.info_gzip_b64:
+        info_bytes = base64.b64decode(payload.info_gzip_b64)
+        info_text = zlib.decompress(info_bytes, 16 + zlib.MAX_WBITS).decode(
+            "utf-8")
+    else:
+        # If frontend sends plain text instead of gzip
+        info_text = payload.info
 
-        return ret_vals
+    db_file = file_service.clone_file(
+        db=db,
+        contents=file_contents,
+        info=info_text,
+        user=user
+    )
+
+    return db_file
 
 
 @app.get("/api/files/",

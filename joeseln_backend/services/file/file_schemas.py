@@ -1,5 +1,5 @@
 import datetime
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, Json
@@ -103,3 +103,9 @@ class FileWithPrivileges(BaseModel):
 
 class FileWithLbTitle(File):
     lb_title: str | None
+
+
+class FileClonePayload(BaseModel):
+    path_b64: Optional[str] = None
+    info_gzip_b64: Optional[str] = None
+    info: Optional[str] = None
