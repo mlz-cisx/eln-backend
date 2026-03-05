@@ -706,6 +706,7 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
 
         lb_privileges = create_labbook_privileges(user_roles=user_roles)
     changerecords = []
+    strict_mode_enabled = False
     if lb_privileges['edit']:
         # it is patched with form-input labbook page
         if labbook.title and is_clean_title(labbook.title.strip()):
@@ -713,6 +714,9 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
             old_labbook_strict_mode = db_labbook.strict_mode
             db_labbook.title = labbook.title.strip()
             db_labbook.strict_mode = labbook.strict_mode
+
+            if labbook.strict_mode and not old_labbook_strict_mode:
+                strict_mode_enabled = True
 
             changerecords = [['title', old_labbook_title, labbook.title],
                              ['strict mode', old_labbook_strict_mode,
@@ -741,11 +745,13 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
                              changeset_type='U',
                              changerecords=changerecords)
 
-    # TODO use ws?
-    # try:
-    #     transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
-    # except RuntimeError as e:
-    #     print(e)
+
+    if strict_mode_enabled:
+        try:
+            transmit({'model_name': 'labbook', 'action': 'strict_mode_enabled',
+                      'model_pk': str(labbook_pk)})
+        except RuntimeError as e:
+            print(e)
     db_user_created = db.query(models.User).get(db_labbook.created_by_id)
     db_user_modified = db.query(models.User).get(
         db_labbook.last_modified_by_id)
