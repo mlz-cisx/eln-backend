@@ -328,6 +328,27 @@ def get_labbook_by_title(
     return labbook_pk
 
 
+@app.get("/api/labbooks/{labbook_pk}/search/",
+         response_model=list[text_search.lb_search_result_type])
+def search_in_labbook(
+        labbook_pk: UUID,
+        search: str = Query(),
+        db: Session = Depends(get_db),
+        typesense_client=Depends(get_typesense_client),
+        user: User = Depends(get_current_user),
+):
+    # logger.info(user)
+    result = text_search.search_in_labbook(
+        db=db, labbook_pk=labbook_pk, search_text=search, user=user,
+        typesense=typesense_client
+    )
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return result
+
+
+
 @app.get("/api/labbooks/{labbook_pk}/export/", response_class=FileResponse)
 def export_labbook_content(
         jwt: str,
