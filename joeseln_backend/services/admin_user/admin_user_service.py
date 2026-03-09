@@ -5,7 +5,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
-from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
+from joeseln_backend.conf.base_conf import (
+    INITIAL_ADMIN,
+    INSTRUMENT_AS_ADMIN,
+    LABBOOK_QUERY_MODE,
+)
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
@@ -165,15 +169,77 @@ def remove_as_admin(db: Session, user_id, user):
     return
 
 
+class TrieNode:
+    def __init__(self, text=""):
+        self.text = text
+        self.children = dict()
+        self.is_word = False
+
+
+class PrefixTree:
+    def __init__(self):
+        self.root = TrieNode()
+
+    def insert(self, word: str):
+        current = self.root
+        for i, char in enumerate(word):
+            if char not in current.children:
+                prefix = word[0 : i + 1]
+                current.children[char] = TrieNode(prefix)
+            current = current.children[char]
+        current.is_word = True
+
+    def print_tree_with_prefix(self, words):
+        res = []
+        words.sort(key=len)
+        word_visted = []
+
+        for word in words:
+            # skip prefix visted
+            if word in word_visted:
+                continue
+            current = self.root
+            # go to prefix
+            for char in word:
+                current = current.children[char]
+
+            sub_res = []
+
+            # recursively search for words with this prefix
+            def __recursive(node, indent=""):
+                if node.is_word:
+                    sub_res.append(f"{indent}{node.text}")
+                    word_visted.append(node.text)
+                    for child in node.children.values():
+                        __recursive(child, indent + "|--")
+                else:
+                    for child in node.children.values():
+                        __recursive(child, indent)
+
+            __recursive(current)
+            res.append("\n".join(sub_res))
+        return res
+
+
 def get_user_by_id(db: Session, user, user_id):
     if user.admin:
         db_user = db.query(models.User).get(user_id)
 
-        groups = get_user_groups(db=db, username=db_user.username)
-        admin_groups = get_user_groups_role_groupadmin(db=db,
-                                                       username=db_user.username)
-        db_user.groups = groups
-        db_user.admin_groups = admin_groups
+        user_groups = get_user_groups(db=db, username=db_user.username)
+        admin_groups = get_user_groups_role_groupadmin(db=db, username=db_user.username)
+        all_groups = [
+            group.groupname for group in db.query(models.Group.groupname).all()
+        ]
+
+        if LABBOOK_QUERY_MODE == "match":
+            group_trie = PrefixTree()
+            for g in all_groups:
+                group_trie.insert(g)
+            db_user.groups = group_trie.print_tree_with_prefix(user_groups)
+            db_user.admin_groups = group_trie.print_tree_with_prefix(admin_groups)
+        else:
+            db_user.groups = user_groups
+            db_user.admin_groups = admin_groups
 
         return {'privileges': ADMIN, 'user': db_user}
     return
