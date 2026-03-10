@@ -377,7 +377,7 @@ def check_for_guest_role(db: Session, labbook_pk, user):
     elif LABBOOK_QUERY_MODE == "equal":
         labbook = (
             db.query(models.Labbook)
-            .join(models.Group, models.Group.groupname == models.Labbook.title)
+            .join(models.Group, models.Group.groupname == models.Labbook.owner_group)
             .join(
                 models.UserToGroupRole,
                 models.Group.id == models.UserToGroupRole.group_id,
@@ -520,6 +520,21 @@ def get_user_group_roles_with_match(db: Session, username, groupname):
     )
     return result
 
+
+def get_user_groups_id(db: Session, username):
+    result = (
+        db.query(models.Group)
+        .join(
+            models.UserToGroupRole, models.Group.id == models.UserToGroupRole.group_id
+        )
+        .join(models.User, models.UserToGroupRole.user_id == models.User.id)
+        .filter(models.User.username == username)
+        .all()
+    )
+
+    result = [x.id for x in result]
+
+    return result
 
 def get_user_groups(db: Session, username):
     result = db.query(models.Group).join(models.UserToGroupRole,

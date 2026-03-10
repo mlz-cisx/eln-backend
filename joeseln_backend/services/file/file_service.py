@@ -240,11 +240,12 @@ def get_file_with_privileges(db: Session, file_pk, user):
                                                     user_roles=user_roles)
 
             else:
-                user_roles = get_user_group_roles(db=db,
-                                                  username=user.username,
-                                                  groupname=db_lb.title)
-                privileges = create_file_privileges(created_by=file_created_by,
-                                                    user_roles=user_roles)
+                user_roles = get_user_group_roles(
+                    db=db, username=user.username, groupname=db_lb.owner_group
+                )
+                privileges = create_file_privileges(
+                    created_by=file_created_by, user_roles=user_roles
+                )
 
             return {'privileges': privileges, 'file': file_content}
 

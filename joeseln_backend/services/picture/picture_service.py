@@ -389,9 +389,9 @@ def get_picture_with_privileges(db: Session, picture_pk, user, If_None_Match):
                     user_roles=user_roles)
 
             else:
-                user_roles = get_user_group_roles(db=db,
-                                                  username=user.username,
-                                                  groupname=db_lb.title)
+                user_roles = get_user_group_roles(
+                    db=db, username=user.username, groupname=db_lb.owner_group
+                )
                 privileges = create_pic_privileges(
                     created_by=picture_created_by,
                     user_roles=user_roles)

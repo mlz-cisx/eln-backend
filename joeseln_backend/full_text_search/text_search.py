@@ -55,9 +55,14 @@ def search_with_model(db, model, search_text, user, typesense: Client):
             .all()
         )
     else:
-        lbs = db.query(models.Labbook).filter(
-            models.Labbook.title.in_(user_groups),
-            models.Labbook.deleted == False).all()
+        lbs = (
+            db.query(models.Labbook)
+            .filter(
+                models.Labbook.owner_group.in_(user_groups),
+                models.Labbook.deleted == False,
+            )
+            .all()
+        )
     labbook_ids = [str(lb.id) for lb in lbs]
 
     if 'note' in model:

@@ -41,6 +41,40 @@ def update_db_tables():
                 """
             )
         )
+        connection.execute(
+            text(
+                """
+            DO $$
+            BEGIN
+                -- if owner_group column not exist
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name='labbook'
+                    AND column_name='owner_group'
+                ) THEN
+                    -- create group if not exist
+                    DECLARE
+                    labbook_record RECORD;
+                    BEGIN
+                        FOR labbook_record IN SELECT title FROM labbook LOOP
+                            IF NOT EXISTS (SELECT 1 FROM "group" WHERE groupname = labbook_record.title) THEN
+                                -- insert the group if it doesn't exist
+                                INSERT INTO "group" (id, groupname, created_at, last_modified_at)
+                                VALUES (gen_random_uuid(), labbook_record.title, NOW(), NOW());
+                            END IF;
+                        END LOOP;
+                    END;
+                    -- create column and set it as labbook title
+                    ALTER TABLE public.labbook
+                        ADD COLUMN owner_group VARCHAR DEFAULT NULL;
+                    UPDATE public.labbook
+                        SET owner_group = title;
+                END IF;
+            END $$;
+            """
+            )
+        )
         transaction.commit()
     except sqlalchemy.exc.ProgrammingError as e:
         logger.info(e)

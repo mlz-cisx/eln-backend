@@ -7,7 +7,6 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     Integer,
@@ -41,6 +40,15 @@ class User(Base):
     last_modified_at = Column(DateTime)
 
 
+class Group(Base):
+    __tablename__ = "group"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    # TODO consider group name as foreign key
+    groupname = Column(String, unique=True)
+    created_at = Column(DateTime)
+    last_modified_at = Column(DateTime)
+
+
 class Labbook(Base):
     __tablename__ = 'labbook'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -53,6 +61,7 @@ class Labbook(Base):
     last_modified_at = Column(DateTime)
     last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
     description = Column(Text, default='')
+    owner_group = Column(String, default=None)
     # __ts_vector__ = Column(TSVector(), Computed(
     #      "to_tsvector('english', title || ' ' || description)",
     #      persisted=True))
@@ -160,15 +169,6 @@ class File(Base):
     #      persisted=True))
     # __table_args__ = (Index('ix_file___ts_vector__',
     #       __ts_vector__, postgresql_using='gin'),)
-
-
-class Group(Base):
-    __tablename__ = 'group'
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    # TODO consider group name as foreign key
-    groupname = Column(String, unique=True)
-    created_at = Column(DateTime)
-    last_modified_at = Column(DateTime)
 
 
 class Role(Base):

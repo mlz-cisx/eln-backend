@@ -205,11 +205,12 @@ def get_note_with_privileges(db: Session, note_pk, user, etag):
                                                     user_roles=user_roles)
 
             else:
-                user_roles = get_user_group_roles(db=db,
-                                                  username=user.username,
-                                                  groupname=db_lb.title)
-                privileges = create_note_privileges(created_by=note_created_by,
-                                                    user_roles=user_roles)
+                user_roles = get_user_group_roles(
+                    db=db, username=user.username, groupname=db_lb.owner_group
+                )
+                privileges = create_note_privileges(
+                    created_by=note_created_by, user_roles=user_roles
+                )
 
             return {'privileges': privileges, 'note': db_note}
 

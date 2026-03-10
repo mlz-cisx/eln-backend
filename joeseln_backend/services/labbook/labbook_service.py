@@ -33,6 +33,8 @@ from joeseln_backend.services.privileges.privileges_service import (
 )
 from joeseln_backend.services.user_to_group.user_to_group_service import (
     check_for_guest_role,
+    create_group,
+    get_group_by_groupname,
     get_user_group_roles,
     get_user_group_roles_with_match,
     get_user_groups,
@@ -443,9 +445,14 @@ def check_for_labbook_admin_access(db: Session, labbook_pk, user):
                 .first()
             )
         else:
-            db_lb = db.query(models.Labbook).filter(
-                models.Labbook.title.in_(user_groups),
-                models.Labbook.id == labbook_pk).first()
+            db_lb = (
+                db.query(models.Labbook)
+                .filter(
+                    models.Labbook.owner_group.in_(user_groups),
+                    models.Labbook.id == labbook_pk,
+                )
+                .first()
+            )
 
         if not db_lb:
             return False
@@ -469,7 +476,7 @@ def get_all_labbook_ids_from_non_admin_user(db: Session, user):
     elif LABBOOK_QUERY_MODE == "equal":
         labbooks = (
             db.query(models.Labbook)
-            .join(models.Group, models.Group.groupname == models.Labbook.title)
+            .join(models.Group, models.Group.groupname == models.Labbook.owner_group)
             .join(
                 models.UserToGroupRole,
                 models.Group.id == models.UserToGroupRole.group_id,
@@ -569,7 +576,9 @@ def get_labbooks_from_user(db: Session, params, user):
             search_text = params.get("search")
             labbooks = (
                 db.query(models.Labbook)
-                .join(models.Group, models.Group.groupname == models.Labbook.title)
+                .join(
+                    models.Group, models.Group.groupname == models.Labbook.owner_group
+                )
                 .join(
                     models.UserToGroupRole,
                     models.Group.id == models.UserToGroupRole.group_id,
@@ -612,13 +621,22 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
     labbook.title = labbook.title.strip()
     if user.admin and is_clean_title(labbook.title):
         labbook.description = sanitize_html(labbook.description)
-        db_labbook = models.Labbook(version_number=0,
-                                    title=labbook.title,
-                                    description=labbook.description,
-                                    created_at=datetime.datetime.now(),
-                                    created_by_id=user.id,
-                                    last_modified_at=datetime.datetime.now(),
-                                    last_modified_by_id=user.id)
+
+        # Check if a group for labbook exists, create one if it doesn't
+        group = get_group_by_groupname(db, labbook.title)
+        if not group:
+            group = create_group(db, labbook.title)
+
+        db_labbook = models.Labbook(
+            version_number=0,
+            title=labbook.title,
+            description=labbook.description,
+            created_at=datetime.datetime.now(),
+            created_by_id=user.id,
+            last_modified_at=datetime.datetime.now(),
+            last_modified_by_id=user.id,
+            owner_group=group.groupname,
+        )
         db.add(db_labbook)
         try:
             db.commit()
@@ -697,7 +715,7 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
         db_lb = (
             db.query(models.Labbook)
             .filter(
-                models.Labbook.title.in_(user_groups),
+                models.Labbook.owner_group.in_(user_groups),
                 models.Labbook.deleted == False,
                 models.Labbook.id == labbook_pk,
             )
@@ -712,9 +730,9 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
 
             privileges = create_labbook_privileges(user_roles=user_roles)
         else:
-            user_roles = get_user_group_roles(db=db,
-                                              username=user.username,
-                                              groupname=db_lb.title)
+            user_roles = get_user_group_roles(
+                db=db, username=user.username, groupname=db_lb.owner_group
+            )
 
             privileges = create_labbook_privileges(user_roles=user_roles)
 
@@ -740,10 +758,10 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
                                                      groupname=db_labbook.title)
         lb_privileges = create_labbook_privileges(user_roles=user_roles)
 
-    elif LABBOOK_QUERY_MODE == 'equal':
-        user_roles = get_user_group_roles(db=db,
-                                          username=user.username,
-                                          groupname=db_labbook.title)
+    elif LABBOOK_QUERY_MODE == "equal":
+        user_roles = get_user_group_roles(
+            db=db, username=user.username, groupname=db_labbook.owner_group
+        )
 
         lb_privileges = create_labbook_privileges(user_roles=user_roles)
     changerecords = []
