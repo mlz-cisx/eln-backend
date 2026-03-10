@@ -359,31 +359,36 @@ def get_group_by_groupname(db: Session, groupname):
 
 def check_for_guest_role(db: Session, labbook_pk, user):
     labbook = None
-    if LABBOOK_QUERY_MODE == 'match':
-        labbook = db.query(models.Labbook).join(models.Group,
-                                                models.Labbook.title.contains(
-                                                    models.Group.groupname)).join(
-            models.UserToGroupRole,
-            models.Group.id == models.UserToGroupRole.group_id).join(
-            models.User,
-            models.UserToGroupRole.user_id == models.User.id).join(
-            models.Role,
-            models.Role.id == models.UserToGroupRole.user_group_role).filter(
-            models.Role.rolename == 'guest').filter(
-            models.User.username == user.username).filter(
-            models.Labbook.id == labbook_pk).all()
-    elif LABBOOK_QUERY_MODE == 'equal':
-        labbook = db.query(models.Labbook).join(models.Group,
-                                                models.Group.groupname == models.Labbook.title).join(
-            models.UserToGroupRole,
-            models.Group.id == models.UserToGroupRole.group_id).join(
-            models.User,
-            models.UserToGroupRole.user_id == models.User.id).join(
-            models.Role,
-            models.Role.id == models.UserToGroupRole.user_group_role).filter(
-            models.Role.rolename == 'guest').filter(
-            models.User.username == user.username).filter(
-            models.Labbook.id == labbook_pk).all()
+    if LABBOOK_QUERY_MODE == "match":
+        labbook = (
+            db.query(models.Labbook)
+            .join(models.Group, models.Labbook.title.startswith(models.Group.groupname))
+            .join(
+                models.UserToGroupRole,
+                models.Group.id == models.UserToGroupRole.group_id,
+            )
+            .join(models.User, models.UserToGroupRole.user_id == models.User.id)
+            .join(models.Role, models.Role.id == models.UserToGroupRole.user_group_role)
+            .filter(models.Role.rolename == "guest")
+            .filter(models.User.username == user.username)
+            .filter(models.Labbook.id == labbook_pk)
+            .all()
+        )
+    elif LABBOOK_QUERY_MODE == "equal":
+        labbook = (
+            db.query(models.Labbook)
+            .join(models.Group, models.Group.groupname == models.Labbook.title)
+            .join(
+                models.UserToGroupRole,
+                models.Group.id == models.UserToGroupRole.group_id,
+            )
+            .join(models.User, models.UserToGroupRole.user_id == models.User.id)
+            .join(models.Role, models.Role.id == models.UserToGroupRole.user_group_role)
+            .filter(models.Role.rolename == "guest")
+            .filter(models.User.username == user.username)
+            .filter(models.Labbook.id == labbook_pk)
+            .all()
+        )
 
     return labbook
 
@@ -500,15 +505,19 @@ def get_user_group_roles(db: Session, username,
     return result
 
 
-def get_user_group_roles_with_match(db: Session, username,
-                                    groupname):
-    result = db.query(models.Role.rolename).join(models.UserToGroupRole,
-                                                 models.Role.id == models.UserToGroupRole.user_group_role).join(
-        models.User, models.UserToGroupRole.user_id == models.User.id).join(
-        models.Group,
-        models.Group.id == models.UserToGroupRole.group_id).filter(
-        models.User.username == username).filter(
-        literal(groupname).contains(models.Group.groupname)).all()
+def get_user_group_roles_with_match(db: Session, username, groupname):
+    result = (
+        db.query(models.Role.rolename)
+        .join(
+            models.UserToGroupRole,
+            models.Role.id == models.UserToGroupRole.user_group_role,
+        )
+        .join(models.User, models.UserToGroupRole.user_id == models.User.id)
+        .join(models.Group, models.Group.id == models.UserToGroupRole.group_id)
+        .filter(models.User.username == username)
+        .filter(literal(groupname).startswith(models.Group.groupname))
+        .all()
+    )
     return result
 
 
