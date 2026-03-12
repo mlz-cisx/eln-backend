@@ -190,7 +190,7 @@ def get_canvas_content(db: Session, picture_pk, user):
     return None
 
 
-def update_title(db: Session, picture_pk, user,
+def update_title(db: Session, tsClient: Client, picture_pk, user,
                  pic_payload: UpdatePictureTitle):
     db_picture = db.query(models.Picture).get(picture_pk)
 
@@ -236,6 +236,8 @@ def update_title(db: Session, picture_pk, user,
                              object_type_id=40,
                              changeset_type='U',
                              changerecords=changerecords)
+
+        update_pic_typesense(pic, pic.canvas_content, tsClient)
 
         return pic
 
@@ -613,7 +615,7 @@ def clone_picture(db, bi_img_contents, info, user):
     return pic
 
 
-def process_picture_upload_form(form, db, contents, user):
+def process_picture_upload_form(form, db, tsClient: Client, contents, user):
     db_picture = create_picture(db=db, title=form['title'],
                                 display=form['background_image'].filename,
                                 size=form['background_image'].size, user=user)
@@ -647,10 +649,12 @@ def process_picture_upload_form(form, db, contents, user):
     pic.created_by = user
     pic.last_modified_by = user
 
+    update_pic_typesense(pic, pic.canvas_content, tsClient)
+
     return pic
 
 
-async def process_sketch_upload_form(form, db, user):
+async def process_sketch_upload_form(form, db, tsClient: Client, user):
     content = None
     canvas_content = form.get("canvas_content")
     if canvas_content:
@@ -660,7 +664,6 @@ async def process_sketch_upload_form(form, db, user):
     db_picture = create_picture(db=db, title=form['title'],
                                 display=form['title'],
                                 user=user, canvas_content=content)
-
 
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
 
@@ -672,6 +675,8 @@ async def process_sketch_upload_form(form, db, user):
 
     pic.created_by = user
     pic.last_modified_by = user
+
+    update_pic_typesense(pic, pic.canvas_content, tsClient)
 
     return pic
 

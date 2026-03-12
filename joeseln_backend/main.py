@@ -907,11 +907,12 @@ def delete_note_relation(
 
 @app.post("/api/pictures/", response_model=picture_schemas.Picture)
 async def upload_image(
-    request: Request,
-    title: Annotated[str, Form(...)],
-    background_image: Annotated[UploadFile | None, File()] = None,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+        request: Request,
+        title: Annotated[str, Form(...)],
+        background_image: Annotated[UploadFile | None, File()] = None,
+        db: Session = Depends(get_db),
+        tsClient=Depends(get_typesense_client),
+        user: User = Depends(get_current_user),
 ):
     # logger.info(user)
     async with request.form() as form:
@@ -920,6 +921,7 @@ async def upload_image(
             contents = await background_image.read()
             ret_vals = picture_service.process_picture_upload_form(form=form,
                                                                    db=db,
+                                                                   tsClient=tsClient,
                                                                    contents=contents,
                                                                    user=user)
         # sketch upload for creating via gui and copy via gui
@@ -927,6 +929,7 @@ async def upload_image(
             ret_vals = await picture_service.process_sketch_upload_form(
                 form=form,
                 db=db,
+                tsClient=tsClient,
                 user=user)
 
         if ret_vals is None:
@@ -1086,9 +1089,10 @@ def update_title_picture(
         pic_payload: picture_schemas.UpdatePictureTitle,
         picture_pk: UUID,
         db: Session = Depends(get_db),
+        tsClient=Depends(get_typesense_client),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_pic = picture_service.update_title(db=db, picture_pk=picture_pk,
+    db_pic = picture_service.update_title(db=db, tsClient=tsClient, picture_pk=picture_pk,
                                           user=user, pic_payload=pic_payload)
     if db_pic is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
