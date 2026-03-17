@@ -89,9 +89,14 @@ def search_with_model(db, model, search_text, user, typesense: Client):
         encoded_search_text = encode_umlauts_to_html(search_text)
         cleaned_f = func.regexp_replace(
             func.regexp_replace(
-                models.File.description,
-                r'data:([a-zA-Z0-9]+/[a-zA-Z0-9.+-]+);base64,[A-Za-z0-9+/=]+',
-                '',
+                func.regexp_replace(
+                    models.File.description,
+                    r'data:([a-zA-Z0-9]+/[a-zA-Z0-9.+-]+);base64,[A-Za-z0-9+/=]+',
+                    '',
+                    'g'
+                ),
+                r'&nbsp;',
+                ' ',
                 'g'
             ),
             r'<[^>]+>',
@@ -152,9 +157,14 @@ def search_with_model(db, model, search_text, user, typesense: Client):
         encoded_search_text = encode_umlauts_to_html(search_text)
         cleaned_l = func.regexp_replace(
             func.regexp_replace(
-                models.Labbook.description,
-                r'data:([a-zA-Z0-9]+/[a-zA-Z0-9.+-]+);base64,[A-Za-z0-9+/=]+',
-                '',
+                func.regexp_replace(
+                    models.Labbook.description,
+                    r'data:([a-zA-Z0-9]+/[a-zA-Z0-9.+-]+);base64,[A-Za-z0-9+/=]+',
+                    '',
+                    'g'
+                ),
+                r'&nbsp;',
+                ' ',
                 'g'
             ),
             r'<[^>]+>',
