@@ -2,33 +2,34 @@ import os
 
 from fastapi.responses import Response
 from jinja2 import Environment, FileSystemLoader
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 
 from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.conf.base_conf import PLAYWRIGHT_WS
-from joeseln_backend.services.note.note_service import get_note, get_note_relations
+from joeseln_backend.services.note.note_service import get_note, \
+    get_note_relations
 
 
-def wait_for_mathjax(page):
+async def wait_for_mathjax(page):
     # 1. Wait until MathJax is loaded
-    page.wait_for_function("window.MathJax !== undefined")
+    await page.wait_for_function("window.MathJax !== undefined")
 
     # 2. Wait until MathJax startup is ready
-    page.wait_for_function("MathJax.startup && MathJax.startup.promise")
+    await page.wait_for_function("MathJax.startup && MathJax.startup.promise")
 
     # 3. Wait for MathJax startup to finish
-    page.evaluate("MathJax.startup.promise")
+    await page.evaluate("MathJax.startup.promise")
 
     # 4. Force a full typeset pass
-    page.evaluate("MathJax.typesetPromise()")
+    await page.evaluate("MathJax.typesetPromise()")
 
     # 5. Wait until rendered math appears in DOM
-    page.wait_for_function(
+    await page.wait_for_function(
         "() => document.querySelector('.mjx-chtml, .MathJax') !== null || !document.body.innerText.match(/[$][^$]+[$]/)"
     )
 
 
-def get_export_data(db, note_pk, jwt):
+async def get_export_data(db, note_pk, jwt):
     user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
@@ -45,15 +46,15 @@ def get_export_data(db, note_pk, jwt):
 
     html = template.render(data)
 
-    with sync_playwright() as p:
+    async with async_playwright() as p:
         # launch browser
-        browser = p.chromium.connect(PLAYWRIGHT_WS)
-        page = browser.new_page()
+        browser = await p.chromium.connect(PLAYWRIGHT_WS)
+        page = await browser.new_page()
         # render final pdf with mathjax support
-        page.set_content(html)
-        wait_for_mathjax(page)
-        pdf_buffer = page.pdf(format="A4")
-        browser.close()
+        await page.set_content(html)
+        await wait_for_mathjax(page)
+        pdf_buffer = await page.pdf(format="A4")
+        await browser.close()
 
     return Response(
         content=pdf_buffer,

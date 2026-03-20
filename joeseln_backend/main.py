@@ -798,13 +798,13 @@ def get_note(
 
 @app.get("/api/notes/{note_pk}/export/",
          response_class=FileResponse)
-def export_note_content(
+async def export_note_content(
     jwt: str,
     note_pk: UUID,
     db: Session = Depends(get_db),
 ):
     # logger.info(user)
-    dwldable_note = export_note.get_export_data(db=db, note_pk=note_pk, jwt=jwt)
+    dwldable_note = await  export_note.get_export_data(db=db, note_pk=note_pk, jwt=jwt)
     if dwldable_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_note
