@@ -362,7 +362,7 @@ def check_for_guest_role(db: Session, labbook_pk, user):
     if LABBOOK_QUERY_MODE == "match":
         labbook = (
             db.query(models.Labbook)
-            .join(models.Group, models.Labbook.title.startswith(models.Group.groupname))
+            .join(models.Group, models.Labbook.owner_group.startswith(models.Group.groupname))
             .join(
                 models.UserToGroupRole,
                 models.Group.id == models.UserToGroupRole.group_id,

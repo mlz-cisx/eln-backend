@@ -37,11 +37,11 @@ class BackendConnector:
                           headers=self.headers)
         return r
 
-    def get_labbook_by_title(self, labbook_title):
+    def get_labbook_by_owner_group(self, labbook_title):
         r = requests.get(
-            url=f'{self.eln_url}labbooks/labbook_title/?title={labbook_title}',
+            url=f'{self.eln_url}labbooks/labbook_owner_group/?owner_group={labbook_title}',
             headers=self.headers)
         return r
 
 # backend_connector = BackendConnector()
-# print(backend_connector.get_labbook_by_title('picversiontest'))
+# print(backend_connector.get_labbook_by_owner_group('p00096'))

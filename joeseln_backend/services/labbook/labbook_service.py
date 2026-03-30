@@ -71,7 +71,7 @@ def check_for_labbook_access(
                 .filter(
                     or_(
                         *[
-                            models.Labbook.title.startswith(name)
+                            models.Labbook.owner_group.startswith(name)
                             for name in user_groups_role_user
                         ]
                     )
@@ -438,7 +438,7 @@ def check_for_labbook_admin_access(db: Session, labbook_pk, user):
                 db.query(models.Labbook)
                 .filter(
                     or_(
-                        *[models.Labbook.title.startswith(name) for name in user_groups]
+                        *[models.Labbook.owner_group.startswith(name) for name in user_groups]
                     )
                 )
                 .filter(models.Labbook.id == labbook_pk)
@@ -464,7 +464,7 @@ def get_all_labbook_ids_from_non_admin_user(db: Session, user):
     if LABBOOK_QUERY_MODE == "match":
         labbooks = (
             db.query(models.Labbook)
-            .join(models.Group, models.Labbook.title.startswith(models.Group.groupname))
+            .join(models.Group, models.Labbook.owner_group.startswith(models.Group.groupname))
             .join(
                 models.UserToGroupRole,
                 models.Group.id == models.UserToGroupRole.group_id,
@@ -537,7 +537,7 @@ def get_labbooks_from_user(db: Session, params, user):
                 db.query(models.Labbook)
                 .join(
                     models.Group,
-                    models.Labbook.title.startswith(models.Group.groupname),
+                    models.Labbook.owner_group.startswith(models.Group.groupname),
                 )
                 .join(
                     models.UserToGroupRole,
@@ -557,7 +557,7 @@ def get_labbooks_from_user(db: Session, params, user):
                 db.query(models.Labbook)
                 .join(
                     models.Group,
-                    models.Labbook.title.startswith(models.Group.groupname),
+                    models.Labbook.owner_group.startswith(models.Group.groupname),
                 )
                 .join(
                     models.UserToGroupRole,
@@ -674,10 +674,10 @@ def get_labbook_for_export(db: Session, labbook_pk):
     return db_labbook
 
 
-def get_labbook_by_title(db: Session, title: str, user):
+def get_labbook_by_owner_group(db: Session, owner_group: str, user):
     if user.admin:
         db_labbook = (
-            db.query(models.Labbook).filter(models.Labbook.title == title).first()
+            db.query(models.Labbook).filter(models.Labbook.owner_group ==owner_group).first()
         )
         return [db_labbook.id] if db_labbook else []
     return None
@@ -706,7 +706,7 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
         db_lb = (
             db.query(models.Labbook)
             .filter(
-                or_(*[models.Labbook.title.startswith(name) for name in user_groups])
+                or_(*[models.Labbook.owner_group.startswith(name) for name in user_groups])
             )
             .filter(models.Labbook.deleted == False, models.Labbook.id == labbook_pk)
             .first()
@@ -828,7 +828,7 @@ def get_labbook_export_link(db: Session, labbook_pk, user):
         db_lb = (
             db.query(models.Labbook)
             .filter(
-                or_(*[models.Labbook.title.startswith(name) for name in user_groups])
+                or_(*[models.Labbook.owner_group.startswith(name) for name in user_groups])
             )
             .filter(models.Labbook.id == labbook_pk)
             .first()

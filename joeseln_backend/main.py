@@ -315,14 +315,16 @@ def read_labbook(labbook_pk: UUID,
     return labbook
 
 
-@app.get("/api/labbooks/labbook_title/", response_model=List[UUID])
+@app.get("/api/labbooks/labbook_owner_group/", response_model=List[UUID])
 def get_labbook_by_title(
-    title: str = Query(),
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+        owner_group: str = Query(),
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user),
 ):
     # logger.info(user)
-    labbook_pk = labbook_service.get_labbook_by_title(db=db, title=title, user=user)
+    labbook_pk = labbook_service.get_labbook_by_owner_group(db=db,
+                                                            owner_group=owner_group,
+                                                            user=user)
     if labbook_pk is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return labbook_pk

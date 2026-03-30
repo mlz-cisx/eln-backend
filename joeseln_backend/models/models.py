@@ -61,7 +61,7 @@ class Labbook(Base):
     last_modified_at = Column(DateTime)
     last_modified_by_id = Column(BigInteger, ForeignKey(User.id))
     description = Column(Text, default='')
-    owner_group = Column(String, default=None)
+    owner_group = Column(String, unique=True, default=None)
     # __ts_vector__ = Column(TSVector(), Computed(
     #      "to_tsvector('english', title || ' ' || description)",
     #      persisted=True))

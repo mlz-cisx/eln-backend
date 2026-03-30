@@ -49,7 +49,7 @@ def search_with_model(db, model, search_text, user, typesense: Client):
         lbs = (
             db.query(models.Labbook)
             .filter(
-                or_(*[models.Labbook.title.startswith(name) for name in user_groups]),
+                or_(*[models.Labbook.owner_group.startswith(name) for name in user_groups]),
                 models.Labbook.deleted == False,
             )
             .all()

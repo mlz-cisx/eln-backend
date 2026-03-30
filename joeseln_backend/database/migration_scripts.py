@@ -75,6 +75,31 @@ def update_db_tables():
             """
             )
         )
+        connection.execute(
+            text(
+                """
+                DO $$
+                DECLARE
+                    constraint_exists BOOLEAN;
+                BEGIN
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint c
+                        JOIN pg_class t ON c.conrelid = t.oid
+                        JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+                        WHERE t.relname = 'labbook'
+                          AND a.attname = 'owner_group'
+                          AND c.contype = 'u'   -- 'u' = UNIQUE constraint
+                    ) INTO constraint_exists;
+
+                    IF NOT constraint_exists THEN
+                        ALTER TABLE public.labbook
+                            ADD CONSTRAINT labbook_owner_group_unique UNIQUE (owner_group);
+                    END IF;
+                END $$;
+                """
+            )
+        )
         transaction.commit()
     except sqlalchemy.exc.ProgrammingError as e:
         logger.info(e)

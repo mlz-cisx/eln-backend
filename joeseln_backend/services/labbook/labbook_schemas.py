@@ -20,6 +20,7 @@ class Labbook(BaseModel):
     version_number: int
     deleted: bool
     title: str
+    owner_group: str | None
     strict_mode: bool
     created_at: datetime.datetime
     created_by_id: int
