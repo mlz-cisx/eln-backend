@@ -1,20 +1,22 @@
 import base64
 import os
 import sys
+import uuid
 
 # append path of parent dir to have joeseln_backend as module
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
 import datetime
+import zlib
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Annotated, Any, List, Optional
 from urllib.parse import urlencode
 from uuid import UUID
-import zlib
 
 import jwt
 from fastapi import (
+    BackgroundTasks,
     Body,
     Depends,
     FastAPI,
@@ -26,7 +28,7 @@ from fastapi import (
     Request,
     Response,
     UploadFile,
-    status, BackgroundTasks
+    status,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -351,44 +353,43 @@ def search_in_labbook(
 
 
 
-@app.get("/api/labbooks/{labbook_pk}/export/", response_class=FileResponse)
+@app.get("/api/labbooks/{labbook_pk}/add_pdf_export_task/")
 async def export_labbook_content(
-        jwt: str,
-        labbook_pk: UUID,
-        containTypes: Optional[List[int]] = Query(None),
-        users: Optional[List[int]] = Query(None),
-        startTime: Optional[datetime.datetime] = None,
-        endTime: Optional[datetime.datetime] = None,
-        db: Session = Depends(get_db),
-        background_tasks: BackgroundTasks = None
+    labbook_pk: UUID,
+    containTypes: Optional[List[int]] = Query(None),
+    users: Optional[List[int]] = Query(None),
+    startTime: Optional[datetime.datetime] = None,
+    endTime: Optional[datetime.datetime] = None,
+    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks = None,
+    user: User = Depends(get_current_user),
 ):
-    export_filter = labbook_schemas.ExportFilter(containTypes=containTypes,
-                                                 users=users,
-                                                 startTime=startTime,
-                                                 endTime=endTime, )
-    dwldable_labbook = await export_labbook.get_export_data(
-        db=db, export_filter=export_filter, lb_pk=labbook_pk, jwt=jwt,
-        background_tasks=background_tasks
+    export_identifier = str(uuid.uuid4())
+    export_filter = labbook_schemas.ExportFilter(
+        containTypes=containTypes, users=users, startTime=startTime, endTime=endTime
     )
-    if dwldable_labbook is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
-    return dwldable_labbook
+    background_tasks.add_task(
+        export_labbook.get_export_data,
+        db=db,
+        user=user,
+        export_identifier=export_identifier,
+        export_filter=export_filter,
+        lb_pk=labbook_pk,
+        background_tasks=background_tasks,
+    )
+    return {"identifier": export_identifier}
 
 
-@app.get("/api/labbooks/{labbook_pk}/get_export_link/", response_model=export_link)
-def export_link_labbook(labbook_pk: UUID,
-                        db: Session = Depends(get_db),
-                        user: User = Depends(get_current_user)):
-    export_link = labbook_service.get_labbook_export_link(db=db,
-                                                          labbook_pk=labbook_pk,
-                                                          user=user)
-    if export_link is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
-    return export_link
+@app.get("/api/labbooks/get_export/{identifier}")
+def stream_export_response(
+    identifier: str,
+    user: User = Depends(get_current_user),
+    background_tasks: BackgroundTasks = None,
+):
+    return export_labbook.stream_export_response(identifier, background_tasks)
 
 
-@app.get("/api/labbooks/{labbook_pk}/export_as_zip/",
-         response_class=FileResponse)
+@app.get("/api/labbooks/{labbook_pk}/add_zip_export_task/")
 def export_labbook_content_zip(
         labbook_pk: UUID,
         containTypes: Optional[List[int]] = Query(None),
@@ -399,17 +400,20 @@ def export_labbook_content_zip(
         user: User = Depends(get_current_user),
         background_tasks: BackgroundTasks = None
 ):
+    export_identifier = str(uuid.uuid4())
     export_filter = labbook_schemas.ExportFilter(containTypes=containTypes,
                                                  users=users,
                                                  startTime=startTime,
                                                  endTime=endTime, )
-    zipped_labbook = export_labbook.create_export_zip_file(
-        db=db, labbook_pk=labbook_pk, user=user, export_filter=export_filter,
-        background_tasks=background_tasks
+    background_tasks.add_task(
+        export_labbook.create_export_zip_file,
+        db=db,
+        labbook_pk=labbook_pk,
+        user=user,
+        export_identifier=export_identifier,
+        export_filter=export_filter,
     )
-    if zipped_labbook is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
-    return zipped_labbook
+    return {"identifier": export_identifier}
 
 
 @app.post("/api/labbooks/", response_model=labbook_schemas.Labbook)

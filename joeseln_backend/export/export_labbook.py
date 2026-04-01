@@ -5,15 +5,14 @@ import os
 import tempfile
 import zipfile
 
-from fastapi import BackgroundTasks
-from fastapi.responses import FileResponse
+from cachetools import Cache
+from fastapi import BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import async_playwright
-from pypdf import PdfWriter, PdfReader
+from pypdf import PdfReader, PdfWriter
 from sqlalchemy.orm import Session
 
-from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.conf.base_conf import PLAYWRIGHT_WS
 from joeseln_backend.services.labbook.labbook_schemas import ExportFilter
 from joeseln_backend.services.labbook.labbook_service import (
@@ -51,19 +50,25 @@ def get_base64_image(image_path):
     return encoded
 
 
-async def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter,
-                          background_tasks: BackgroundTasks):
-    user = get_user_from_jwt(db=db, token=jwt)
-    if user is None:
-        return
+pending_export = Cache(maxsize=128)
+
+
+async def get_export_data(
+    db,
+    lb_pk,
+    user,
+    export_identifier: str,
+    export_filter: ExportFilter,
+    background_tasks: BackgroundTasks,
+):
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, '', 'templates')
     env = Environment(loader=FileSystemLoader(templates_dir))
     template = env.get_template('labbook.jinja2')
     lb = get_labbook_for_export(db=db, labbook_pk=lb_pk)
-    elems = get_lb_childelements_for_export(db=db, labbook_pk=lb_pk,
-                                            access_token=jwt, user=user,
-                                            as_export=True)
+    elems = get_lb_childelements_for_export(
+        db=db, labbook_pk=lb_pk, access_token="", user=user, as_export=True
+    )
 
     contain_types = export_filter.containTypes or []
 
@@ -192,26 +197,34 @@ async def get_export_data(db, lb_pk, jwt, export_filter: ExportFilter,
     with open(merged_tmp.name, "wb") as f:
         writer.write(f)
 
+    pending_export[export_identifier] = merged_tmp.name
+
     # schedule cleanup of all tempfiles
     for path in pdf_parts:
         background_tasks.add_task(remove_file, path)
-    background_tasks.add_task(remove_file, merged_tmp.name)
 
-    # stream the merged PDF
+
+def stream_export_response(identifier, background_tasks: BackgroundTasks):
+    path = pending_export.get(identifier)
+    if not path or not os.path.exists(path):
+        raise HTTPException(status_code=204)
+
+    pending_export.pop(identifier)
+    background_tasks.add_task(remove_file, path)
+
     def iterfile():
-        with open(merged_tmp.name, "rb") as f:
+        with open(path, "rb") as f:
             while chunk := f.read(1024 * 1024 * 4):
                 yield chunk
 
     return StreamingResponse(
         iterfile(),
-        media_type="application/pdf",
-        headers={"Content-Disposition": "inline; filename=labbook_export.pdf"}
     )
 
-def create_export_zip_file(db: Session, labbook_pk, user,
-                           export_filter: ExportFilter,
-                           background_tasks: BackgroundTasks):
+
+def create_export_zip_file(
+    db: Session, labbook_pk, user, export_identifier: str, export_filter: ExportFilter
+):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return None
 
@@ -356,14 +369,8 @@ def create_export_zip_file(db: Session, labbook_pk, user,
         zip_archive.writestr(zinfo_or_arcname=f'{lb.title}.json',
                              data=json.dumps(elems))
 
-    # Schedule deletion after response is sent
-    background_tasks.add_task(remove_file, tmp_path)
+    pending_export[export_identifier] = tmp_path
 
-    return FileResponse(
-        tmp_path,
-        media_type="application/zip",
-        filename=f"{user.username}.zip"
-    )
 
 def remove_file(path: str):
     try:
