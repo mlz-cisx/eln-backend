@@ -353,7 +353,7 @@ def search_in_labbook(
 
 
 
-@app.get("/api/labbooks/{labbook_pk}/add_pdf_export_task/")
+@app.get("/api/labbooks/{labbook_pk}/add_pdf_export_task")
 async def export_labbook_content(
     labbook_pk: UUID,
     containTypes: Optional[List[int]] = Query(None),
@@ -389,7 +389,7 @@ def stream_export_response(
     return export_labbook.stream_export_response(identifier, background_tasks)
 
 
-@app.get("/api/labbooks/{labbook_pk}/add_zip_export_task/")
+@app.get("/api/labbooks/{labbook_pk}/add_zip_export_task")
 def export_labbook_content_zip(
         labbook_pk: UUID,
         containTypes: Optional[List[int]] = Query(None),
