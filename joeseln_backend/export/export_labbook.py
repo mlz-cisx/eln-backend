@@ -123,6 +123,8 @@ async def get_export_data(
         async def process_chunk(chunk):
             page = await browser.new_page()
 
+            page.set_default_timeout(300000)
+
             data = {'instance': lb, 'labbook_child_elements': chunk}
             html = template.render(data)
 
