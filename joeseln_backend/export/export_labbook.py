@@ -120,7 +120,9 @@ async def get_export_data(
     async with async_playwright() as p:
         browser = await p.chromium.connect(PLAYWRIGHT_WS)
 
-        async def process_chunk(chunk):
+        pdf_parts = []
+
+        for chunk in chunks:
             page = await browser.new_page()
 
 
@@ -129,54 +131,50 @@ async def get_export_data(
 
             await page.set_content(html)
 
-            canvas_chunk = [
-                {
-                    "id": str(elem.child_object.id),
-                    "content": elem.child_object.canvas_content,
-                }
-                for elem in chunk
-                if elem.child_object_content_type == 40
-            ]
-            await page.evaluate(
-                """
-            async (chunk) => {
-                const loadFabricCanvas = (elem) => {
-                    return new Promise(resolve => {
-                        window.fabricCanvas = new fabric.Canvas(elem.id, {
-                            width: 1000,
-                            height: 750,
-                            backgroundColor: '#F4F4F4'
-                        });
+            # inject canvas content for this chunk only
+            await asyncio.gather(
+                *[
+                    page.evaluate(
+                        f"""
+                    (canvas_json) => {{
+                        return new Promise(resolve => {{
+                            window.fabricCanvas = new fabric.Canvas('{elem.child_object.id}', {{
+                                width: 1000,
+                                height: 750,
+                                backgroundColor: '#F4F4F4'
+                            }});
 
-                        const canvas = JSON.parse(elem.content);
-                        window.fabricCanvas.loadFromJSON(canvas, () => {
-                            const canvasWidth = window.fabricCanvas.getWidth();
-                            const canvasHeight = window.fabricCanvas.getHeight();
+                            const canvas = JSON.parse(canvas_json);
+                            window.fabricCanvas.loadFromJSON(canvas, () => {{
+                                const canvasWidth = window.fabricCanvas.getWidth();
+                                const canvasHeight = window.fabricCanvas.getHeight();
 
-                            const scaleX = 1000 / canvasWidth;
-                            const scaleY = 750 / canvasHeight;
-                            const scale = Math.min(scaleX, scaleY);
+                                const scaleX = 1000 / canvasWidth;
+                                const scaleY = 750 / canvasHeight;
+                                const scale = Math.min(scaleX, scaleY);
 
-                            window.fabricCanvas.getObjects().forEach(obj => {
-                                obj.scaleX *= scale;
-                                obj.scaleY *= scale;
-                                obj.left *= scale;
-                                obj.top *= scale;
-                                obj.setCoords();
-                            });
-                            window.fabricCanvas.requestRenderAll();
-                            resolve();
-                        });
-                    });
-                };
-                const promises = chunk.map(loadFabricCanvas);
-                await Promise.all(promises);
-            }""",
-                canvas_chunk,
+                                window.fabricCanvas.getObjects().forEach(obj => {{
+                                    obj.scaleX *= scale;
+                                    obj.scaleY *= scale;
+                                    obj.left *= scale;
+                                    obj.top *= scale;
+                                    obj.setCoords();
+                                }});
+                                window.fabricCanvas.requestRenderAll();
+                                resolve();
+                            }});
+                        }});
+                    }}""",
+                        elem.child_object.canvas_content,
+                    )
+                    for elem in chunk
+                    if elem.child_object_content_type == 40
+                ]
             )
+
             await wait_for_mathjax(page)
 
-            pdf_bytes = await page.pdf(format="A4", print_background=False)
+            pdf_bytes = await page.pdf(format="A4")
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
             tmp.write(pdf_bytes)
             tmp.flush()
@@ -184,9 +182,6 @@ async def get_export_data(
             pdf_parts.append(tmp.name)
 
             await page.close()
-
-        pdf_parts = []
-        await asyncio.gather(*(process_chunk(chunk) for chunk in chunks))
 
         await browser.close()
 
