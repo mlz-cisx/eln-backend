@@ -8,6 +8,9 @@ DB_PORT = int(os.getenv("DB_PORT", "5432"))
 DB_ADDR = os.getenv("DB_ADDR")
 
 PLAYWRIGHT_WS = os.getenv("PLAYWRIGHT_WS")
+PLAYWRIGHT_MEM = int(os.getenv("PLAYWRIGHT_MEMORY_LIMIT_MB", "1024"))
+PLAYWRIGHT_CPU = int(os.getenv("PLAYWRIGHT_CPU_LIMIT", "1"))
+
 
 # Initial users
 INITIAL_ADMIN = os.getenv("INITIAL_ADMIN", "admin")

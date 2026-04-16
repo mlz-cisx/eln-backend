@@ -7,6 +7,8 @@ DB_ADDR = 'localhost'
 
 # playwright for export
 PLAYWRIGHT_WS = 'ws://127.0.0.1:3000/'
+PLAYWRIGHT_MEM = 1024
+PLAYWRIGHT_CPU= 1
 
 # initial users should not be changed
 INITIAL_ADMIN = 'admin'
@@ -28,7 +30,7 @@ FILES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/files/'
 URL_BASE_PATH = 'http://localhost:8010/api/'
 
 # Frontend url
-APP_BASE_PATH = 'http://localhost:4500/'
+APP_BASE_PATH = 'http://daphneopc01.office.frm2:4500/'
 
 # WS ELN URL
 WS_URL = 'ws://localhost:4501/ws/'

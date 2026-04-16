@@ -416,6 +416,33 @@ def export_labbook_content_zip(
     return {"identifier": export_identifier}
 
 
+@app.get("/api/labbooks/{labbook_pk}/add_lxf_export_task")
+def export_labbook_content_lxf(
+        labbook_pk: UUID,
+        containTypes: Optional[List[int]] = Query(None),
+        users: Optional[List[int]] = Query(None),
+        startTime: Optional[datetime.datetime] = None,
+        endTime: Optional[datetime.datetime] = None,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user),
+        background_tasks: BackgroundTasks = None
+):
+    export_identifier = str(uuid.uuid4())
+    export_filter = labbook_schemas.ExportFilter(containTypes=containTypes,
+                                                 users=users,
+                                                 startTime=startTime,
+                                                 endTime=endTime, )
+    background_tasks.add_task(
+        export_labbook.get_lxf_export_data,
+        db=db,
+        labbook_pk=labbook_pk,
+        user=user,
+        export_identifier=export_identifier,
+        export_filter=export_filter,
+    )
+    return {"identifier": export_identifier}
+
+
 @app.post("/api/labbooks/", response_model=labbook_schemas.Labbook)
 def create_labbook(labbook: labbook_schemas.LabbookCreate,
                    db: Session = Depends(get_db),
