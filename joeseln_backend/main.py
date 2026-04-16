@@ -1364,6 +1364,37 @@ async def clone_file(
     return db_file
 
 
+@app.post("/api/files/lxf_clone/", response_model=file_schemas.File)
+async def lxf_clone_file(
+        payload: file_schemas.FileClonePayload,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user),
+
+):
+    # Decode file bytes
+    file_contents = (
+        base64.b64decode(payload.path_b64)
+        if payload.path_b64 else None
+    )
+
+    if payload.info_gzip_b64:
+        info_bytes = base64.b64decode(payload.info_gzip_b64)
+        info_text = zlib.decompress(info_bytes, 16 + zlib.MAX_WBITS).decode(
+            "utf-8")
+    else:
+        # If frontend sends plain text instead of gzip
+        info_text = payload.info
+
+    db_file = file_service.clone_lxf_file(
+        db=db,
+        contents=file_contents,
+        info=info_text,
+        user=user
+    )
+
+    return db_file
+
+
 @app.get("/api/files/",
          response_model=list[file_schemas.FileWithLbTitle])
 def read_files(

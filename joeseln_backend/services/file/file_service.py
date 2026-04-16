@@ -1,4 +1,6 @@
+import base64
 import datetime
+import io
 import json
 import pathlib
 import sys
@@ -6,6 +8,9 @@ from copy import deepcopy
 
 import pandas as pd
 from fastapi.responses import FileResponse
+from pdf2image import convert_from_bytes
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 from spec2nexus import spec
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -617,6 +622,64 @@ def clone_file(db, contents, info, user):
     return ret_file
 
 
+def clone_lxf_file(db, contents, info, user):
+    if not user.admin:
+        return
+    info = json.loads(info)
+
+    def detect_pdf(contents: bytes) -> bool:
+        return contents.startswith(b"%PDF-")
+
+    mime_type = "application/pdf" if detect_pdf(
+        contents) else "application/octet-stream"
+    file_size = len(contents)
+
+    try:
+        b64, size = pdf_bytes_to_base64_image(contents)
+        html_snippet = build_html_with_image(b64, size)
+
+        conversion_failed = False
+        conversion_error = None
+
+    except Exception as e:
+        html_snippet = """
+            <p id="pdf_image_error" style="color: red;">
+                Unable to render PDF preview.
+            </p>
+        """
+        conversion_failed = True
+        conversion_error = e
+
+    db_file = create_file(db=db,
+                          title=info['title'],
+                          name=f'{info["uuid"]}.pdf',
+                          file_size=file_size,
+                          description=sanitize_html(html_snippet),
+                          mime_type=mime_type,
+                          user=user)
+    if not db_file:
+        return None
+    file_path = f'{FILES_BASE_PATH}{db_file.path}'
+    # Write either the original PDF or a warning PDF
+    if not conversion_failed:
+        # Write original PDF bytes
+        with open(file_path, 'wb') as file:
+            file.write(contents)
+    else:
+        # Write a valid PDF containing the warning message
+        create_warning_pdf(file_path, f"PDF error: {str(conversion_error)}")
+
+    db.close()
+
+    ret_file = build_download_url_with_token(file_to_process=deepcopy(db_file),
+                                             user=user)
+
+    ret_file.created_by = user
+    ret_file.last_modified_by = user
+
+    return ret_file
+
+
 def build_download_url_with_token(file_to_process, user):
     access_token_expires = security.timedelta(
         minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -1120,3 +1183,45 @@ def add_spec_scan_as_file_to_labbook(db, labbook_pk, file_pk, user, position_y):
         logger.error(e)
 
     return db_labbook_elem
+
+
+def pdf_bytes_to_base64_image(pdf_bytes, dpi=200):
+    # Convert PDF bytes to PIL image(s)
+    pages = convert_from_bytes(pdf_bytes, dpi=dpi)
+    img = pages[0]  # first (or only) page
+
+    # Convert image to PNG bytes
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    img_bytes = buffer.getvalue()
+
+    # Encode to base64 string
+    return base64.b64encode(img_bytes).decode("utf-8"), img.size
+
+
+def build_html_with_image(base64_str, img_size, fixed_width_px=600,
+                          element_id="pdf_image"):
+    orig_w, orig_h = img_size
+    ratio = orig_h / orig_w
+    scaled_height = int(fixed_width_px * ratio)
+
+    return f"""
+    <img
+        id="{element_id}"
+        src="data:image/png;base64,{base64_str}"
+        width="{fixed_width_px}"
+        height="{scaled_height}"
+        style="object-fit: contain;"
+    />
+    """
+
+
+def create_warning_pdf(path, message="Unable to render PDF preview."):
+    """
+    Creates a minimal 1‑page PDF containing a warning message.
+    """
+    c = canvas.Canvas(path, pagesize=letter)
+    c.setFont("Helvetica", 12)
+    c.drawString(72, 720, message)
+    c.showPage()
+    c.save()
