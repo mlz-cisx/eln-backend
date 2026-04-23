@@ -66,10 +66,13 @@ async def get_export_data(
     export_filter: ExportFilter,
     background_tasks: BackgroundTasks,
 ):
+    # ----------------------------
+    # Load template + fetch data
+    # ----------------------------
     root = os.path.dirname(os.path.abspath(__file__))
-    templates_dir = os.path.join(root, '', 'templates')
-    env = Environment(loader=FileSystemLoader(templates_dir))
-    template = env.get_template('labbook.jinja2')
+    env = Environment(loader=FileSystemLoader(os.path.join(root, "templates")))
+    template = env.get_template("labbook.jinja2")
+
     lb = get_labbook_for_export(db=db, labbook_pk=lb_pk)
     elems = get_lb_childelements_for_export(
         db=db, labbook_pk=lb_pk, access_token="", user=user, as_export=True
@@ -118,96 +121,155 @@ async def get_export_data(
             for elem in elems
             if elem.child_object.created_at < filter_end
         ]
-    # --- chunking ---
+    # ----------------------------
+    # Chunking
+    # ----------------------------
     CHUNK_SIZE = 20
     chunks = [elems[i:i + CHUNK_SIZE] for i in range(0, len(elems), CHUNK_SIZE)]
 
-    async with async_playwright() as p:
-        browser = await p.chromium.connect(PLAYWRIGHT_WS)
+    # ----------------------------
+    # Kubernetes-aware pool sizing
+    # ----------------------------
+    def compute_k8s_pool_sizes():
+        browsers = max(1, min(3, PLAYWRIGHT_MEM // 500))
+        browsers = min(browsers, PLAYWRIGHT_CPU)
+        pages = max(1, min(2 * browsers, 6))
+        return browsers, pages
 
-        pdf_parts = []
+    browsers_count, pages_count = compute_k8s_pool_sizes()
+    PAGE_LIMIT = asyncio.Semaphore(pages_count)
 
-        for chunk in chunks:
-            page = await browser.new_page()
+    # ----------------------------
+    # Start Playwright + browsers
+    # ----------------------------
+    playwright = await async_playwright().start()
+    browsers = [
+        await playwright.chromium.connect(PLAYWRIGHT_WS)
+        for _ in range(browsers_count)
+    ]
 
+    # ----------------------------
+    # Queue setup
+    # ----------------------------
+    task_queue = asyncio.Queue()
+    results = []  # list of {"pdf_path": ..., "index": ...}
 
-            data = {'instance': lb, 'labbook_child_elements': chunk}
-            html = template.render(data)
+    # Pre-render HTML for each chunk (cheap)
+    for idx, chunk in enumerate(chunks):
+        html = template.render({"instance": lb, "labbook_child_elements": chunk})
+        await task_queue.put((idx, chunk, html))
 
-            await page.set_content(html)
+    # Add poison pills
+    for _ in browsers:
+        await task_queue.put(None)
 
-            # inject canvas content for this chunk only
-            await asyncio.gather(
-                *[
-                    page.evaluate(
-                        f"""
-                    (canvas_json) => {{
-                        return new Promise(resolve => {{
-                            window.fabricCanvas = new fabric.Canvas('{elem.child_object.id}', {{
-                                width: 1000,
-                                height: 750,
-                                backgroundColor: '#F4F4F4'
-                            }});
+    # ----------------------------
+    # Worker
+    # ----------------------------
+    async def worker(browser):
+        while True:
+            item = await task_queue.get()
+            if item is None:
+                task_queue.task_done()
+                break
 
-                            const canvas = JSON.parse(canvas_json);
-                            window.fabricCanvas.loadFromJSON(canvas, () => {{
-                                const canvasWidth = window.fabricCanvas.getWidth();
-                                const canvasHeight = window.fabricCanvas.getHeight();
+            idx, chunk, html = item
 
-                                const scaleX = 1000 / canvasWidth;
-                                const scaleY = 750 / canvasHeight;
-                                const scale = Math.min(scaleX, scaleY);
+            async with PAGE_LIMIT:
+                page = await browser.new_page()
+                await page.set_content(html)
 
-                                window.fabricCanvas.getObjects().forEach(obj => {{
-                                    obj.scaleX *= scale;
-                                    obj.scaleY *= scale;
-                                    obj.left *= scale;
-                                    obj.top *= scale;
-                                    obj.setCoords();
+                # inject canvas content for this chunk only
+                await asyncio.gather(
+                    *[
+                        page.evaluate(
+                            f"""
+                        (canvas_json) => {{
+                            return new Promise(resolve => {{
+                                window.fabricCanvas = new fabric.Canvas('{elem.child_object.id}', {{
+                                    width: 1000,
+                                    height: 750,
+                                    backgroundColor: '#F4F4F4'
                                 }});
-                                window.fabricCanvas.requestRenderAll();
-                                resolve();
+
+                                const canvas = JSON.parse(canvas_json);
+                                window.fabricCanvas.loadFromJSON(canvas, () => {{
+                                    const canvasWidth = window.fabricCanvas.getWidth();
+                                    const canvasHeight = window.fabricCanvas.getHeight();
+
+                                    const scaleX = 1000 / canvasWidth;
+                                    const scaleY = 750 / canvasHeight;
+                                    const scale = Math.min(scaleX, scaleY);
+
+                                    window.fabricCanvas.getObjects().forEach(obj => {{
+                                        obj.scaleX *= scale;
+                                        obj.scaleY *= scale;
+                                        obj.left *= scale;
+                                        obj.top *= scale;
+                                        obj.setCoords();
+                                    }});
+                                    window.fabricCanvas.requestRenderAll();
+                                    resolve();
+                                }});
                             }});
-                        }});
-                    }}""",
-                        elem.child_object.canvas_content,
-                    )
-                    for elem in chunk
-                    if elem.child_object_content_type == 40
-                ]
-            )
+                        }}""",
+                            elem.child_object.canvas_content,
+                        )
+                        for elem in chunk
+                        if elem.child_object_content_type == 40
+                    ]
+                )
 
-            await wait_for_mathjax(page)
 
-            pdf_bytes = await page.pdf(format="A4")
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-            tmp.write(pdf_bytes)
-            tmp.flush()
-            tmp.close()
-            pdf_parts.append(tmp.name)
 
-            await page.close()
+                await wait_for_mathjax(page)
 
-        await browser.close()
+                pdf_bytes = await page.pdf(format="A4")
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+                tmp.write(pdf_bytes)
+                tmp.close()
 
-    # merge PDFs into a tempfile
+                results.append({"index": idx, "pdf_path": tmp.name})
+                await page.close()
+
+            task_queue.task_done()
+
+    # ----------------------------
+    # Run workers
+    # ----------------------------
+    workers = [asyncio.create_task(worker(b)) for b in browsers]
+    await task_queue.join()
+    for w in workers:
+        await w
+
+    # ----------------------------
+    # Cleanup browsers
+    # ----------------------------
+    for b in browsers:
+        await b.close()
+    await playwright.stop()
+
+    # ----------------------------
+    # Merge PDFs
+    # ----------------------------
     merged_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     merged_tmp.close()
-    writer = PdfWriter()
 
-    for path in pdf_parts:
-        reader = PdfReader(path)
-        for page in reader.pages:
-            writer.add_page(page)
+    writer = PdfWriter()
+    for item in sorted(results, key=lambda x: x["index"]):
+        reader = PdfReader(item["pdf_path"])
+        for p in reader.pages:
+            writer.add_page(p)
 
     with open(merged_tmp.name, "wb") as f:
         writer.write(f)
 
     pending_export[export_identifier] = merged_tmp.name
 
-    # schedule cleanup of all tempfiles
-    for path in pdf_parts:
-        background_tasks.add_task(remove_file, path)
+    # Cleanup temp files
+    for item in results:
+        background_tasks.add_task(remove_file, item["pdf_path"])
+
 
 
 def stream_export_response(identifier, background_tasks: BackgroundTasks):
