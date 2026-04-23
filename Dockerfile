@@ -16,6 +16,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
   --mount=from=uv,source=/uv,target=./uv \
   ./uv pip install  -r requirements.txt
 
+RUN apt-get update && apt-get install -y poppler-utils
+
 # Copy the rest of the application files
 COPY . .
 
