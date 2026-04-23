@@ -7,6 +7,7 @@ import tempfile
 import uuid
 import zipfile
 from datetime import timezone
+from functools import wraps
 from io import BytesIO
 
 from cachetools import Cache
@@ -17,8 +18,8 @@ from playwright.async_api import async_playwright
 from pypdf import PdfReader, PdfWriter
 from sqlalchemy.orm import Session
 
-from joeseln_backend.conf.base_conf import PLAYWRIGHT_WS, PLAYWRIGHT_MEM, \
-    PLAYWRIGHT_CPU
+from joeseln_backend.conf.base_conf import PLAYWRIGHT_CPU, PLAYWRIGHT_MEM, PLAYWRIGHT_WS
+from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.labbook.labbook_schemas import ExportFilter
 from joeseln_backend.services.labbook.labbook_service import (
     check_for_labbook_access,
@@ -58,6 +59,20 @@ def get_base64_image(image_path):
 pending_export = Cache(maxsize=128)
 
 
+def handle_export_exceptions(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        export_identifier = kwargs.get("export_identifier", "unknown_identifier")
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            logger.exception(f"Error in export {export_identifier}: {e}")
+            pending_export[export_identifier] = "err"
+
+    return wrapper
+
+
+@handle_export_exceptions
 async def get_export_data(
     db,
     lb_pk,
@@ -144,7 +159,7 @@ async def get_export_data(
     # ----------------------------
     playwright = await async_playwright().start()
     browsers = [
-        await playwright.chromium.connect(PLAYWRIGHT_WS)
+        await playwright.chromium.connect(PLAYWRIGHT_WS, timeout=1000)
         for _ in range(browsers_count)
     ]
 
@@ -271,9 +286,12 @@ async def get_export_data(
         background_tasks.add_task(remove_file, item["pdf_path"])
 
 
-
 def stream_export_response(identifier, background_tasks: BackgroundTasks):
     path = pending_export.get(identifier)
+
+    if path == "err":
+        raise HTTPException(status_code=500)
+
     if not path or not os.path.exists(path):
         raise HTTPException(status_code=204)
 
@@ -290,6 +308,7 @@ def stream_export_response(identifier, background_tasks: BackgroundTasks):
     )
 
 
+@handle_export_exceptions
 def create_export_zip_file(
     db: Session, labbook_pk, user, export_identifier: str, export_filter: ExportFilter
 ):
@@ -447,268 +466,7 @@ def remove_file(path: str):
         pass
 
 
-async def simple_get_lxf_export_data(
-        db,
-        labbook_pk,
-        user,
-        export_identifier: str,
-        export_filter: ExportFilter,
-):
-    root = os.path.dirname(os.path.abspath(__file__))
-    templates_dir = os.path.join(root, '', 'templates')
-    env = Environment(loader=FileSystemLoader(templates_dir))
-
-    elems = get_lb_childelements_for_export(
-        db=db, labbook_pk=labbook_pk, access_token="", user=user, as_export=True
-    )
-
-    contain_types = export_filter.containTypes or []
-
-    # Remove 70 for filtering logic
-    types = [t for t in contain_types if t != 70]
-
-    # Apply filtering if any non-70 types remain
-    if types:
-        elems = [elem for elem in elems if
-                 elem.child_object_content_type in types]
-
-    # Clear relations only if user did NOT select comments
-    if 70 not in contain_types:
-        for elem in elems:
-            elem.relations.clear()
-
-    # filter by  user
-    if export_filter.users:
-        elems = [elem for elem in elems if
-                 elem.created_by in export_filter.users]
-    # filter by startTime endTime
-    if export_filter.startTime and export_filter.startTime.tzinfo is not None:
-        filter_start = export_filter.startTime.replace(tzinfo=None)
-    else:
-        filter_start = export_filter.startTime
-
-    if export_filter.endTime and export_filter.endTime.tzinfo is not None:
-        filter_end = export_filter.endTime.replace(tzinfo=None)
-    else:
-        filter_end = export_filter.endTime
-
-    if filter_start:
-        elems = [
-            elem
-            for elem in elems
-            if elem.child_object.created_at > filter_start
-        ]
-
-    if filter_end:
-        elems = [
-            elem
-            for elem in elems
-            if elem.child_object.created_at < filter_end
-        ]
-
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
-    tmp_path = tmp.name
-    tmp.close()
-
-    manifest = {
-        "version": "1.0"
-    }
-    manifest_pages = []
-
-    with zipfile.ZipFile(
-            file=tmp_path,
-            mode="w",
-            compression=zipfile.ZIP_DEFLATED,
-            compresslevel=9,
-    ) as zip_archive:
-
-        zip_archive.writestr(zinfo_or_arcname='pages/', data='')
-
-        for elem in elems:
-
-            # note
-            if elem.child_object_content_type == 30:
-                template = env.get_template('note.jinja2')
-                data = {'instance': elem.child_object,
-                        'note_relations': elem.relations}
-                html = template.render(data)
-
-                async with async_playwright() as p:
-                    # launch browser
-                    browser = await p.chromium.connect(PLAYWRIGHT_WS)
-                    page = await browser.new_page()
-                    # render final pdf with mathjax support
-                    await page.set_content(html)
-                    await wait_for_mathjax(page)
-                    pdf_buffer = await page.pdf(format="A4")
-                    await browser.close()
-
-                # --- SPLIT MULTI-PAGE PDF INTO SINGLE-PAGE PDFs ---
-                reader = PdfReader(BytesIO(pdf_buffer))
-
-                for i, page in enumerate(reader.pages):
-                    page_identifier = str(uuid.uuid4())
-                    writer = PdfWriter()
-                    writer.add_page(page)
-
-                    single_page_pdf = BytesIO()
-                    writer.write(single_page_pdf)
-                    single_page_pdf.seek(0)
-
-                    zip_archive.writestr(
-                        f"pages/{page_identifier}.pdf",
-                        single_page_pdf.read()
-                    )
-
-                    continued = f" (continued page {i+1})" if i > 0 else ""
-
-                    manifest_pages.append(
-                        {
-                            'uuid': page_identifier,
-                            'title': f'{elem.child_object.subject}{continued}',
-                            'created_at': (
-                                elem.child_object.created_at).replace(
-                                tzinfo=timezone.utc).replace(
-                                microsecond=0).isoformat().replace("+00:00",
-                                                                   "Z")
-                        }
-                    )
-
-            # picture
-            if elem.child_object_content_type == 40:
-                template = env.get_template('picture.jinja2')
-
-                async with async_playwright() as p:
-                    # launch browser
-                    browser = await p.chromium.connect(PLAYWRIGHT_WS)
-                    page = await browser.new_page()
-
-                    # apply export template
-                    data = {'instance': elem.child_object,
-                            'picture_relations': elem.relations}
-                    html = template.render(data)
-                    await page.set_content(html)
-                    canvas_id = "c"
-                    await page.evaluate(
-                        f"""
-                        (canvas_json) => {{
-                            return new Promise(resolve => {{
-                                window.fabricCanvas = new fabric.Canvas('{canvas_id}', {{
-                                    width: 1000,
-                                    height: 750,
-                                    backgroundColor: '#F4F4F4'
-                                }});
-
-                                const canvas = JSON.parse(canvas_json);
-                                window.fabricCanvas.loadFromJSON(canvas, () => {{
-                                    const canvasWidth = window.fabricCanvas.getWidth();
-                                    const canvasHeight = window.fabricCanvas.getHeight();
-
-                                    const scaleX = 1000 / canvasWidth;
-                                    const scaleY = 750 / canvasHeight;
-                                    const scale = Math.min(scaleX, scaleY);
-
-                                    window.fabricCanvas.getObjects().forEach(obj => {{
-                                        obj.scaleX *= scale;
-                                        obj.scaleY *= scale;
-                                        obj.left *= scale;
-                                        obj.top *= scale;
-                                        obj.setCoords();
-                                    }});
-                                    window.fabricCanvas.requestRenderAll();
-                                    resolve();
-                                }});
-                            }});
-                        }}""",
-                        elem.child_object.canvas_content,
-                    )
-
-                    pdf_buffer = await page.pdf(format="A4")
-                    await browser.close()
-
-                # --- SPLIT MULTI-PAGE PDF INTO SINGLE-PAGE PDFs ---
-                reader = PdfReader(BytesIO(pdf_buffer))
-
-                for i, page in enumerate(reader.pages):
-                    page_identifier = str(uuid.uuid4())
-                    writer = PdfWriter()
-                    writer.add_page(page)
-
-                    single_page_pdf = BytesIO()
-                    writer.write(single_page_pdf)
-                    single_page_pdf.seek(0)
-
-                    zip_archive.writestr(
-                        f"pages/{page_identifier}.pdf",
-                        single_page_pdf.read()
-                    )
-                    continued = f" (continued page {i+1})" if i > 0 else ""
-
-                    manifest_pages.append(
-                        {
-                            'uuid': page_identifier,
-                            'title': f'{elem.child_object.title}{continued}',
-                            'created_at': (
-                                elem.child_object.created_at).replace(
-                                tzinfo=timezone.utc).replace(
-                                microsecond=0).isoformat().replace("+00:00",
-                                                                   "Z")
-                        }
-                    )
-
-            # file
-            if elem.child_object_content_type == 50:
-                template = env.get_template('file.jinja2')
-                data = {'instance': elem.child_object,
-                        'file_relations': elem.relations}
-                html = template.render(data)
-
-                async with async_playwright() as p:
-                    # launch browser
-                    browser = await p.chromium.connect(PLAYWRIGHT_WS)
-                    page = await browser.new_page()
-                    await page.set_content(html)
-                    pdf_buffer = await page.pdf(format="A4")
-                    await browser.close()
-
-                # --- SPLIT MULTI-PAGE PDF INTO SINGLE-PAGE PDFs ---
-                reader = PdfReader(BytesIO(pdf_buffer))
-
-                for i, page in enumerate(reader.pages):
-                    page_identifier = str(uuid.uuid4())
-                    writer = PdfWriter()
-                    writer.add_page(page)
-
-                    single_page_pdf = BytesIO()
-                    writer.write(single_page_pdf)
-                    single_page_pdf.seek(0)
-
-                    zip_archive.writestr(
-                        f"pages/{page_identifier}.pdf",
-                        single_page_pdf.read()
-                    )
-                    continued = f" (continued page {i+1})" if i > 0 else ""
-
-                    manifest_pages.append(
-                        {
-                            'uuid': page_identifier,
-                            'title': f'{elem.child_object.title}{continued}',
-                            'created_at': (
-                                elem.child_object.created_at).replace(
-                                tzinfo=timezone.utc).replace(
-                                microsecond=0).isoformat().replace("+00:00",
-                                                                   "Z")
-                        }
-                    )
-
-        manifest['pages'] = manifest_pages
-        zip_archive.writestr(zinfo_or_arcname='manifest.json',
-                             data=json.dumps(manifest, indent=2,
-                                             ensure_ascii=False))
-
-    pending_export[export_identifier] = tmp_path
-
-
+@handle_export_exceptions
 async def get_lxf_export_data(
         db,
         labbook_pk,
@@ -804,7 +562,7 @@ async def get_lxf_export_data(
     playwright = await async_playwright().start()
 
     browsers = [
-        await playwright.chromium.connect(PLAYWRIGHT_WS)
+        await playwright.chromium.connect(PLAYWRIGHT_WS, timeout=1000)
         for _ in range(browsers_count)
     ]
 
