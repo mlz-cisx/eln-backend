@@ -11,7 +11,7 @@
 
 - Install required packages:
   ```bash
-  apt install python3-pip 
+  apt install python3-pip poppler-utils
   ```
 - Create a virtual environment (e.g. `venv`)
 - Install dependencies from `requirements.txt`
