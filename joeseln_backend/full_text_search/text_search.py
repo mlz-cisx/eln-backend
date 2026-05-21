@@ -45,7 +45,12 @@ def search_with_model(db, model, search_text, user, typesense: Client):
     result_array = []
     # query for labbook_id that user has access right
     user_groups = get_user_groups(db=db, username=user.username)
-    if LABBOOK_QUERY_MODE == "match":
+
+    lbs = []
+    if user.admin:
+        lbs = db.query(models.Labbook).all()
+
+    if LABBOOK_QUERY_MODE == "match" and user_groups:
         lbs = (
             db.query(models.Labbook)
             .filter(
@@ -54,7 +59,7 @@ def search_with_model(db, model, search_text, user, typesense: Client):
             )
             .all()
         )
-    else:
+    elif LABBOOK_QUERY_MODE == "equal" and user_groups:
         lbs = (
             db.query(models.Labbook)
             .filter(
