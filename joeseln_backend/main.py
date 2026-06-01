@@ -746,6 +746,7 @@ def read_notes(
     offset: int = Query(None),
     search: str = Query(None),
     deleted: bool = Query(None),
+    labook_id: UUID = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -1033,6 +1034,7 @@ def read_pictures(
     offset: int = Query(None),
     search: str = Query(None),
     deleted: bool = Query(None),
+    labbook_id: UUID = Query(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):

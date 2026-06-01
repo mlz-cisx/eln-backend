@@ -65,37 +65,58 @@ from joeseln_backend.ws.ws_client import transmit
 
 def get_all_files(db: Session, params, user):
     # print(params.get('ordering'))
-    order_params = db_ordering.get_order_params(ordering=params.get('ordering'))
+    order_params = db_ordering.get_order_params(ordering=params.get("ordering"))
+    labbook_id = params.get("labbook_id")
+    additional_filters = []
+    if labbook_id is not None:
+        additional_filters.append(models.Labbookchildelement.labbook_id == labbook_id)
+
 
     if user.admin:
-        if params.get('search'):
-            search_text = params.get('search')
-            files = db.query(models.File).filter_by(
-                deleted=bool(params.get('deleted'))).join(
-                models.Labbookchildelement,
-                models.File.elem_id ==
-                models.Labbookchildelement.id).join(models.Labbook,
-                                                    models.Labbook.id ==
-                                                    models.Labbookchildelement.labbook_id). \
-                filter(or_
-                       (models.Labbook.title.ilike(f'%{search_text}%'),
-                        models.File.title.ilike(f'%{search_text}%')),
-                       models.Labbook.deleted == False).order_by(
-                text('file.' + order_params)).offset(
-                params.get('offset')).limit(
-                params.get('limit')).all()
+        if params.get("search"):
+            search_text = params.get("search")
+            files = (
+                db.query(models.File)
+                .filter_by(deleted=bool(params.get("deleted")))
+                .join(
+                    models.Labbookchildelement,
+                    models.File.elem_id == models.Labbookchildelement.id,
+                )
+                .join(
+                    models.Labbook,
+                    models.Labbook.id == models.Labbookchildelement.labbook_id,
+                )
+                .filter(
+                    *additional_filters,
+                    or_(
+                        models.Labbook.title.ilike(f"%{search_text}%"),
+                        models.File.title.ilike(f"%{search_text}%"),
+                    ),
+                    models.Labbook.deleted == False,
+                )
+                .order_by(text("file." + order_params))
+                .offset(params.get("offset"))
+                .limit(params.get("limit"))
+                .all()
+            )
         else:
-            files = db.query(models.File).filter_by(
-                deleted=bool(params.get('deleted'))).join(
-                models.Labbookchildelement,
-                models.File.elem_id ==
-                models.Labbookchildelement.id).join(models.Labbook,
-                                                    models.Labbook.id ==
-                                                    models.Labbookchildelement.labbook_id) \
-                .filter(models.Labbook.deleted == False).order_by(
-                text('file.' + order_params)).offset(
-                params.get('offset')).limit(
-                params.get('limit')).all()
+            files = (
+                db.query(models.File)
+                .filter_by(deleted=bool(params.get("deleted")))
+                .join(
+                    models.Labbookchildelement,
+                    models.File.elem_id == models.Labbookchildelement.id,
+                )
+                .join(
+                    models.Labbook,
+                    models.Labbook.id == models.Labbookchildelement.labbook_id,
+                )
+                .filter(*additional_filters, models.Labbook.deleted == False)
+                .order_by(text("file." + order_params))
+                .offset(params.get("offset"))
+                .limit(params.get("limit"))
+                .all()
+            )
         for file in files:
             db_user_created = db.query(models.User).get(file.created_by_id)
             db_user_modified = db.query(models.User).get(
@@ -117,39 +138,52 @@ def get_all_files(db: Session, params, user):
         return files
 
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+    additional_filters.append(models.Labbookchildelement.labbook_id.in_(labbook_ids))
 
-    if params.get('search'):
-        search_text = params.get('search')
-        files = db.query(models.File).filter_by(
-            deleted=bool(params.get('deleted'))). \
-            join(models.Labbookchildelement,
-                 models.File.elem_id ==
-                 models.Labbookchildelement.id).filter(
-            models.Labbookchildelement.labbook_id.in_(labbook_ids)).join(
-            models.Labbook,
-            models.Labbook.id ==
-            models.Labbookchildelement.labbook_id). \
-            filter(or_
-                   (models.Labbook.title.ilike(f'%{search_text}%'),
-                    models.File.title.ilike(f'%{search_text}%')),
-                   models.Labbook.deleted == False).order_by(
-            text('file.' + order_params)).offset(
-            params.get('offset')).limit(
-            params.get('limit')).all()
+    if params.get("search"):
+        search_text = params.get("search")
+        files = (
+            db.query(models.File)
+            .filter_by(deleted=bool(params.get("deleted")))
+            .join(
+                models.Labbookchildelement,
+                models.File.elem_id == models.Labbookchildelement.id,
+            )
+            .filter(*additional_filters)
+            .join(
+                models.Labbook,
+                models.Labbook.id == models.Labbookchildelement.labbook_id,
+            )
+            .filter(
+                or_(
+                    models.Labbook.title.ilike(f"%{search_text}%"),
+                    models.File.title.ilike(f"%{search_text}%"),
+                ),
+                models.Labbook.deleted == False,
+            )
+            .order_by(text("file." + order_params))
+            .offset(params.get("offset"))
+            .limit(params.get("limit"))
+            .all()
+        )
     else:
-        files = db.query(models.File).filter_by(
-            deleted=bool(params.get('deleted'))). \
-            join(models.Labbookchildelement,
-                 models.File.elem_id ==
-                 models.Labbookchildelement.id).join(
-            models.Labbook,
-            models.Labbook.id ==
-            models.Labbookchildelement.labbook_id).filter(
-            models.Labbookchildelement.labbook_id.in_(labbook_ids),
-            models.Labbook.deleted == False).order_by(
-            text('file.' + order_params)).offset(
-            params.get('offset')).limit(
-            params.get('limit')).all()
+        files = (
+            db.query(models.File)
+            .filter_by(deleted=bool(params.get("deleted")))
+            .join(
+                models.Labbookchildelement,
+                models.File.elem_id == models.Labbookchildelement.id,
+            )
+            .join(
+                models.Labbook,
+                models.Labbook.id == models.Labbookchildelement.labbook_id,
+            )
+            .filter(*additional_filters, models.Labbook.deleted == False)
+            .order_by(text("file." + order_params))
+            .offset(params.get("offset"))
+            .limit(params.get("limit"))
+            .all()
+        )
 
     for file in files:
         db_user_created = db.query(models.User).get(file.created_by_id)
