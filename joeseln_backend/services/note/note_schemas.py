@@ -27,9 +27,9 @@ class Note(BaseModel):
 
     content_type: int = note_content_type
     content_type_model: str = note_content_type_model
-    last_modified_by: User
-    created_by: User
-
+    # now optional
+    last_modified_by: User | None = None
+    created_by: User | None = None
     # for jumping
     position_y: int = 0
     labbook_id: int | UUID = 0

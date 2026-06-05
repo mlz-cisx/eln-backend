@@ -27,6 +27,7 @@ from joeseln_backend.conf.base_conf import (
 )
 from joeseln_backend.full_text_search.html_stripper import sanitize_html
 from joeseln_backend.helper import db_ordering
+from joeseln_backend.helper.restore_with_row import shift_elements_after_restore
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.comment.comment_schemas import Comment
@@ -913,13 +914,17 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
     return None
 
 
-def restore_file(db: Session, file_pk, user):
+def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
     file_to_update = db.query(models.File).get(file_pk)
     file_to_update.deleted = False
     file_to_update.last_modified_at = datetime.datetime.now()
     file_to_update.last_modified_by_id = user.id
 
     lb_elem = db.query(models.Labbookchildelement).get(file_to_update.elem_id)
+    # already restored
+    if not lb_elem.deleted:
+        return file_to_update
+
     lb_elem.deleted = False
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
@@ -930,6 +935,18 @@ def restore_file(db: Session, file_pk, user):
 
     # First possibility
     if user.admin:
+        if restored_row is not None:
+            position_below = shift_elements_after_restore(
+                db=db,
+                labbook_id=lb_elem.labbook_id,
+                restored_row=restored_row,
+                restored_height=lb_elem.height,
+                restored_width=lb_elem.width,
+                user=user
+            )
+            # finally place the restored element at the correct row
+            lb_elem.position_y = position_below
+            lb_elem.position_x = 0
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -962,6 +979,7 @@ def restore_file(db: Session, file_pk, user):
                              object_type_id=50,
                              changeset_type='R',
                              changerecords=[])
+        transmit({'model_name': 'labbook', 'model_pk': str(lb_elem.labbook_id)})
         return file_to_update
 
     # Second possibility: it's a file created by admin
@@ -971,6 +989,19 @@ def restore_file(db: Session, file_pk, user):
         # allowed only for groupadmins
         if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
                                           user=user):
+            if restored_row is not None:
+                position_below = shift_elements_after_restore(
+                    db=db,
+                    labbook_id=lb_elem.labbook_id,
+                    restored_row=restored_row,
+                    restored_height=lb_elem.height,
+                    restored_width=lb_elem.width,
+                    user=user
+                )
+                # finally place the restored element at the correct row
+                lb_elem.position_y = position_below
+                lb_elem.position_x = 0
+
             try:
                 db.commit()
             except SQLAlchemyError as e:
@@ -1002,6 +1033,8 @@ def restore_file(db: Session, file_pk, user):
                                  object_type_id=50,
                                  changeset_type='R',
                                  changerecords=[])
+            transmit(
+                {'model_name': 'labbook', 'model_pk': str(lb_elem.labbook_id)})
             return file_to_update
         else:
             return None
@@ -1012,6 +1045,18 @@ def restore_file(db: Session, file_pk, user):
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
     if lb_elem.labbook_id in labbook_ids:
+        if restored_row is not None:
+            position_below = shift_elements_after_restore(
+                db=db,
+                labbook_id=lb_elem.labbook_id,
+                restored_row=restored_row,
+                restored_height=lb_elem.height,
+                restored_width=lb_elem.width,
+                user=user
+            )
+            # finally place the restored element at the correct row
+            lb_elem.position_y = position_below
+            lb_elem.position_x = 0
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -1043,6 +1088,7 @@ def restore_file(db: Session, file_pk, user):
                              object_type_id=50,
                              changeset_type='R',
                              changerecords=[])
+        transmit({'model_name': 'labbook', 'model_pk': str(lb_elem.labbook_id)})
         return file_to_update
 
     return None

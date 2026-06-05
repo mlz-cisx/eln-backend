@@ -41,8 +41,9 @@ class File(BaseModel):
 
     content_type: int = file_content_type
     content_type_model: str = file_content_type_model
-    last_modified_by: User
-    created_by: User
+    # now optional
+    last_modified_by: User | None = None
+    created_by: User | None = None
 
     # for jumping function
     position_y: int = 0

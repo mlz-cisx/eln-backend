@@ -29,8 +29,9 @@ class Picture(BaseModel):
 
     content_type: int = picture_content_type
     content_type_model: str = picture_content_type_model
-    last_modified_by: User
-    created_by: User
+    # now optional
+    last_modified_by: User | None = None
+    created_by: User | None = None
     display: str
 
     class Config:

@@ -797,12 +797,13 @@ def soft_delete_note(
            response_model=note_schemas.Note)
 def restore_note(
         note_pk: UUID,
+        restored_row: Optional[int] = Query(None),
         db: Session = Depends(get_db),
         typesense_client = Depends(get_typesense_client),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # admin notes can only be restored  by admins or groupadmins
-    db_note = note_service.restore_note(db=db, note_pk=note_pk, user=user, typesense=typesense_client)
+    db_note = note_service.restore_note(db=db, note_pk=note_pk, user=user, typesense=typesense_client, restored_row=restored_row)
     if db_note is None:
         raise HTTPException(status_code=204, detail="Labbook not found")
     return db_note
@@ -1132,14 +1133,15 @@ def soft_delete_picture(
 @app.patch("/api/pictures/{picture_pk}/restore/",
            response_model=picture_schemas.Picture)
 def restore_picture(
-    picture_pk: UUID,
-    db: Session = Depends(get_db),
-    client=Depends(get_typesense_client),
-    user: User = Depends(get_current_user),
+        picture_pk: UUID,
+        restored_row: Optional[int] = Query(None),
+        db: Session = Depends(get_db),
+        client=Depends(get_typesense_client),
+        user: User = Depends(get_current_user),
 ):
     # logger.info(user)
     db_pic = picture_service.restore_picture(
-        db=db, tsClient=client, picture_pk=picture_pk, user=user
+        db=db, tsClient=client, picture_pk=picture_pk, user=user, restored_row=restored_row
     )
     if db_pic is None:
         raise HTTPException(status_code=204, detail="Labbook not found")
@@ -1511,10 +1513,11 @@ def soft_delete_file(
            response_model=file_schemas.File)
 def restore_file(
         file_pk: UUID,
+        restored_row: Optional[int] = Query(None),
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    db_file = file_service.restore_file(db=db, file_pk=file_pk, user=user)
+    db_file = file_service.restore_file(db=db, file_pk=file_pk, user=user, restored_row=restored_row)
     if db_file is None:
         raise HTTPException(status_code=204, detail="Labbook not found")
     return db_file

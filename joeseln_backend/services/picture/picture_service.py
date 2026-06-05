@@ -3,14 +3,13 @@ import datetime
 import gzip
 import io
 import json
-from operator import add
 import pathlib
 import sys
 from copy import deepcopy
 
+from PIL import Image
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse
-from PIL import Image
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -30,6 +29,7 @@ from joeseln_backend.full_text_search.typesense_service import (
     update_delete_status_typesense,
 )
 from joeseln_backend.helper import db_ordering
+from joeseln_backend.helper.restore_with_row import shift_elements_after_restore
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.comment.comment_schemas import Comment
@@ -37,7 +37,8 @@ from joeseln_backend.services.entry_path.entry_path_service import (
     create_entry,
     create_path,
 )
-from joeseln_backend.services.history.history_service import create_history_entry
+from joeseln_backend.services.history.history_service import \
+    create_history_entry
 from joeseln_backend.services.labbook.labbook_service import (
     check_for_labbook_access,
     check_for_labbook_admin_access,
@@ -921,13 +922,17 @@ def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data,
     return None
 
 
-def restore_picture(db: Session, tsClient: Client, picture_pk, user):
+def restore_picture(db: Session, tsClient: Client, picture_pk, user,
+                    restored_row: int | None = None):
     pic_to_update = db.query(models.Picture).get(picture_pk)
     pic_to_update.deleted = False
     pic_to_update.last_modified_at = datetime.datetime.now()
     pic_to_update.last_modified_by_id = user.id
 
     lb_elem = db.query(models.Labbookchildelement).get(pic_to_update.elem_id)
+    # already restored
+    if not lb_elem.deleted:
+        return pic_to_update
     lb_elem.deleted = False
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
@@ -938,6 +943,18 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user):
 
     # First possibility
     if user.admin:
+        if restored_row is not None:
+            position_below = shift_elements_after_restore(
+                db=db,
+                labbook_id=lb_elem.labbook_id,
+                restored_row=restored_row,
+                restored_height=lb_elem.height,
+                restored_width=lb_elem.width,
+                user=user
+            )
+            # finally place the restored element at the correct row
+            lb_elem.position_y = position_below
+            lb_elem.position_x = 0
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -968,6 +985,8 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user):
                              changeset_type='R',
                              changerecords=[])
         update_delete_status_typesense(pic_to_update, False, tsClient)
+        transmit(
+            {'model_name': 'labbook', 'model_pk': str(lb_elem.labbook_id)})
         return pic_to_update
 
     # Second possibility: it's a note created by admin
@@ -977,6 +996,18 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user):
         # allowed only for groupadmins
         if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
                                           user=user):
+            if restored_row is not None:
+                position_below = shift_elements_after_restore(
+                    db=db,
+                    labbook_id=lb_elem.labbook_id,
+                    restored_row=restored_row,
+                    restored_height=lb_elem.height,
+                    restored_width=lb_elem.width,
+                    user=user
+                )
+                # finally place the restored element at the correct row
+                lb_elem.position_y = position_below
+                lb_elem.position_x = 0
             try:
                 db.commit()
             except SQLAlchemyError as e:
@@ -1007,6 +1038,8 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user):
                                  changeset_type='R',
                                  changerecords=[])
             update_delete_status_typesense(pic_to_update, False, tsClient)
+            transmit(
+                {'model_name': 'labbook', 'model_pk': str(lb_elem.labbook_id)})
             return pic_to_update
         else:
             return None
@@ -1017,6 +1050,18 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user):
     labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
 
     if lb_elem.labbook_id in labbook_ids:
+        if restored_row is not None:
+            position_below = shift_elements_after_restore(
+                db=db,
+                labbook_id=lb_elem.labbook_id,
+                restored_row=restored_row,
+                restored_height=lb_elem.height,
+                restored_width=lb_elem.width,
+                user=user
+            )
+            # finally place the restored element at the correct row
+            lb_elem.position_y = position_below
+            lb_elem.position_x = 0
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -1048,6 +1093,8 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user):
                              changeset_type='R',
                              changerecords=[])
         update_delete_status_typesense(pic_to_update, False, tsClient)
+        transmit(
+            {'model_name': 'labbook', 'model_pk': str(lb_elem.labbook_id)})
         return pic_to_update
 
     return None

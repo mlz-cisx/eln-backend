@@ -23,6 +23,7 @@ from joeseln_backend.full_text_search.typesense_service import (
     update_delete_status_typesense,
 )
 from joeseln_backend.helper import db_ordering
+from joeseln_backend.helper.restore_with_row import shift_elements_after_restore
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.comment.comment_schemas import Comment
@@ -654,7 +655,8 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user, typesense: Client
     return None
 
 
-def restore_note(db: Session, note_pk, user, typesense: Client):
+def restore_note(db: Session, note_pk, user, typesense: Client,
+                 restored_row: int | None = None):
     note_to_update = db.query(models.Note).get(note_pk)
     note_to_update.deleted = False
     note_to_update.last_modified_at = datetime.datetime.now()
@@ -663,6 +665,9 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
     db_user_created = db.query(models.User).get(note_to_update.created_by_id)
 
     lb_elem = db.query(models.Labbookchildelement).get(note_to_update.elem_id)
+    # already restored
+    if not lb_elem.deleted:
+        return note_to_update
     lb_elem.deleted = False
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
@@ -673,6 +678,18 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
 
     # First possibility
     if user.admin:
+        if restored_row is not None:
+            position_below = shift_elements_after_restore(
+                db=db,
+                labbook_id=lb_elem.labbook_id,
+                restored_row=restored_row,
+                restored_height=lb_elem.height,
+                restored_width=lb_elem.width,
+                user=user
+            )
+            # finally place the restored element at the correct row
+            lb_elem.position_y = position_below
+            lb_elem.position_x = 0
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -691,6 +708,7 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
                              changeset_type='R',
                              changerecords=[])
         update_delete_status_typesense(note_to_update, False, typesense)
+        transmit({'model_name': 'labbook', 'model_pk': str(lb_elem.labbook_id)})
         return note_to_update
 
     # Second possibility: it's a note created by admin
@@ -701,6 +719,18 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
         # allowed only for groupadmins
         if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
                                           user=user):
+            position_below = shift_elements_after_restore(
+                db=db,
+                labbook_id=lb_elem.labbook_id,
+                restored_row=restored_row,
+                restored_height=lb_elem.height,
+                restored_width=lb_elem.width,
+                user=user
+            )
+            # finally place the restored element at the correct row
+            lb_elem.position_y = position_below
+            lb_elem.position_x = 0
+
             try:
                 db.commit()
             except SQLAlchemyError as e:
@@ -718,6 +748,8 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
                                  changeset_type='R',
                                  changerecords=[])
             update_delete_status_typesense(note_to_update, False, typesense)
+            transmit(
+                {'model_name': 'labbook', 'model_pk': str(lb_elem.labbook_id)})
             return note_to_update
         else:
             return None
@@ -729,6 +761,18 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
 
     if lb_elem.labbook_id in labbook_ids:
         logger.info('in labbook ids')
+        if restored_row is not None:
+            position_below = shift_elements_after_restore(
+                db=db,
+                labbook_id=lb_elem.labbook_id,
+                restored_row=restored_row,
+                restored_height=lb_elem.height,
+                restored_width=lb_elem.width,
+                user=user
+            )
+            # finally place the restored element at the correct row
+            lb_elem.position_y = position_below
+            lb_elem.position_x = 0
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -747,6 +791,7 @@ def restore_note(db: Session, note_pk, user, typesense: Client):
                              changeset_type='R',
                              changerecords=[])
         update_delete_status_typesense(note_to_update, False, typesense)
+        transmit({'model_name': 'labbook', 'model_pk': str(lb_elem.labbook_id)})
         return note_to_update
 
     return None
