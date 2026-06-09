@@ -71,6 +71,9 @@ class Labbook(Base):
 
 class Labbookchildelement(Base):
     __tablename__ = 'labbookchildelement'
+    __table_args__ = (
+        UniqueConstraint('child_object_id', name='uq_child_object_id'),
+    )
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     labbook_id = Column(UUID(as_uuid=True), ForeignKey(Labbook.id))
     deleted = Column(Boolean, default=False)

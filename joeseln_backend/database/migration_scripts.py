@@ -100,6 +100,110 @@ def update_db_tables():
                 """
             )
         )
+        # 1) Temporarily enable ON DELETE CASCADE for all elem_id foreign keys
+        connection.execute(text("""
+            -- NOTE
+            ALTER TABLE note
+            DROP CONSTRAINT IF EXISTS note_elem_id_fkey;
+
+            ALTER TABLE note
+            ADD CONSTRAINT note_elem_id_fkey
+            FOREIGN KEY (elem_id)
+            REFERENCES labbookchildelement(id)
+            ON DELETE CASCADE;
+
+            -- PICTURE
+            ALTER TABLE picture
+            DROP CONSTRAINT IF EXISTS picture_elem_id_fkey;
+
+            ALTER TABLE picture
+            ADD CONSTRAINT picture_elem_id_fkey
+            FOREIGN KEY (elem_id)
+            REFERENCES labbookchildelement(id)
+            ON DELETE CASCADE;
+
+            -- FILE
+            ALTER TABLE file
+            DROP CONSTRAINT IF EXISTS file_elem_id_fkey;
+
+            ALTER TABLE file
+            ADD CONSTRAINT file_elem_id_fkey
+            FOREIGN KEY (elem_id)
+            REFERENCES labbookchildelement(id)
+            ON DELETE CASCADE;
+        """))
+
+        # 2) Delete surplus LabbookChildElements (cascade applies only now)
+        connection.execute(text("""
+            WITH duplicates AS (
+                SELECT child_object_id
+                FROM labbookchildelement
+                GROUP BY child_object_id
+                HAVING COUNT(*) > 1
+            ),
+            survivors AS (
+                SELECT DISTINCT ON (child_object_id)
+                       id AS survivor_id,
+                       child_object_id
+                FROM labbookchildelement
+                WHERE child_object_id IN (SELECT child_object_id FROM duplicates)
+                ORDER BY child_object_id, id
+            )
+            DELETE FROM labbookchildelement l
+            USING duplicates d
+            WHERE l.child_object_id = d.child_object_id
+              AND l.id NOT IN (SELECT survivor_id FROM survivors);
+        """))
+
+        # 3) Restore all foreign keys WITHOUT CASCADE
+        connection.execute(text("""
+            -- NOTE
+            ALTER TABLE note
+            DROP CONSTRAINT IF EXISTS note_elem_id_fkey;
+
+            ALTER TABLE note
+            ADD CONSTRAINT note_elem_id_fkey
+            FOREIGN KEY (elem_id)
+            REFERENCES labbookchildelement(id)
+            ON DELETE RESTRICT;
+
+            -- PICTURE
+            ALTER TABLE picture
+            DROP CONSTRAINT IF EXISTS picture_elem_id_fkey;
+
+            ALTER TABLE picture
+            ADD CONSTRAINT picture_elem_id_fkey
+            FOREIGN KEY (elem_id)
+            REFERENCES labbookchildelement(id)
+            ON DELETE RESTRICT;
+
+            -- FILE
+            ALTER TABLE file
+            DROP CONSTRAINT IF EXISTS file_elem_id_fkey;
+
+            ALTER TABLE file
+            ADD CONSTRAINT file_elem_id_fkey
+            FOREIGN KEY (elem_id)
+            REFERENCES labbookchildelement(id)
+            ON DELETE RESTRICT;
+        """))
+
+        # 4) Add the unique constraint
+        connection.execute(text("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'uq_child_object_id'
+            ) THEN
+                ALTER TABLE labbookchildelement
+                ADD CONSTRAINT uq_child_object_id
+                UNIQUE (child_object_id);
+            END IF;
+        END$$;
+        """))
+
         transaction.commit()
     except sqlalchemy.exc.ProgrammingError as e:
         logger.info(e)

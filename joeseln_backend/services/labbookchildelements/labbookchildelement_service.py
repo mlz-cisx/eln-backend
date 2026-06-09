@@ -278,6 +278,18 @@ def create_lb_childelement(db: Session, labbook_pk,
     if check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user) != "Write":
         return None
 
+    existing = (
+        db.query(models.Labbookchildelement)
+        .filter(
+            models.Labbookchildelement.child_object_id == labbook_childelem.child_object_id)
+        .first()
+    )
+
+    if existing:
+        # already exists
+        return None
+
+
     db_labbook_elem = models.Labbookchildelement(
         labbook_id=labbook_pk,
         position_x=labbook_childelem.position_x,
