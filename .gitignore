@@ -5,3 +5,5 @@ __pycache__
 /joeseln_backend/export/node_modules/
 /joeseln_backend/export/package-lock.json
 .env
+/docs/build/
+/docs/source/_static/openapi.yaml
