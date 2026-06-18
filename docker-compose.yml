@@ -55,6 +55,12 @@ services:
         condition: service_healthy
       typesense:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8010 && printf 'GET /api/health/ HTTP/1.1\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep '200' && exec 3>&-"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   eln-backend-websocket:
     image: eln-backend
