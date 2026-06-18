@@ -1144,6 +1144,9 @@ def get_canvas_content_with_imgbase64(img_src: str, canvas_width=950,
                                       canvas_height=712):
     w, h = get_image_size_from_base64(img_src)
 
+    if not w or not h:
+        w, h = 200, 200  # safe fallback
+
     obj = {
         "version": "6.9.0",
         "objects": [
@@ -1171,11 +1174,14 @@ def get_canvas_content_with_imgbase64(img_src: str, canvas_width=950,
 
 
 def get_image_size_from_base64(img_base64: str):
-    # strip header if present
-    if img_base64.startswith("data:image"):
-        img_base64 = img_base64.split(",")[1]
+    try:
+        if img_base64.startswith("data:image"):
+            img_base64 = img_base64.split(",")[1]
 
-    img_bytes = base64.b64decode(img_base64)
-    img = Image.open(io.BytesIO(img_bytes))
-
-    return img.width, img.height
+        img_bytes = base64.b64decode(img_base64)
+        img = Image.open(io.BytesIO(img_bytes))
+        img.verify()
+        img = Image.open(io.BytesIO(img_bytes))
+        return img.width, img.height
+    except Exception:
+        return None, None
