@@ -41,8 +41,8 @@ services:
       TYPESENSE_PORT: 8108
       TYPESENSE_API_KEY: "#super_secret#"
       # urls
-      APP_BASE_PATH: "http://wojians-macbook.local/" # with trailing slash
-      URL_BASE_PATH: "http://wojians-macbook.local/api/"  # with trailing slash
+      APP_BASE_PATH: "http://wojians-macbook.local/"
+      URL_BASE_PATH: "http://wojians-macbook.local/api/"
       WS_URL: "ws://wojians-macbook.local/ws/"
       WS_PORT: 8011
       ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
@@ -85,8 +85,8 @@ services:
       KEYCLOAK_CLIENT_ID: "client_backend"
       KEYCLOAK_CLIENT_SECRET: "cfAAazDMTwst5JgVVbtLjO5hsXQlTziL"
       # urls
-      APP_BASE_PATH: "http://wojians-macbook.local/" # with trailing slash
-      URL_BASE_PATH: "http://wojians-macbook.local/api/"  # with trailing slash
+      APP_BASE_PATH: "http://wojians-macbook.local/"
+      URL_BASE_PATH: "http://wojians-macbook.local/api/"
       WS_URL: "ws://wojians-macbook.local/ws/"
       WS_PORT: 8011
       ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
@@ -102,7 +102,7 @@ services:
       context: ./frontend/
     environment:
       SERVER_NAME: "wojians-macbook.local" # optional
-      API_URL: "http://wojians-macbook.local/api" # without trailing slash
+      API_URL: "http://wojians-macbook.local/api"
       WS_URL: "ws://wojians-macbook.local/ws"
       KEYCLOAK_URL: "http://wojians-macbook.local/auth"
       KEYCLOAK_REALM: "joe"
