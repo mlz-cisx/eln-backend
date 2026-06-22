@@ -1,5 +1,12 @@
 import os
 
+
+def ensure_trailing_slash(value: str | None) -> str | None:
+    if not value:
+        return value
+    return value.rstrip("/") + "/"
+
+
 # PostgreSQL settings
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -10,7 +17,6 @@ DB_ADDR = os.getenv("DB_ADDR")
 PLAYWRIGHT_WS = os.getenv("PLAYWRIGHT_WS")
 PLAYWRIGHT_MEM = int(os.getenv("PLAYWRIGHT_MEMORY_LIMIT_MB", "1024"))
 PLAYWRIGHT_CPU = int(os.getenv("PLAYWRIGHT_CPU_LIMIT", "1"))
-
 
 # Initial users
 INITIAL_ADMIN = os.getenv("INITIAL_ADMIN", "admin")
@@ -28,9 +34,10 @@ PICTURES_BASE_PATH = os.getenv("PICTURES_BASE_PATH", "/data/pictures/")
 FILES_BASE_PATH = os.getenv("FILES_BASE_PATH", "/data/files/")
 
 # Base URL
-URL_BASE_PATH = os.getenv("URL_BASE_PATH")
-WS_URL = os.getenv("WS_URL")
-APP_BASE_PATH = os.getenv("APP_BASE_PATH", "")
+URL_BASE_PATH = ensure_trailing_slash(os.getenv("URL_BASE_PATH"))
+WS_URL = ensure_trailing_slash(os.getenv("WS_URL"))
+APP_BASE_PATH = ensure_trailing_slash(os.getenv("APP_BASE_PATH", ""))
+
 WS_PORT = os.getenv("WS_PORT")
 
 WS_INTERNAL_IP = os.getenv("WS_INTERNAL_IP")
