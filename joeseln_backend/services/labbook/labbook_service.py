@@ -675,7 +675,7 @@ def get_labbook_for_export(db: Session, labbook_pk):
 
 
 def get_labbook_by_owner_group(db: Session, owner_group: str, user):
-    if user.admin:
+    if user and user.admin:
         db_labbook = (
             db.query(models.Labbook).filter(models.Labbook.owner_group ==owner_group).first()
         )
