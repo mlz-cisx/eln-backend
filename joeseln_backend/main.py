@@ -176,7 +176,7 @@ from joeseln_backend.ws.ws_client import ws_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # check the existence of picture/file folder and r/w pemission
+    # check the existence of picture/file folder and r/w permission
     if not os.path.isdir(PICTURES_BASE_PATH):
         raise RuntimeError("Application cannot start: picture directory does not exist")
     elif not os.access(PICTURES_BASE_PATH, os.R_OK | os.W_OK):
@@ -186,25 +186,21 @@ async def lifespan(app: FastAPI):
     elif not os.access(FILES_BASE_PATH, os.R_OK | os.W_OK):
         raise RuntimeError("Application cannot start: file directory is not readable/writable")
 
+    # DB startup attempt (log only)
     try:
         table_creator()
         create_basic_roles()
         create_inital_admin()
         update_db_tables()
-    except OperationalError:
-        # mark DB as unavailable but DO NOT crash
-        app.state.db_available = False
-    else:
-        app.state.db_available = True
+    except OperationalError as e:
+        logger.error(f"Database unavailable at startup: {e}")
 
+    # Typesense startup attempt (log only)
     try:
         typesense_client.connect_typesense_client()
         typesense_client.create_collection()
     except Exception as e:
         logger.error(f"Typesense unavailable at startup: {e}")
-        app.state.typesense_available = False
-    else:
-        app.state.typesense_available = True
 
     # connect websocket
     await ws_client.connect()
@@ -215,10 +211,10 @@ async def lifespan(app: FastAPI):
     await ws_client.close()
 
 
+
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url="/api/redoc")
-# Tell the type checker that this attribute exists
-app.state.db_available = True
-app.state.typesense_available = True
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -267,23 +263,7 @@ async def requests_error_handler(request: Request,
     )
 
 
-@app.middleware("http")
-async def dependency_guard(request: Request, call_next):
-    state = request.app.state
 
-    if not getattr(state, "db_available", True):
-        return JSONResponse(
-            status_code=503,
-            content={"detail": "Database unavailable at startup"}
-        )
-
-    if not getattr(state, "typesense_available", True):
-        return JSONResponse(
-            status_code=503,
-            content={"detail": "Typesense unavailable at startup"}
-        )
-
-    return await call_next(request)
 
 
 @app.get("/api/docs", include_in_schema=False)
@@ -331,10 +311,18 @@ async def custom_swagger_ui():
 
 @app.get("/api/health/", response_model=simple_messege_response)
 def get_health(db: Session = Depends(get_db)):
-    if not app.state.db_available or not app.state.typesense_available:
-        raise HTTPException(status_code=503, detail="DB unavailable at startup")
+    # DB runtime check
+    try:
+        db.execute("SELECT 1")
+    except Exception:
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
-    db.execute("SELECT 1")
+    # Typesense runtime check (native health endpoint)
+    try:
+        typesense_client.client.health.retrieve()
+    except Exception:
+        raise HTTPException(status_code=503, detail="Typesense unavailable")
+
     return "ok"
 
 
