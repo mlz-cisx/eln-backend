@@ -7,9 +7,11 @@ from sqlalchemy.exc import SQLAlchemyError
 sys.path.append(os.path.abspath(Path(__file__).parent.parent.parent))
 
 import asyncio
+import itertools
 import json
 
 import websockets
+from websockets.exceptions import ConnectionClosed, ConnectionClosedOK
 
 from joeseln_backend.auth.security import get_current_jwt_user_for_ws
 from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_INTERNAL_IP, WS_PORT
@@ -20,7 +22,18 @@ from joeseln_backend.mylogging.root_logger import logger
 connected_clients = set()
 
 
+async def keepalive(websocket, ping_interval=30):
+    for ping in itertools.count():
+        await asyncio.sleep(ping_interval)
+        try:
+            await websocket.send(json.dumps({"ping": ping}))
+        except (ConnectionClosed, ConnectionClosedOK):
+            break
+
+
 async def handle_client(websocket, path):
+    asyncio.create_task(keepalive(websocket))
+
     # Register and authenticate  the new client
     if path.startswith('/ws/jwt_'):
         token = path.split('/ws/jwt_')[1]
@@ -44,25 +57,25 @@ async def handle_client(websocket, path):
                 message = json.dumps(message_as_dict)
                 # print(message)
                 await asyncio.wait(
-                    [asyncio.create_task(client.send(message)) for client in
-                     connected_clients])
+                    [
+                        asyncio.create_task(client.send(message))
+                        for client in connected_clients
+                    ]
+                )
 
+    except (ConnectionClosed, ConnectionClosedOK):
+        pass
 
     finally:
         # Unregister the client
-        try:
-            connected_clients.remove(websocket)
-            delete_user_connected_ws(ws_id=vars(websocket)['id'])
-        except KeyError:
-            pass
+        connected_clients.discard(websocket)
+        delete_user_connected_ws(ws_id=vars(websocket)['id'])
 
 
 def add_user_connected_ws(uname, ws_id):
     ws_user = session.query(UserConnectedWs).filter_by(username=uname).first()
     if not ws_user:
-        ws_user = UserConnectedWs(username=uname,
-                                  ws_id=ws_id,
-                                  connected=True)
+        ws_user = UserConnectedWs(username=uname, ws_id=ws_id, connected=True)
         try:
             session.add(ws_user)
             session.commit()
