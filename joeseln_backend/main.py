@@ -317,12 +317,6 @@ def get_health(db: Session = Depends(get_db)):
     except Exception:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    # Typesense runtime check (native health endpoint)
-    try:
-        typesense_client.client.health.retrieve()
-    except Exception:
-        raise HTTPException(status_code=503, detail="Typesense unavailable")
-
     return "ok"
 
 
