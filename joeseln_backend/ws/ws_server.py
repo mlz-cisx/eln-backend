@@ -73,48 +73,55 @@ async def handle_client(websocket, path):
 
 
 def add_user_connected_ws(uname, ws_id):
-    ws_user = session.query(UserConnectedWs).filter_by(username=uname).first()
-    if not ws_user:
-        ws_user = UserConnectedWs(username=uname, ws_id=ws_id, connected=True)
-        try:
-            session.add(ws_user)
-            session.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
-    else:
-        ws_user.ws_id = ws_id
-        ws_user.connected = True
-        try:
-            session.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
+    db = SessionLocal()
+    try:
+        ws_user = db.query(UserConnectedWs).filter_by(username=uname).first()
+        if not ws_user:
+            ws_user = UserConnectedWs(username=uname, ws_id=ws_id, connected=True)
+            db.add(ws_user)
+        else:
+            ws_user.ws_id = ws_id
+            ws_user.connected = True
+        db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(e)
+    finally:
+        db.close()
 
 
 def delete_user_connected_ws(ws_id):
-    ws_user = session.query(UserConnectedWs).filter_by(ws_id=ws_id).first()
-    if ws_user:
-        ws_user.connected = False
-        try:
-            session.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
+    db = SessionLocal()
+    try:
+        ws_user = db.query(UserConnectedWs).filter_by(ws_id=ws_id).first()
+        if ws_user:
+            ws_user.connected = False
+            db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(e)
+    finally:
+        db.close()
 
 
 def reset_user_connected_ws():
-    init_session = SessionLocal()
-    ws_users = init_session.query(UserConnectedWs).all()
-    for ws_user in ws_users:
-        ws_user.connected = False
+    db = SessionLocal()
     try:
-        init_session.commit()
+        ws_users = db.query(UserConnectedWs).all()
+        for ws_user in ws_users:
+            ws_user.connected = False
+        db.commit()
     except SQLAlchemyError as e:
+        db.rollback()
         logger.error(e)
+    finally:
+        db.close()
 
 
 async def main():
-    global session
-    session = SessionLocal()
-    server = await websockets.serve(handle_client, WS_INTERNAL_IP, WS_PORT)
+    server = await websockets.serve(
+        handle_client, WS_INTERNAL_IP, WS_PORT, max_size=1024
+    )
     await server.wait_closed()
 
 
