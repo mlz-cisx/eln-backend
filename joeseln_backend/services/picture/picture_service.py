@@ -773,7 +773,7 @@ def get_picture_export_link(db: Session, picture_pk, user):
 
 def build_picture_download_url_with_token(picture_to_process, user):
     access_token_expires = security.timedelta(
-        minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
+        minutes=security.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )

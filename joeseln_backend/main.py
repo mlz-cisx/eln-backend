@@ -46,8 +46,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 
 from joeseln_backend.auth.security import (
-    ACCESS_TOKEN_EXPIRE_SECONDS,
-    LEEWAY,
+    JWT_ACCESS_TOKEN_EXPIRE_SECONDS,
+    JWT_LEEWAY,
     Token,
     TokenWithDelta,
     authenticate_user,
@@ -1756,7 +1756,7 @@ def keycloak_callback(code: str, db: Session = Depends(get_db)):
     user = update_oidc_user(db=db, oidc_user=OIDCUserCreate.parse_obj(userinfo))
     if (user):
         update_oidc_user_groups(db=SessionLocal(), user=user)
-        access_token_expires = timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
+        access_token_expires = timedelta(seconds=JWT_ACCESS_TOKEN_EXPIRE_SECONDS)
         access_token = create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
             )
@@ -1782,7 +1782,7 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
+    access_token_expires = timedelta(seconds=JWT_ACCESS_TOKEN_EXPIRE_SECONDS)
     # we align to keycloak's sub
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
@@ -1793,7 +1793,7 @@ async def login_for_access_token(
 def refresh_access_token(access_token: Token) -> Token:
     try:
         username = verify_jwt_with_leeway(access_token)
-        access_token_expires = timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
+        access_token_expires = timedelta(seconds=JWT_ACCESS_TOKEN_EXPIRE_SECONDS)
         new_token = create_access_token(
             data={"sub": username}, expires_delta=access_token_expires
         )
@@ -1813,7 +1813,7 @@ def get_transfer_token(
     # negative timedelta to reduce the leeway for refreshing
     # makes qrcode invalid after TOKEN_VALIDITY seconds
     access_token_expires = timedelta(
-        seconds=max(10, min(LEEWAY, TOKEN_VALIDITY)) - LEEWAY)
+        seconds=max(10, min(JWT_LEEWAY, TOKEN_VALIDITY)) - JWT_LEEWAY)
     # we align to keycloak's sub
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires

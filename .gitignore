@@ -4,3 +4,4 @@ venv/
 __pycache__
 /joeseln_backend/export/node_modules/
 /joeseln_backend/export/package-lock.json
+.env

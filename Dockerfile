@@ -21,9 +21,9 @@ RUN apt-get update && apt-get install -y poppler-utils
 # Copy the rest of the application files
 COPY . .
 
-# Configure env variables
-RUN mv /app/docker-env.py /app/joeseln_backend/conf/base_conf.py &&\
-  mkdir /data
+
+RUN mkdir -p /data
+
 
 # Data directory for pictures and files
 VOLUME ["/data"]

@@ -18,34 +18,7 @@ services:
       context: ./backend
     ports:
       - "8010:8010"
-    environment:
-      # database
-      DB_USER: "test"
-      DB_PASSWORD: "test"
-      DB_TABLE: "eln"
-      DB_PORT: 5432
-      DB_ADDR: "eln-postgres"
-      # playwright for export
-      PLAYWRIGHT_WS: 'ws://playwright:3000/'
-      # token
-      STATIC_ADMIN_TOKEN: "#super_secret#"
-      STATIC_WS_TOKEN: "super_ws_secret"
-      # keycloak integration
-      KEYCLOAK_INTEGRATION: "True"
-      KEYCLOAK_REALM_NAME: "joe"
-      KEYCLOAK_SERVER_URL: "http://wojians-macbook.local/auth"
-      KEYCLOAK_CLIENT_ID: "client_backend"
-      KEYCLOAK_CLIENT_SECRET: "cfAAazDMTwst5JgVVbtLjO5hsXQlTziL"
-      # typesense
-      TYPESENSE_HOST: "typesense"
-      TYPESENSE_PORT: 8108
-      TYPESENSE_API_KEY: "#super_secret#"
-      # urls
-      APP_BASE_PATH: "http://wojians-macbook.local/"
-      URL_BASE_PATH: "http://wojians-macbook.local/api/"
-      WS_URL: "ws://wojians-macbook.local/ws/"
-      WS_PORT: 8011
-      ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
+    env_file: .env
     command: ["uvicorn", "joeseln_backend.main:app", "--reload", "--port", "8010", "--host", "0.0.0.0", "--loop", "asyncio"]
     volumes:
       - ./data/pictures/:/data/pictures
@@ -68,29 +41,7 @@ services:
       context: ./backend
     ports:
       - "8011:8011"
-    environment:
-      # database
-      DB_USER: "test"
-      DB_PASSWORD: "test"
-      DB_TABLE: "eln"
-      DB_PORT: 5432
-      DB_ADDR: "eln-postgres"
-      # token
-      STATIC_ADMIN_TOKEN: "#super_secret#"
-      STATIC_WS_TOKEN: "super_ws_secret"
-      # keycloak integration
-      KEYCLOAK_INTEGRATION: "True"
-      KEYCLOAK_REALM_NAME: "joe"
-      KEYCLOAK_SERVER_URL: "http://wojians-macbook.local/auth"
-      KEYCLOAK_CLIENT_ID: "client_backend"
-      KEYCLOAK_CLIENT_SECRET: "cfAAazDMTwst5JgVVbtLjO5hsXQlTziL"
-      # urls
-      APP_BASE_PATH: "http://wojians-macbook.local/"
-      URL_BASE_PATH: "http://wojians-macbook.local/api/"
-      WS_URL: "ws://wojians-macbook.local/ws/"
-      WS_PORT: 8011
-      ORIGINS: "*,http://localhost:4500,http://wojians-macbook.local"
-      WS_INTERNAL_IP: "0.0.0.0"
+    env_file: .env
     command: ["python", "-m", "joeseln_backend.ws.ws_server"]
     depends_on:
       eln-postgres:
@@ -109,6 +60,7 @@ services:
       KEYCLOAK_CLIENT_ID: "client_frontend"
       KEYCLOAK_INTEGRATION: "true"
       KEYCLOAK_BEHIND_NGINX: "true"
+      # INSTR_CSV_ALL: "false"
     ports:
       - "80:80"
       - "443:443"
@@ -118,11 +70,8 @@ services:
     #   - "/path/to/key:/etc/nginx/certs/server.key"
 
   eln-postgres:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: "test"
-      POSTGRES_PASSWORD: "test"
-      POSTGRES_DB: "eln"
+    image: postgres:17
+    env_file: .env.postgres
     ports:
       - "5432:5432"
     volumes:
@@ -153,7 +102,12 @@ services:
       - "8108:8108"
     volumes:
       - ./data/typesense_data:/data
-    command: --data-dir /data --api-key="#super_secret#" --enable-cors
+    command:
+      - --data-dir
+      - /data
+      - --api-key
+      - ${TYPESENSE_API_KEY}
+      - --enable-cors
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8108 && printf 'GET /health HTTP/1.1\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep '200' && exec 3>&-"]
       interval: 30s

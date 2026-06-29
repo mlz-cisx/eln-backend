@@ -10,20 +10,23 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from joeseln_backend.conf.base_conf import INSTRUMENT_AS_ADMIN, STATIC_ADMIN_TOKEN
+from joeseln_backend.conf.base_conf import (
+    INSTRUMENT_AS_ADMIN,
+    JWT_SECRET_KEY,
+    STATIC_ADMIN_TOKEN,
+    JWT_ALGORITHM,
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
+    JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES,
+    JWT_ACCESS_TOKEN_EXPIRE_SECONDS, # noqa: F401
+    JWT_LEEWAY)
+
+
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.user.user_service import get_user_by_uname
 from joeseln_backend.services.user_to_group.user_to_group_service import (
     get_user_with_groups_by_uname,
 )
-
-SECRET_KEY = "b014bc552ecfc62a46b6c4bea9d35d6d7e5ff6f0244eff28a3f5ad4be1d3015d"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 20
-ACCESS_TOKEN_EXPIRE_SECONDS = 1000
-DOWNLOAD_TOKEN_EXPIRE_MINUTES = 60 * 24
-LEEWAY = 300
 
 
 class Token(BaseModel):
@@ -96,7 +99,7 @@ def authenticate_user(db: Session, username: str, password: str):
     return user
 
 # token used to donwload picture and file
-token_cache = TTLCache(maxsize=1048576, ttl=DOWNLOAD_TOKEN_EXPIRE_MINUTES * 60)
+token_cache = TTLCache(maxsize=1048576, ttl=JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES * 60)
 
 def invalidate_download_token(resource_uuid):
     keys_to_delete = [key for key in token_cache if key.endswith(f":{resource_uuid}")]
@@ -121,7 +124,7 @@ def build_download_token(user, resource_uuid) -> str:
     # Generate a new token if none exists or the existing one is expired
     if not access_token:
         access_token_expires = timedelta(
-            minutes=DOWNLOAD_TOKEN_EXPIRE_MINUTES)
+            minutes=JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
         ).decode()
@@ -136,9 +139,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
 
@@ -149,7 +152,7 @@ def get_user_from_jwt(db: Session, token: Annotated[str, Depends(oauth2_scheme)]
             user = get_user_by_uname(db=db, username=INSTRUMENT_AS_ADMIN)
             return user
         else:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             # we aligned to keycloak's sub
             username: str = payload.get("sub")
             if username is None:
@@ -180,7 +183,7 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
                                                  username=INSTRUMENT_AS_ADMIN)
             return user
         else:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             # we aligned to keycloak's sub
             username: str = payload.get("sub")
             if username is None:
@@ -199,14 +202,14 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         logger.error(f'oidc user is considered as non oidc user: {e}')
 
 
-def verify_jwt_with_leeway(token, leeway=LEEWAY):
-    payload  = jwt.decode(token.access_token.encode(), SECRET_KEY, algorithms=[ALGORITHM], leeway=leeway)
+def verify_jwt_with_leeway(token, leeway=JWT_LEEWAY):
+    payload  = jwt.decode(token.access_token.encode(), JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM], leeway=leeway)
     username = payload.get("sub")
     return username
 
 async def get_current_jwt_user_for_ws(token):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         uname: str = payload.get("sub")
         return uname
     except jwt.exceptions.PyJWTError:

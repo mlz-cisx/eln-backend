@@ -1,89 +1,124 @@
-# postgres settings
-DB_USER = 'joeseln'
-DB_PASSWORD = 'joeseln'
-DB_TABLE = 'joeseln'
-DB_PORT = 5440
-DB_ADDR = 'localhost'
+import os
+import dotenv
 
-# playwright for export
-PLAYWRIGHT_WS = 'ws://127.0.0.1:3000/'
-PLAYWRIGHT_MEM = 1024
-PLAYWRIGHT_CPU= 1
+# Load environment variables from .env file if it exists
+dotenv.load_dotenv()
 
-# initial users should not be changed
-INITIAL_ADMIN = 'admin'
-INSTRUMENT_AS_ADMIN = 'instrument'
 
-# token should be moved to external store for secrets
-STATIC_ADMIN_TOKEN = '#super_secret#'
+def ensure_trailing_slash(value: str | None) -> str | None:
+    if not value:
+        return value
+    return value.rstrip("/") + "/"
 
-# two modes: match and equal
-LABBOOK_QUERY_MODE = 'match'
-# LABBOOK_QUERY_MODE = 'equal'
 
-# folder to store pictures
-PICTURES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/pictures/'
-# folder to store files
-FILES_BASE_PATH = '/home/jbaudisch/mlz_eln_data/files/'
+def get_secure_env_variable(var_name: str, default: str | None = None) -> str:
+    value = os.getenv(var_name, default)
+    if value is None:
+        raise ValueError(f"Environment variable '{var_name}' is not set and no default value provided.")
+    if value.startswith("<") and value.endswith(">"):
+        raise ValueError(f"Environment variable '{var_name}' is set to a placeholder value. Please provide a valid value.") 
+    return value
 
-# MLZ-ELN URL
-URL_BASE_PATH = 'http://localhost:8010/api/'
 
-# Frontend url
-APP_BASE_PATH = 'http://daphneopc01.office.frm2:4500/'
+DEFAULT_JWT_SECRET = (
+    "mlzeln_default_jwt_secret_"
+    "u7fK9wq3TzA1pLxE4mN8bR2sV6yC0dQ5hJkW3tZ9gF2sL7pB1rX8nM4vT6cY0"
+)
 
-# WS ELN URL
-WS_URL = 'ws://localhost:4501/ws/'
-WS_PORT = 4501
-WS_INTERNAL_IP = '0.0.0.0'
 
-# CORS  settings
-ORIGINS = [
-    "http://localhost:4500",
-    "http://172.25.74.236:4500",
-    "http://daphneopc01:4500",
-    "http://daphneopc01.office.frm2:4500",
-]
+def get_secure_jwt_secret(var_name: str) -> str:
+    value = os.getenv(var_name)
 
-# Keycloak Settings
+    # Use deterministic default if missing or empty
+    if value is None or value.strip() == "":
+        return DEFAULT_JWT_SECRET
 
-KEYCLOAK_REALM_NAME = 'joe'
-KEYCLOAK_CLIENT_ID = 'client_backend'
-KEYCLOAK_CLIENT_SECRET = 'ZMqN0Fi4BNIFdcGvJsXL80hgCcv24jOr'
-KEYCLOAK_SERVER_URL = 'http://daphneopc01:8082/'
-KEYCLOAK_INTEGRATION = True
+    # Reject placeholder values like <secret>
+    if value.startswith("<") and value.endswith(">"):
+        raise ValueError(
+            f"Environment variable '{var_name}' is set to a placeholder value. "
+            "Please provide a valid value."
+        )
 
-# don't use Hashtags , it is a parameter of a path
-STATIC_WS_TOKEN = 'super_ws_secret'
+    return value
 
-STATIC_HISTORY_DEBOUNCE = 5
 
-# Typesense connection
-TYPESENSE_HOST = "localhost"
-TYPESENSE_PORT = 8108
-TYPESENSE_PROTOCOL = "http"
-TYPESENSE_API_KEY = "#super_secret#"
+# PostgreSQL settings
+DB_USER = get_secure_env_variable("DB_USER")
+DB_PASSWORD = get_secure_env_variable("DB_PASSWORD")
+DB_TABLE = get_secure_env_variable("DB_TABLE")
+DB_PORT = int(get_secure_env_variable("DB_PORT", "5432"))
+DB_ADDR = get_secure_env_variable("DB_ADDR")
 
-# Jaeger Settings
-# docker
-# run - d - -name
-# jaeger - e
-# COLLECTOR_ZIPKIN_HTTP_PORT = 9411 - p
-# 5775: 5775 / udp - p
-# 6831: 6831 / udp - p
-# 6832: 6832 / udp - p
-# 5778: 5778 - p
-# 16686: 16686 - p
-# 14268: 14268 - p
-# 9411: 9411
-# jaegertracing / all - in -one: 1.6
+PLAYWRIGHT_WS = get_secure_env_variable("PLAYWRIGHT_WS")
+PLAYWRIGHT_MEM = int(get_secure_env_variable("PLAYWRIGHT_MEMORY_LIMIT_MB", "1024"))
+PLAYWRIGHT_CPU = int(get_secure_env_variable("PLAYWRIGHT_CPU_LIMIT", "1"))
 
-JAEGER_HOST = 'localhost'
-JAEGER_PORT = 6831
-JAEGER_SERVICE_NAME = 'MLZ-ELN'
+# Initial users
+INITIAL_ADMIN = get_secure_env_variable("INITIAL_ADMIN", "admin")
+INSTRUMENT_AS_ADMIN = get_secure_env_variable("INSTRUMENT_AS_ADMIN", "instrument")
 
-# in kilobytes
-ELEM_MAXIMUM_SIZE = 5000
+# Token
+STATIC_ADMIN_TOKEN = get_secure_env_variable("STATIC_ADMIN_TOKEN")
+STATIC_WS_TOKEN = get_secure_env_variable("STATIC_WS_TOKEN")
 
-# in seconds
-TOKEN_VALIDITY = 50
+# Query mode
+LABBOOK_QUERY_MODE = get_secure_env_variable("LABBOOK_QUERY_MODE", "match")
+
+# Folder paths
+PICTURES_BASE_PATH = get_secure_env_variable("PICTURES_BASE_PATH", "/data/pictures/")
+FILES_BASE_PATH = get_secure_env_variable("FILES_BASE_PATH", "/data/files/")
+
+# Base URL
+URL_BASE_PATH = ensure_trailing_slash(get_secure_env_variable("URL_BASE_PATH"))
+WS_URL = ensure_trailing_slash(get_secure_env_variable("WS_URL"))
+APP_BASE_PATH = ensure_trailing_slash(get_secure_env_variable("APP_BASE_PATH", ""))
+
+WS_PORT = get_secure_env_variable("WS_PORT")
+
+WS_INTERNAL_IP = get_secure_env_variable("WS_INTERNAL_IP")
+
+# CORS settings
+ORIGINS = get_secure_env_variable("ORIGINS", "").split(",")
+
+
+# --- Keycloak integration flag ---
+KEYCLOAK_INTEGRATION = get_secure_env_variable("KEYCLOAK_INTEGRATION", "True") == "True"
+
+# --- Load Keycloak variables normally ---
+KEYCLOAK_REALM_NAME = get_secure_env_variable("KEYCLOAK_REALM_NAME", "")
+KEYCLOAK_SERVER_URL = ensure_trailing_slash(get_secure_env_variable("KEYCLOAK_SERVER_URL", ""))
+KEYCLOAK_CLIENT_ID = get_secure_env_variable("KEYCLOAK_CLIENT_ID", "")
+KEYCLOAK_CLIENT_SECRET = get_secure_env_variable("KEYCLOAK_CLIENT_SECRET", "")
+
+# --- Override if integration disabled ---
+if not KEYCLOAK_INTEGRATION:
+    KEYCLOAK_REALM_NAME = ""
+    KEYCLOAK_SERVER_URL = ""
+    KEYCLOAK_CLIENT_ID = ""
+    KEYCLOAK_CLIENT_SECRET = ""
+
+# typesense connection
+TYPESENSE_HOST = get_secure_env_variable("TYPESENSE_HOST")
+TYPESENSE_PORT = int(get_secure_env_variable("TYPESENSE_PORT", "8108"))
+TYPESENSE_PROTOCOL = get_secure_env_variable("TYPESENSE_PROTOCOL", "http")
+TYPESENSE_API_KEY = get_secure_env_variable("TYPESENSE_API_KEY")
+
+# Jaeger settings
+JAEGER_HOST = get_secure_env_variable("JAEGER_HOST", "localhost")
+JAEGER_PORT = int(get_secure_env_variable("JAEGER_PORT", "6831"))
+JAEGER_SERVICE_NAME = get_secure_env_variable("JAEGER_SERVICE_NAME", "MLZ-ELN")
+
+STATIC_HISTORY_DEBOUNCE = int(get_secure_env_variable("STATIC_HISTORY_DEBOUNCE", "5"))
+
+ELEM_MAXIMUM_SIZE = int(get_secure_env_variable("ELEM_MAXIMUM_SIZE", "5000"))
+
+TOKEN_VALIDITY = int(get_secure_env_variable("TOKEN_VALIDITY", str(50)))
+
+JWT_SECRET_KEY = get_secure_jwt_secret("JWT_SECRET_KEY")
+JWT_ALGORITHM = get_secure_env_variable("JWT_ALGORITHM", "HS256")
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(get_secure_env_variable("JWT_ACCESS_TOKEN_EXPIRE_MINUTES","20"))
+JWT_ACCESS_TOKEN_EXPIRE_SECONDS = int(get_secure_env_variable("JWT_ACCESS_TOKEN_EXPIRE_SECONDS","1000"))
+JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES = int(get_secure_env_variable("JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES","1440"))
+JWT_LEEWAY = int(get_secure_env_variable("JWT_LEEWAY","300"))
+

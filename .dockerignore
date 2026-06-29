@@ -1,5 +1,6 @@
 __pycache__/
 .git/
+.env*
 k8s/
 
 /joeseln_backend/export/node_modules/
