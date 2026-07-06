@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import inspect
 import json
 import os
 import shutil
@@ -64,10 +65,19 @@ def handle_export_exceptions(func):
     async def wrapper(*args, **kwargs):
         export_identifier = kwargs.get("export_identifier", "unknown_identifier")
         try:
-            return await func(*args, **kwargs)
+            result = func(*args, **kwargs)
+
+            # If result is awaitable, await it
+            if inspect.isawaitable(result):
+                return await result
+
+            # Otherwise return it directly
+            return result
+
         except Exception as e:
             logger.exception(f"Error in export {export_identifier}: {e}")
             pending_export[export_identifier] = "err"
+            return None
 
     return wrapper
 
