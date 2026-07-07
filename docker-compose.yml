@@ -52,15 +52,12 @@ services:
     build:
       context: ./frontend/
     environment:
-      SERVER_NAME: "wojians-macbook.local" # optional
-      API_URL: "http://wojians-macbook.local/api"
-      WS_URL: "ws://wojians-macbook.local/ws"
-      KEYCLOAK_URL: "http://wojians-macbook.local/auth"
-      KEYCLOAK_REALM: "joe"
-      KEYCLOAK_CLIENT_ID: "client_frontend"
-      KEYCLOAK_INTEGRATION: "true"
-      KEYCLOAK_BEHIND_NGINX: "true"
-      # INSTR_CSV_ALL: "false"
+      SERVER_NAME: "<SERVER_NAME>"
+      API_URL: "<API_URL>"
+      WS_URL: "<WS_URL>"
+      KEYCLOAK_INTEGRATION: "<KEYCLOAK_INTEGRATION>"
+      KEYCLOAK_BEHIND_NGINX: "<KEYCLOAK_BEHIND_NGINX>"
+      INSTR_CSV_ALL: "<INSTR_CSV_ALL>"
     ports:
       - "80:80"
       - "443:443"
