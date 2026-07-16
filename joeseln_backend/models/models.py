@@ -317,12 +317,6 @@ class UserConnectedWs(Base):
     last_updated = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
-@event.listens_for(Note, "after_insert")
-def note_insert_event(mapper, connection, target):
-    logger.info(f'Note pk after insert: {target.id}')
-    return
-
-
 @event.listens_for(Note, "after_update")
 def note_update_event(mapper, connection, target):
     try:
@@ -330,29 +324,4 @@ def note_update_event(mapper, connection, target):
     except RuntimeError as e:
         logger.error(e)
     logger.info(f'Note pk after update: {target.id}')
-    return
-
-
-@event.listens_for(Note, "after_delete")
-def note_delete_event(mapper, connection, target):
-    logger.info(f'Note pk after delete: {target.id}')
-    return
-
-
-#
-@event.listens_for(Labbookchildelement, "after_insert")
-def elem_insert_event(mapper, connection, target):
-    logger.info(f'Element pk after insert : {target.id}')
-    return
-
-
-@event.listens_for(Labbookchildelement, "after_update")
-def elem_update_event(mapper, connection, target):
-    # logger.info(f'Element pk after update: {target.id}')
-    return
-
-
-@event.listens_for(Labbookchildelement, "after_delete")
-def elem_delete_event(mapper, connection, target):
-    logger.info(f'Element pk after delete: {target.id}')
     return
