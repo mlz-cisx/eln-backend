@@ -21,18 +21,24 @@ from joeseln_backend.mylogging.root_logger import logger
 
 connected_clients = set()
 
+client_tasks = {}
+
 
 async def keepalive(websocket, ping_interval=30):
-    for ping in itertools.count():
-        await asyncio.sleep(ping_interval)
-        try:
+    try:
+        for ping in itertools.count():
+            await asyncio.sleep(ping_interval)
             await websocket.send(json.dumps({"ping": ping}))
-        except (ConnectionClosed, ConnectionClosedOK):
-            break
+    except (ConnectionClosed, ConnectionClosedOK, asyncio.CancelledError):
+        return
 
 
 async def handle_client(websocket, path):
-    asyncio.create_task(keepalive(websocket))
+    # create keepalive task
+    keepalive_task = asyncio.create_task(keepalive(websocket))
+
+    # register tasks for cleanup
+    client_tasks[websocket] = [keepalive_task]
 
     # Register and authenticate  the new client
     if path.startswith('/ws/jwt_'):
@@ -55,13 +61,23 @@ async def handle_client(websocket, path):
             if message_as_dict['auth'] == STATIC_WS_TOKEN:
                 del message_as_dict['auth']
                 message = json.dumps(message_as_dict)
-                # print(message)
-                await asyncio.wait(
-                    [
-                        asyncio.create_task(client.send(message))
-                        for client in connected_clients
-                    ]
+
+                # broadcast safely
+                results = await asyncio.gather(
+                    *(client.send(message) for client in connected_clients),
+                    return_exceptions=True
                 )
+
+                for client, result in zip(list(connected_clients), results):
+                    if isinstance(result, Exception):
+                        logger.warning(
+                            f"WS send failed for client {client.id}: {type(result).__name__}"
+                        )
+
+                        # remove dead/broken clients
+                        if isinstance(result,
+                                      (ConnectionClosed, ConnectionClosedOK)):
+                            connected_clients.discard(client)
 
     except (ConnectionClosed, ConnectionClosedOK):
         pass
@@ -70,6 +86,21 @@ async def handle_client(websocket, path):
         # Unregister the client
         connected_clients.discard(websocket)
         delete_user_connected_ws(ws_id=vars(websocket)['id'])
+
+        # cancel tasks
+        for task in client_tasks.pop(websocket, []):
+            task.cancel()
+            try:
+                await task
+            except Exception:
+                pass
+
+        # close websocket cleanly
+        try:
+            await websocket.close()
+            await websocket.wait_closed()
+        except Exception:
+            pass
 
 
 def add_user_connected_ws(uname, ws_id):
