@@ -24,6 +24,7 @@ from joeseln_backend.conf.base_conf import (
     FILES_BASE_PATH,
     LABBOOK_QUERY_MODE,
     URL_BASE_PATH,
+    DESY_INTEGRATION
 )
 from joeseln_backend.full_text_search.html_stripper import sanitize_html
 from joeseln_backend.helper import db_ordering
@@ -600,7 +601,7 @@ def process_file_upload_form(form, db, contents, user):
         file.write(contents)
         file.close()
 
-    if db_file.name.endswith('.spc'):
+    if DESY_INTEGRATION and db_file.name.endswith('.spc'):
         try:
             labbook_pk = form['labbook_pk']
             description = create_plot_content_from_spec_file(

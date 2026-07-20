@@ -1,4 +1,5 @@
 import os
+
 import dotenv
 
 # Load environment variables from .env file if it exists
@@ -122,3 +123,4 @@ JWT_ACCESS_TOKEN_EXPIRE_SECONDS = int(get_secure_env_variable("JWT_ACCESS_TOKEN_
 JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES = int(get_secure_env_variable("JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES","1440"))
 JWT_LEEWAY = int(get_secure_env_variable("JWT_LEEWAY","300"))
 
+DESY_INTEGRATION = get_secure_env_variable("DESY_INTEGRATION", "True") == "True"
