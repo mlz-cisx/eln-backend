@@ -36,8 +36,8 @@
 
 #### Configuration
 
-- Enter all previously generated configuration parameters into:
-  [joeseln_backend/conf/base_conf.py](joeseln_backend/conf/base_conf.py)
+- create an `.env` according to [.env.sample](.env.sample)
+
 
 #### Initialization and Server Start
 
@@ -50,7 +50,7 @@
   python joeseln_backend/ws/ws_server.py
   ```
   
-  Please refer to the websocket configuration in [joeseln_backend/conf/base_conf.py](joeseln_backend/conf/base_conf.py)
+  Please refer to the websocket configuration in `.env` according to [.env.sample](.env.sample)
 
 - [joeseln_backend/main.py](joeseln_backend/main.py) creates tables and initial admin users
 - ```cd joeseln_backend```
