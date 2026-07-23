@@ -12,15 +12,14 @@ from sqlalchemy.orm import Session
 
 from joeseln_backend.conf.base_conf import (
     INSTRUMENT_AS_ADMIN,
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
+    JWT_ACCESS_TOKEN_EXPIRE_SECONDS,  # noqa: F401
+    JWT_ALGORITHM,
+    JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES,
+    JWT_LEEWAY,
     JWT_SECRET_KEY,
     STATIC_ADMIN_TOKEN,
-    JWT_ALGORITHM,
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
-    JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES,
-    JWT_ACCESS_TOKEN_EXPIRE_SECONDS, # noqa: F401
-    JWT_LEEWAY)
-
-
+)
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.user.user_service import get_user_by_uname
@@ -93,6 +92,8 @@ def _authenticate_user(fake_db, username: str, password: str):
 def authenticate_user(db: Session, username: str, password: str):
     user = get_user_by_uname(db, username)
     if not user:
+        return False
+    if user.deleted:
         return False
     if not verify_password(password, user.password):
         return False

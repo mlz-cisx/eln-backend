@@ -118,6 +118,8 @@ def gui_patch_user(db: Session, authed_user, user_id,
                    user_to_patch: GuiUserPatch):
     if authed_user.admin:
         db_user = db.query(models.User).get(user_id)
+        if db_user is None:
+            return
         if db_user.username not in [INITIAL_ADMIN, INSTRUMENT_AS_ADMIN]:
             db_user.username = user_to_patch.username.strip()
             db_user.first_name = user_to_patch.first_name.strip()
