@@ -15,7 +15,11 @@ class WebSocketClient:
 
     async def connect(self):
         try:
-            self.websocket = await websockets.connect(f'{self.url}{self.token}')
+            self.websocket = await websockets.connect(
+                f"{self.url}{self.token}",
+                open_timeout=10,
+                close_timeout=5,
+            )
         except Exception as e:
             logger.error(f"Failed to connect: {e}")
 
@@ -39,6 +43,7 @@ class WebSocketClient:
     async def close(self):
         if self.websocket is not None:
             await self.websocket.close()
+            await asyncio.wait_for(self.websocket.wait_closed(), timeout=5)
 
 
 ws_client = WebSocketClient(WS_URL, STATIC_WS_TOKEN)
