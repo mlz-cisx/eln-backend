@@ -225,6 +225,9 @@ def get_user_by_id(db: Session, user, user_id):
     if user.admin:
         db_user = db.query(models.User).get(user_id)
 
+        if db_user is None:
+            return
+
         user_groups = get_user_groups(db=db, username=db_user.username)
         admin_groups = get_user_groups_role_groupadmin(db=db, username=db_user.username)
         all_groups = [
