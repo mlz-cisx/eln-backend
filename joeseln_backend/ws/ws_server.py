@@ -9,9 +9,11 @@ sys.path.append(os.path.abspath(Path(__file__).parent.parent.parent))
 import asyncio
 import itertools
 import json
+import uuid
 
 import websockets
 from websockets.exceptions import ConnectionClosed, ConnectionClosedOK
+from websockets.protocol import State
 
 from joeseln_backend.auth.security import get_current_jwt_user_for_ws
 from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_INTERNAL_IP, WS_PORT
@@ -33,7 +35,15 @@ async def keepalive(websocket, ping_interval=30):
         return
 
 
-async def handle_client(websocket, path):
+async def process_request(connection, request):
+    connection._path = request.path
+    return None  # allow connection
+
+
+async def handle_client(websocket):
+    path = getattr(websocket, '_path', '')
+    ws_id = uuid.uuid4()
+
     # create keepalive task
     keepalive_task = asyncio.create_task(keepalive(websocket))
 
@@ -43,21 +53,18 @@ async def handle_client(websocket, path):
     # Register and authenticate  the new client
     if path.startswith('/ws/jwt_'):
         token = path.split('/ws/jwt_')[1]
-        # print('JWT ', token)
         uname = await get_current_jwt_user_for_ws(token=token)
         if uname:
             connected_clients.add(websocket)
-            add_user_connected_ws(uname=uname, ws_id=vars(websocket)['id'])
+            add_user_connected_ws(uname=uname, ws_id=ws_id)
 
     if path.startswith(f'/ws/{STATIC_WS_TOKEN}'):
-        # print('BACKEND_CLIENT')
         connected_clients.add(websocket)
 
     try:
         async for message in websocket:
             # Broadcast the message from backend to all connected clients
             message_as_dict = json.loads(message)
-            # print('connected clients ', len(connected_clients))
             if message_as_dict['auth'] == STATIC_WS_TOKEN:
                 del message_as_dict['auth']
                 message = json.dumps(message_as_dict)
@@ -85,7 +92,7 @@ async def handle_client(websocket, path):
     finally:
         # Unregister the client
         connected_clients.discard(websocket)
-        delete_user_connected_ws(ws_id=vars(websocket)['id'])
+        delete_user_connected_ws(ws_id=ws_id)
 
         # cancel tasks
         for task in client_tasks.pop(websocket, []):
@@ -168,7 +175,8 @@ async def main():
 
     # Start WS server using old websockets.serve API
     server = await websockets.serve(
-        handle_client, WS_INTERNAL_IP, WS_PORT, max_size=1024
+        handle_client, WS_INTERNAL_IP, int(WS_PORT),
+        max_size=1024, process_request=process_request,
     )
 
     try:

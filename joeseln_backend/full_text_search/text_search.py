@@ -1,5 +1,5 @@
 from sqlalchemy import func, or_, and_
-from typesense.client import Client
+from typesense import Client
 from typing_extensions import TypedDict
 
 from joeseln_backend.conf.base_conf import LABBOOK_QUERY_MODE

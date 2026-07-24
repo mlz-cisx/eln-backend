@@ -14,7 +14,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, defer
 from sqlalchemy.sql import text
-from typesense.client import Client
+from typesense import Client
 from typesense.exceptions import TypesenseClientError
 
 from joeseln_backend.auth import security

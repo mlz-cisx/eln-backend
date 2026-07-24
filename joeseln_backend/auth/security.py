@@ -128,7 +128,7 @@ def build_download_token(user, resource_uuid) -> str:
             minutes=JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
-        ).decode()
+        )
         expires_at = current_time + access_token_expires.total_seconds()
         token_cache[cache_key] = (access_token, expires_at)
 

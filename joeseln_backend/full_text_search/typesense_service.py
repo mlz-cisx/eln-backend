@@ -1,7 +1,6 @@
 from typing import Dict
 
-import typesense
-from typesense.client import Client
+from typesense import Client
 from typesense.configuration import ConfigDict
 from typesense.exceptions import ObjectNotFound, TypesenseClientError
 from typesense.types.collection import CollectionCreateSchema
@@ -25,7 +24,7 @@ class TypesenseService:
         self.config = CONFIG
 
     def connect_typesense_client(self) -> None:
-        self.client = typesense.client.Client(self.config)
+        self.client = Client(self.config)
 
     def create_collection(self) -> None:
         if self.client is None:

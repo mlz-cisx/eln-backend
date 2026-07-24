@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, aliased
-from typesense.client import Client
+from typesense import Client
 from typesense.exceptions import TypesenseClientError
 
 from joeseln_backend.auth import security

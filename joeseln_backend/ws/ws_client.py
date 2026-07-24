@@ -2,6 +2,7 @@ import asyncio
 import json
 
 import websockets
+from websockets.protocol import State
 
 from joeseln_backend.conf.base_conf import STATIC_WS_TOKEN, WS_URL
 from joeseln_backend.mylogging.root_logger import logger
@@ -24,16 +25,13 @@ class WebSocketClient:
             logger.error(f"Failed to connect: {e}")
 
     async def transmit(self, db_data):
-        if self.websocket is None or self.websocket.closed:
+        if self.websocket is None or self.websocket.state != State.OPEN:
             await self.connect()
 
         if self.websocket is not None:
             try:
                 merged_data = {**{'action': 'transmit', 'auth': self.token}, **db_data}
                 await self.websocket.send(json.dumps(merged_data))
-                _ = await self.websocket.recv()
-                # response = await self.websocket.recv()
-                # print('transmitted to eln ', response)
             except websockets.exceptions.ConnectionClosedError as e:
                 logger.error(e)
                 await self.connect()
@@ -49,4 +47,8 @@ class WebSocketClient:
 ws_client = WebSocketClient(WS_URL, STATIC_WS_TOKEN)
 
 def transmit(db_data):
-    asyncio.run(ws_client.transmit(db_data))
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(ws_client.transmit(db_data))
+    except RuntimeError:
+        asyncio.run(ws_client.transmit(db_data))
