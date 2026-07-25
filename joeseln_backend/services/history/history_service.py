@@ -75,7 +75,7 @@ def get_history(db: Session, elem_id, user):
         object_uuid=elem_id).order_by(
         desc(models.ChangesetChangeset.date)).all()
     for elem in history_elems:
-        elem.user = db.query(models.User).get(elem.user_id)
+        elem.user = db.get(models.User, elem.user_id)
 
         elem.object_type = {'id': elem.object_type_id,
                             'app_label':

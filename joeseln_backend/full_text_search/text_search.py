@@ -87,10 +87,10 @@ def search_with_model(db, model, search_text, user, typesense: Client):
 
         for result in search_res:
             result = result["document"]
-            lb_elem = db.query(models.Labbookchildelement).get(
+            lb_elem = db.get(models.Labbookchildelement, 
                 result["elem_id"])
             if lb_elem:
-                created_by = db.query(models.User).get(lb_elem.created_by_id)
+                created_by = db.get(models.User, lb_elem.created_by_id)
                 res_dic = {'content_type_model': 'shared_elements.note',
                            'display': result["subject"],
                            'created_by': created_by,
@@ -125,9 +125,9 @@ def search_with_model(db, model, search_text, user, typesense: Client):
                     f'%{encoded_search_text.lower()}%'))).all()
 
         for result in results:
-            lb_elem = db.query(models.Labbookchildelement).get(result.elem_id)
+            lb_elem = db.get(models.Labbookchildelement, result.elem_id)
             if lb_elem and str(lb_elem.labbook_id) in labbook_ids:
-                created_by = db.query(models.User).get(
+                created_by = db.get(models.User, 
                     lb_elem.created_by_id)
                 res_dic = {'content_type_model': 'shared_elements.file',
                            'display': result.title,
@@ -154,10 +154,10 @@ def search_with_model(db, model, search_text, user, typesense: Client):
 
         for result in search_res:
             result = result["document"]
-            lb_elem = db.query(models.Labbookchildelement).get(
+            lb_elem = db.get(models.Labbookchildelement, 
                 result["elem_id"])
             if lb_elem:
-                created_by = db.query(models.User).get(lb_elem.created_by_id)
+                created_by = db.get(models.User, lb_elem.created_by_id)
                 res_dic = {
                     "content_type_model": "pictures.picture",
                     "display": result["subject"],
@@ -194,7 +194,7 @@ def search_with_model(db, model, search_text, user, typesense: Client):
 
         for result in results:
             if str(result.id) in labbook_ids:
-                created_by = db.query(models.User).get(
+                created_by = db.get(models.User, 
                     result.created_by_id)
                 res_dic = {'content_type_model': 'labbooks.labbook',
                            'display': result.title,
@@ -223,7 +223,7 @@ def search_in_labbook(db, labbook_pk, search_text, user, typesense: Client):
 
     for result in search_res:
         result = result["document"]
-        lb_elem = db.query(models.Labbookchildelement).get(
+        lb_elem = db.get(models.Labbookchildelement, 
             result["elem_id"])
         if lb_elem:
             res_dic = {'content_type_model': 'shared_elements.note',
@@ -266,7 +266,7 @@ def search_in_labbook(db, labbook_pk, search_text, user, typesense: Client):
 
     for result in results:
         if result.elem_id:
-            lb_elem = db.query(models.Labbookchildelement).get(result.elem_id)
+            lb_elem = db.get(models.Labbookchildelement, result.elem_id)
             if lb_elem:
                 res_dic = {'content_type_model': 'shared_elements.file',
                            'element_pk': str(result.id),
@@ -282,7 +282,7 @@ def search_in_labbook(db, labbook_pk, search_text, user, typesense: Client):
 
     for result in search_res:
         result = result["document"]
-        lb_elem = db.query(models.Labbookchildelement).get(
+        lb_elem = db.get(models.Labbookchildelement, 
             result["elem_id"])
         if lb_elem:
             res_dic = {

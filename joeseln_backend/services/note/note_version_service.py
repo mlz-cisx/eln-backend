@@ -22,14 +22,14 @@ def get_all_note_versions(db: Session, note_pk, user):
     for db_note_version in db_note_versions:
         db_note_version.metadata = json.dumps(
             json.loads(json.dumps(db_note_version.version_metadata)))
-        db_user_created = db.query(models.User).get(
+        db_user_created = db.get(models.User, 
             db_note_version.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_modified = db.get(models.User, 
             db_note_version.last_modified_by_id)
         db_note_version.created_by = db_user_created
         db_note_version.last_modified_by = db_user_modified
-    db_note = db.query(models.Note).get(note_pk)
-    lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+    db_note = db.get(models.Note, note_pk)
+    lb_elem = db.get(models.Labbookchildelement, db_note.elem_id)
     if lb_elem and check_for_labbook_access(
         db=db, labbook_pk=lb_elem.labbook_id, user=user
     ):
@@ -38,20 +38,20 @@ def get_all_note_versions(db: Session, note_pk, user):
 
 
 def get_note_version_metadata(db: Session, note_pk, version_pk, user):
-    db_note = db.query(models.Note).get(note_pk)
-    lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+    db_note = db.get(models.Note, note_pk)
+    lb_elem = db.get(models.Labbookchildelement, db_note.elem_id)
     if lb_elem and check_for_labbook_access(db=db,
                                             labbook_pk=lb_elem.labbook_id,
                                             user=user) and check_for_version_edit_access_on_lb_elem(
         db=db, lb_elem=lb_elem, user=user):
-        db_note_version = db.query(models.Version).get(version_pk)
+        db_note_version = db.get(models.Version, version_pk)
         # renaming and json.dumps for schema
         return db_note_version.version_metadata
     return None
 
 
 def restore_note_version(db: Session, note_pk, version_pk, user):
-    db_note_version = db.query(models.Version).get(version_pk)
+    db_note_version = db.get(models.Version, version_pk)
     summary = f'restored from v{db_note_version.number}'
     version_metadata = db_note_version.version_metadata
     content = version_metadata['content']
@@ -65,9 +65,9 @@ def restore_note_version(db: Session, note_pk, version_pk, user):
 
 def add_note_version(db: Session, note_pk, summary, user, restored_content=None,
                      restored_subject=None):
-    db_note = db.query(models.Note).get(note_pk)
+    db_note = db.get(models.Note, note_pk)
     if db_note:
-        lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+        lb_elem = db.get(models.Labbookchildelement, db_note.elem_id)
         if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                     user=user) and check_for_version_edit_access_on_lb_elem(
             db=db, lb_elem=lb_elem, user=user):
@@ -107,8 +107,8 @@ def add_note_version(db: Session, note_pk, summary, user, restored_content=None,
                 last_modified_by_id=user.id
             )
 
-            db_user_created = db.query(models.User).get(db_note.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_user_created = db.get(models.User, db_note.created_by_id)
+            db_user_modified = db.get(models.User, 
                 db_note.last_modified_by_id)
             db_note.created_by = db_user_created
             db_note.last_modified_by = db_user_modified

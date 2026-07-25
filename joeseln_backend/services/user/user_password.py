@@ -28,7 +28,7 @@ def change_user_password(db: Session, username, hashed_password):
 
 def gui_password_change(db: Session, user,
                         none_hashed_password: user_schema.PasswordChange):
-    db_user = db.query(models.User).get(user.id)
+    db_user = db.get(models.User, user.id)
     if db_user and not db_user.oidc_user:
         db_user.password = get_password_hash(
             none_hashed_password.password.strip())
@@ -46,7 +46,7 @@ def gui_password_change(db: Session, user,
 def gui_patch_user_password(db: Session, authed_user, user_id,
                             password_to_patch: user_schema.PasswordPatch):
     if authed_user.admin:
-        db_user = db.query(models.User).get(user_id)
+        db_user = db.get(models.User, user_id)
         if db_user and not db_user.oidc_user and db_user.username not in [
             INITIAL_ADMIN, INSTRUMENT_AS_ADMIN]:
             db_user.password = get_password_hash(

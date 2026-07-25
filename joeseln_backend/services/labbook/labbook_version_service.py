@@ -34,9 +34,9 @@ def get_all_labbook_versions(db: Session, labbook_pk, user):
         db_labbook_version.metadata = json.dumps(
             json.loads(json.dumps(db_labbook_version.version_metadata)))
 
-        db_user_created = db.query(models.User).get(
+        db_user_created = db.get(models.User, 
             db_labbook_version.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_modified = db.get(models.User, 
             db_labbook_version.last_modified_by_id)
         db_labbook_version.created_by = db_user_created
         db_labbook_version.last_modified_by = db_user_modified
@@ -48,7 +48,7 @@ def get_labbook_version_metadata(db: Session, labbook_pk, version_pk, user):
     if not check_for_labbook_admin_access(db=db, labbook_pk=labbook_pk,
                                           user=user):
         return None
-    db_labbook_version = db.query(models.Version).get(version_pk)
+    db_labbook_version = db.get(models.Version, version_pk)
     if db_labbook_version is None:
         return None
     # renaming and json.dumps for schema
@@ -60,7 +60,7 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
                                           user=user):
         return None
 
-    db_labbook_version = db.query(models.Version).get(version_pk)
+    db_labbook_version = db.get(models.Version, version_pk)
     if db_labbook_version is None:
         return None
     version_metadata = db_labbook_version.version_metadata
@@ -71,7 +71,7 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
     # 1 .restore child elements content, description,...
     for elem in version_metadata['child_elements']:
         if elem['type'] == 'Note':
-            version = db.query(models.Version).get(
+            version = db.get(models.Version, 
                 elem['child_object_version_id'])
             content = version.version_metadata['content']
             subject = version.version_metadata['subject']
@@ -84,7 +84,7 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
                                                   restored_subject=subject)
 
         if elem['type'] == 'Picture':
-            version = db.query(models.Version).get(
+            version = db.get(models.Version, 
                 elem['child_object_version_id'])
             title = version.version_metadata['title']
             canvas_content = version.version_metadata['canvas_content']
@@ -96,7 +96,7 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
                                                         restored_canvas_content=canvas_content,
                                                         user=user)
         if elem['type'] == 'File':
-            version = db.query(models.Version).get(
+            version = db.get(models.Version, 
                 elem['child_object_version_id'])
             title = version.version_metadata['title']
             description = version.version_metadata['description']
@@ -133,7 +133,7 @@ def update_all_lb_childelements_from_version(db: Session,
     child_elem_ids = []
 
     for lb_childelem in labbook_childelems:
-        elem = db.query(models.Labbookchildelement).get(
+        elem = db.get(models.Labbookchildelement, 
             lb_childelem['child_element_id'])
         # we need this to exclude removed elements
         if elem:
@@ -151,7 +151,7 @@ def update_all_lb_childelements_from_version(db: Session,
     for curr_elem in current_labbookelements:
         if str(curr_elem.id) not in child_elem_ids:
             if curr_elem.child_object_content_type == 30:
-                note_to_update = db.query(models.Note).get(
+                note_to_update = db.get(models.Note, 
                     curr_elem.child_object_id)
 
                 note_to_update.deleted = True
@@ -165,7 +165,7 @@ def update_all_lb_childelements_from_version(db: Session,
                     logger.error(e)
 
             if curr_elem.child_object_content_type == 40:
-                pic_to_update = db.query(models.Picture).get(
+                pic_to_update = db.get(models.Picture, 
                     curr_elem.child_object_id)
 
                 pic_to_update.deleted = True
@@ -179,7 +179,7 @@ def update_all_lb_childelements_from_version(db: Session,
                     logger.error(e)
 
             if curr_elem.child_object_content_type == 50:
-                file_to_update = db.query(models.File).get(
+                file_to_update = db.get(models.File, 
                     curr_elem.child_object_id)
 
                 file_to_update.deleted = True
@@ -198,9 +198,7 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
     if not check_for_labbook_admin_access(db=db, labbook_pk=labbook_pk,
                                           user=user):
         return None
-    db_labbook = db.query(models.Labbook).get(labbook_pk)
-    if db_labbook is None:
-        return None
+    db_labbook = db.get(models.Labbook, labbook_pk)
     number = 1
     last_db_labbook_version = db.query(models.Version).filter_by(
         object_id=labbook_pk).order_by(models.Version.number.desc()).first()
@@ -233,7 +231,7 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
                                                       user=user
                                                       )[
                     1]
-            note = db.query(models.Note).get(elem.child_object_id)
+            note = db.get(models.Note, elem.child_object_id)
             child_elements.append(
                 {"width": elem.width,
                  "height": elem.height,
@@ -260,7 +258,7 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
                                                             summary=elem_summary,
                                                             user=user)[
                     1]
-            picture = db.query(models.Picture).get(elem.child_object_id)
+            picture = db.get(models.Picture, elem.child_object_id)
             child_elements.append(
                 {"width": elem.width,
                  "height": elem.height,
@@ -286,7 +284,7 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
                                                                          summary=elem_summary,
                                                                          user=user)[
                 1]
-            file = db.query(models.File).get(elem.child_object_id)
+            file = db.get(models.File, elem.child_object_id)
             child_elements.append(
                 {"width": elem.width,
                  "height": elem.height,
@@ -338,8 +336,8 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
         return db_labbook
     db.refresh(db_labbook_version)
 
-    db_user_created = db.query(models.User).get(db_labbook.created_by_id)
-    db_user_modified = db.query(models.User).get(
+    db_user_created = db.get(models.User, db_labbook.created_by_id)
+    db_user_modified = db.get(models.User, 
         db_labbook.last_modified_by_id)
     db_labbook.created_by = db_user_created
     db_labbook.last_modified_by = db_user_modified

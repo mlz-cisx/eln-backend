@@ -90,7 +90,7 @@ def get_lb_childelements_for_zip_export(db: Session, labbook_pk, user,
 
     for elem in query:
         if elem.child_object_content_type == 30:
-            elem.child_object = db.query(models.Note).get(elem.child_object_id)
+            elem.child_object = db.get(models.Note, elem.child_object_id)
             elem.relations = get_note_relations(db=db,
                                                 note_pk=elem.child_object_id,
                                                 params='',
@@ -130,7 +130,7 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
 
     # uncorrelated subquery to get comment count
     related_comments_count = (
-        select([models.Relation.right_object_id, func.count().label('count')])
+        select(models.Relation.right_object_id, func.count().label('count'))
         .where(
             and_(
                 models.Relation.left_content_type == 70,
@@ -266,7 +266,7 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
 
 
 def check_for_version_edit_access_on_lb_elem(db: Session, lb_elem, user):
-    elem_creator = db.query(models.User).get(lb_elem.created_by_id)
+    elem_creator = db.get(models.User, lb_elem.created_by_id)
     # lowest rights
     if not elem_creator.admin:
         return True
@@ -310,7 +310,7 @@ def create_lb_childelement(db: Session, labbook_pk,
     )
     db.add(db_labbook_elem)
 
-    lb_to_update = db.query(models.Labbook).get(labbook_pk)
+    lb_to_update = db.get(models.Labbook, labbook_pk)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -390,7 +390,7 @@ def patch_lb_childelement_height(db: Session, labbook_pk,
     if check_for_labbook_access(db=db, labbook_pk=labbook_pk,
                                 user=user) != "Write":
         return None
-    lb_elem = db.query(models.Labbookchildelement).get(element_pk)
+    lb_elem = db.get(models.Labbookchildelement, element_pk)
     if lb_elem is None:
         return None
     lb_elem.height = labbook_childelem.height
@@ -566,7 +566,7 @@ def update_all_lb_childelements(db: Session,
 def update_child_element(db_labbook_elem, child_object_content_type,
                          child_object_id, db):
     if child_object_content_type == 30:
-        note = db.query(models.Note).get(child_object_id)
+        note = db.get(models.Note, child_object_id)
         note.elem_id = db_labbook_elem.id
         try:
             db.commit()
@@ -575,7 +575,7 @@ def update_child_element(db_labbook_elem, child_object_content_type,
             db.close()
 
     if child_object_content_type == 40:
-        picture = db.query(models.Picture).get(child_object_id)
+        picture = db.get(models.Picture, child_object_id)
         picture.elem_id = db_labbook_elem.id
         try:
             db.commit()
@@ -584,7 +584,7 @@ def update_child_element(db_labbook_elem, child_object_content_type,
             db.close()
 
     if child_object_content_type == 50:
-        file = db.query(models.File).get(child_object_id)
+        file = db.get(models.File, child_object_id)
         file.elem_id = db_labbook_elem.id
         try:
             db.commit()

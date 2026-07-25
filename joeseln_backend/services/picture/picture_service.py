@@ -126,15 +126,15 @@ def get_all_pictures(db: Session, params, user):
                 .all()
             )
         for pic in pics:
-            db_user_created = db.query(models.User).get(pic.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_user_created = db.get(models.User, pic.created_by_id)
+            db_user_modified = db.get(models.User, 
                 pic.last_modified_by_id)
             pic.created_by = db_user_created
             pic.last_modified_by = db_user_modified
 
             try:
-                lb_elem = db.query(models.Labbookchildelement).get(pic.elem_id)
-                lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+                lb_elem = db.get(models.Labbookchildelement, pic.elem_id)
+                lb = db.get(models.Labbook, lb_elem.labbook_id)
                 pic.lb_title = lb.title
             except SQLAlchemyError:
                 pic.lb_title = 'None'
@@ -192,15 +192,15 @@ def get_all_pictures(db: Session, params, user):
         )
 
     for pic in pics:
-        db_user_created = db.query(models.User).get(pic.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_created = db.get(models.User, pic.created_by_id)
+        db_user_modified = db.get(models.User, 
             pic.last_modified_by_id)
         pic.created_by = db_user_created
         pic.last_modified_by = db_user_modified
 
         try:
-            lb_elem = db.query(models.Labbookchildelement).get(pic.elem_id)
-            lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+            lb_elem = db.get(models.Labbookchildelement, pic.elem_id)
+            lb = db.get(models.Labbook, lb_elem.labbook_id)
             pic.lb_title = lb.title
         except SQLAlchemyError:
             pic.lb_title = 'None'
@@ -209,9 +209,9 @@ def get_all_pictures(db: Session, params, user):
 
 
 def get_picture(db: Session, picture_pk, user):
-    db_picture = db.query(models.Picture).get(picture_pk)
-    db_user_created = db.query(models.User).get(db_picture.created_by_id)
-    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+    db_picture = db.get(models.Picture, picture_pk)
+    db_user_created = db.get(models.User, db_picture.created_by_id)
+    db_user_modified = db.get(models.User, db_picture.last_modified_by_id)
     db_picture.created_by = db_user_created
     db_picture.last_modified_by = db_user_modified
 
@@ -222,9 +222,9 @@ def get_picture(db: Session, picture_pk, user):
 
 
 def get_canvas_content(db: Session, picture_pk, user):
-    db_picture = db.query(models.Picture).get(picture_pk)
+    db_picture = db.get(models.Picture, picture_pk)
     if db_picture:
-        lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+        lb_elem = db.get(models.Labbookchildelement, db_picture.elem_id)
         if not lb_elem:
             return None
         if user.admin:
@@ -238,7 +238,7 @@ def get_canvas_content(db: Session, picture_pk, user):
 
 def update_title(db: Session, tsClient: Client, picture_pk, user,
                  pic_payload: UpdatePictureTitle):
-    db_picture = db.query(models.Picture).get(picture_pk)
+    db_picture = db.get(models.Picture, picture_pk)
 
     old_title = db_picture.title
 
@@ -246,13 +246,13 @@ def update_title(db: Session, tsClient: Client, picture_pk, user,
     db_picture.last_modified_at = datetime.datetime.now()
     db_picture.last_modified_by_id = user.id
 
-    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+    lb_elem = db.get(models.Labbookchildelement, db_picture.elem_id)
 
-    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
-    db_user_created = db.query(models.User).get(db_picture.created_by_id)
+    db_user_created = db.get(models.User, db_picture.created_by_id)
 
     # picture created by instrument
     if db_user_created.admin and check_for_labbook_admin_access(db=db,
@@ -265,7 +265,7 @@ def update_title(db: Session, tsClient: Client, picture_pk, user,
             db.close()
             return
         db.refresh(db_picture)
-        db_user_created = db.query(models.User).get(db_picture.created_by_id)
+        db_user_created = db.get(models.User, db_picture.created_by_id)
         db_picture.created_by = db_user_created
         db_picture.last_modified_by = user
         db.close()
@@ -300,7 +300,7 @@ def update_title(db: Session, tsClient: Client, picture_pk, user,
             return
 
         db.refresh(db_picture)
-        db_user_created = db.query(models.User).get(db_picture.created_by_id)
+        db_user_created = db.get(models.User, db_picture.created_by_id)
         db_picture.created_by = db_user_created
         db_picture.last_modified_by = user
         db.close()
@@ -325,14 +325,14 @@ def update_title(db: Session, tsClient: Client, picture_pk, user,
 
 def update_canvas_content(db: Session, tsClient: Client, picture_pk, user,
                           pic_payload: PictureUpload):
-    db_picture = db.query(models.Picture).get(picture_pk)
+    db_picture = db.get(models.Picture, picture_pk)
     db_picture.canvas_content = pic_payload.canvas_content
     db_picture.last_modified_at = datetime.datetime.now()
     db_picture.last_modified_by_id = user.id
 
-    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+    lb_elem = db.get(models.Labbookchildelement, db_picture.elem_id)
 
-    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -358,7 +358,7 @@ def update_canvas_content(db: Session, tsClient: Client, picture_pk, user,
             return
 
         db.refresh(db_picture)
-        db_user_created = db.query(models.User).get(db_picture.created_by_id)
+        db_user_created = db.get(models.User, db_picture.created_by_id)
         db_picture.created_by = db_user_created
         db_picture.last_modified_by = user
         db.close()
@@ -389,14 +389,14 @@ def get_all_deleted_pics(db: Session):
 
 
 def get_picture_with_privileges(db: Session, picture_pk, user, If_None_Match):
-    db_picture = db.query(models.Picture).get(picture_pk)
+    db_picture = db.get(models.Picture, picture_pk)
     if db_picture:
         etag = f'{db_picture.id}-{db_picture.last_modified_at}'
         if If_None_Match == etag:
             raise HTTPException(status_code=304) 
 
-        db_user_created = db.query(models.User).get(db_picture.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_created = db.get(models.User, db_picture.created_by_id)
+        db_user_modified = db.get(models.User, 
             db_picture.last_modified_by_id)
         db_picture.created_by = db_user_created
         db_picture.last_modified_by = db_user_modified
@@ -409,7 +409,7 @@ def get_picture_with_privileges(db: Session, picture_pk, user, If_None_Match):
                                 'picture': pic},
                     'etag': etag}
 
-        lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+        lb_elem = db.get(models.Labbookchildelement, db_picture.elem_id)
 
         if not lb_elem:
             return None
@@ -418,8 +418,8 @@ def get_picture_with_privileges(db: Session, picture_pk, user, If_None_Match):
                                         user=user):
             return None
 
-        db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
-        db_pic_creator = db.query(models.User).get(db_picture.created_by_id)
+        db_lb = db.get(models.Labbook, lb_elem.labbook_id)
+        db_pic_creator = db.get(models.User, db_picture.created_by_id)
 
         picture_created_by = 'USER'
         if db_pic_creator.admin:
@@ -457,8 +457,8 @@ def get_picture_with_privileges(db: Session, picture_pk, user, If_None_Match):
 
 
 def get_picture_relations(db: Session, picture_pk, params, user):
-    db_picture = db.query(models.Picture).get(picture_pk)
-    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+    db_picture = db.get(models.Picture, picture_pk)
+    lb_elem = db.get(models.Labbookchildelement, db_picture.elem_id)
     if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                 user=user):
 
@@ -477,11 +477,11 @@ def get_picture_relations(db: Session, picture_pk, params, user):
 
         for rel in relations:
             if rel.left_content_type == 70:
-                db_comment = db.query(models.Comment).get(rel.left_object_id)
+                db_comment = db.get(models.Comment, rel.left_object_id)
 
-                db_user_created = db.query(models.User).get(
+                db_user_created = db.get(models.User, 
                     db_comment.created_by_id)
-                db_user_modified = db.query(models.User).get(
+                db_user_modified = db.get(models.User, 
                     db_comment.last_modified_by_id)
                 rel.created_by = db_user_created
                 rel.last_modified_by = db_user_modified
@@ -491,9 +491,9 @@ def get_picture_relations(db: Session, picture_pk, params, user):
             else:
                 rel.left_content_object = None
 
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 db_picture.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_user_modified = db.get(models.User, 
                 db_picture.last_modified_by_id)
             db_picture.created_by = db_user_created
             db_picture.last_modified_by = db_user_modified
@@ -505,9 +505,9 @@ def get_picture_relations(db: Session, picture_pk, params, user):
 
 
 def delete_picture_relation(db: Session, picture_pk, relation_pk, user):
-    db_pic = db.query(models.Picture).get(picture_pk)
-    lb_elem = db.query(models.Labbookchildelement).get(db_pic.elem_id)
-    db_relation = db.query(models.Relation).get(relation_pk)
+    db_pic = db.get(models.Picture, picture_pk)
+    lb_elem = db.get(models.Labbookchildelement, db_pic.elem_id)
+    db_relation = db.get(models.Relation, relation_pk)
     # comment can only be deteled by its creator or groupadmins
     if (
         db_relation
@@ -547,12 +547,12 @@ def get_picture_related_comments_count(db: Session, picture_pk, user):
 
 
 def get_picture_for_export(db: Session, picture_pk):
-    db_picture = db.query(models.Picture).get(picture_pk)
-    db_user_created = db.query(models.User).get(db_picture.created_by_id)
-    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+    db_picture = db.get(models.Picture, picture_pk)
+    db_user_created = db.get(models.User, db_picture.created_by_id)
+    db_user_modified = db.get(models.User, db_picture.last_modified_by_id)
     db_picture.created_by = db_user_created
     db_picture.last_modified_by = db_user_modified
-    elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+    elem = db.get(models.Labbookchildelement, db_picture.elem_id)
     db_picture.canvas_width = \
         round(84 * elem.width * 0.9)  # 84px default width per col
     db_picture.canvas_height = \
@@ -561,16 +561,16 @@ def get_picture_for_export(db: Session, picture_pk):
 
 
 def get_picture_filename(db: Session, picture_pk):
-    pic = db.query(models.Picture).get(picture_pk)
+    pic = db.get(models.Picture, picture_pk)
     return pic.title
 
 
 
 
 def get_picture_for_zip_export(db: Session, picture_pk):
-    db_picture = db.query(models.Picture).get(picture_pk)
-    db_user_created = db.query(models.User).get(db_picture.created_by_id)
-    db_user_modified = db.query(models.User).get(db_picture.last_modified_by_id)
+    db_picture = db.get(models.Picture, picture_pk)
+    db_user_created = db.get(models.User, db_picture.created_by_id)
+    db_user_modified = db.get(models.User, db_picture.last_modified_by_id)
     db_picture.created_by = db_user_created
     db_picture.last_modified_by = db_user_modified
     db_picture.background_image = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
@@ -579,8 +579,8 @@ def get_picture_for_zip_export(db: Session, picture_pk):
 
 
 def get_lb_pk_from_picture(db: Session, picture_pk):
-    pic = db.query(models.Picture).get(picture_pk)
-    elem = db.query(models.Labbookchildelement).get(pic.elem_id)
+    pic = db.get(models.Picture, picture_pk)
+    elem = db.get(models.Labbookchildelement, pic.elem_id)
     return elem.labbook_id
 
 
@@ -681,7 +681,7 @@ def process_picture_upload_form(form, db, tsClient: Client, contents, user):
 
 
     deepcopied_pic = deepcopy(db_picture)
-    pic_to_update = db.query(models.Picture).get(deepcopied_pic.id)
+    pic_to_update = db.get(models.Picture, deepcopied_pic.id)
     pic_to_update.canvas_content = get_canvas_content_with_imgbase64(
         img_src=base64_string)
     try:
@@ -751,7 +751,7 @@ def build_bi_download_response(picture_pk, db, jwt):
     user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
-    db_picture = db.query(models.Picture).get(picture_pk)
+    db_picture = db.get(models.Picture, picture_pk)
     bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
     value = FileResponse(bi_img_path)
 
@@ -762,11 +762,11 @@ def build_bi_download_response(picture_pk, db, jwt):
 
 
 def get_picture_export_link(db: Session, picture_pk, user):
-    db_picture = db.query(models.Picture).get(picture_pk)
+    db_picture = db.get(models.Picture, picture_pk)
     db_picture = build_picture_download_url_with_token(
         picture_to_process=db_picture,
         user=user)
-    lb_elem = db.query(models.Labbookchildelement).get(db_picture.elem_id)
+    lb_elem = db.get(models.Labbookchildelement, db_picture.elem_id)
 
     export_link = {
         'url': db_picture.path,
@@ -794,17 +794,17 @@ def build_picture_download_url_with_token(picture_to_process, user):
 
 # needs to be heavily factorized
 def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data, user):
-    pic_to_update = db.query(models.Picture).get(picture_pk)
+    pic_to_update = db.get(models.Picture, picture_pk)
     pic_to_update.deleted = True
     pic_to_update.last_modified_at = datetime.datetime.now()
     pic_to_update.last_modified_by_id = user.id
 
-    lb_elem = db.query(models.Labbookchildelement).get(pic_to_update.elem_id)
+    lb_elem = db.get(models.Labbookchildelement, pic_to_update.elem_id)
     lb_elem.deleted = True
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
 
-    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -818,7 +818,7 @@ def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data,
             return pic_to_update
         db.refresh(pic_to_update)
 
-        db_user_created = db.query(models.User).get(pic_to_update.created_by_id)
+        db_user_created = db.get(models.User, pic_to_update.created_by_id)
         pic_to_update.created_by = db_user_created
         pic_to_update.last_modified_by = user
 
@@ -861,7 +861,7 @@ def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data,
                 return pic_to_update
             db.refresh(pic_to_update)
 
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 pic_to_update.created_by_id)
             pic_to_update.created_by = db_user_created
             pic_to_update.last_modified_by = user
@@ -903,7 +903,7 @@ def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data,
             return pic_to_update
         db.refresh(pic_to_update)
 
-        db_user_created = db.query(models.User).get(
+        db_user_created = db.get(models.User, 
             pic_to_update.created_by_id)
         pic_to_update.created_by = db_user_created
         pic_to_update.last_modified_by = user
@@ -997,13 +997,13 @@ def hidden_delete_picture(db: Session, picture_pk,
 
 def restore_picture(db: Session, tsClient: Client, picture_pk, user,
                     restored_row: int | None = None):
-    pic_to_update = db.query(models.Picture).get(picture_pk)
+    pic_to_update = db.get(models.Picture, picture_pk)
     pic_to_update.deleted = False
     pic_to_update.hidden_deleted = False
     pic_to_update.last_modified_at = datetime.datetime.now()
     pic_to_update.last_modified_by_id = user.id
 
-    lb_elem = db.query(models.Labbookchildelement).get(pic_to_update.elem_id)
+    lb_elem = db.get(models.Labbookchildelement, pic_to_update.elem_id)
     # already restored
     if not lb_elem.deleted:
         return pic_to_update
@@ -1011,7 +1011,7 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user,
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
 
-    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -1037,7 +1037,7 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user,
             return pic_to_update
         db.refresh(pic_to_update)
 
-        db_user_created = db.query(models.User).get(pic_to_update.created_by_id)
+        db_user_created = db.get(models.User, pic_to_update.created_by_id)
         pic_to_update.created_by = db_user_created
         pic_to_update.last_modified_by = user
 
@@ -1090,7 +1090,7 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user,
                 return pic_to_update
             db.refresh(pic_to_update)
 
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 pic_to_update.created_by_id)
             pic_to_update.created_by = db_user_created
             pic_to_update.last_modified_by = user
@@ -1144,7 +1144,7 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user,
             return pic_to_update
         db.refresh(pic_to_update)
 
-        db_user_created = db.query(models.User).get(
+        db_user_created = db.get(models.User, 
             pic_to_update.created_by_id)
         pic_to_update.created_by = db_user_created
         pic_to_update.last_modified_by = user
@@ -1175,12 +1175,12 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user,
 
 
 def remove_soft_deleted_picture(db: Session, picture_pk):
-    pic_to_remove = db.query(models.Picture).get(picture_pk)
+    pic_to_remove = db.get(models.Picture, picture_pk)
 
     bi_img_path = f'{PICTURES_BASE_PATH}{pic_to_remove.background_image}'
 
     if pic_to_remove and pic_to_remove.deleted:
-        lb_elem = db.query(models.Labbookchildelement).get(
+        lb_elem = db.get(models.Labbookchildelement, 
             pic_to_remove.elem_id)
         # only comment relations
         relations = db.query(models.Relation).filter_by(

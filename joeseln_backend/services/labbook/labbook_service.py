@@ -101,7 +101,7 @@ def check_for_labbook_access(
 def create_note_below(db: Session, element_pk, user,
                       typesense_client: Client):
     try:
-        db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
+        db_labbook_elem = db.get(models.Labbookchildelement, element_pk)
     except ValueError:
         return False
 
@@ -222,7 +222,7 @@ def create_note_below(db: Session, element_pk, user,
     )
 
     db.add(db_labbook_elem)
-    lb_to_update = db.query(models.Labbook).get(labbook_id)
+    lb_to_update = db.get(models.Labbook, labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -235,7 +235,7 @@ def create_note_below(db: Session, element_pk, user,
 
     db.refresh(db_labbook_elem)
 
-    note = db.query(models.Note).get(db_note.id)
+    note = db.get(models.Note, db_note.id)
     note.elem_id = db_labbook_elem.id
     try:
         db.commit()
@@ -272,7 +272,7 @@ def create_note_below(db: Session, element_pk, user,
 def create_note_aside(db: Session, element_pk, user,
                       typesense_client: Client):
     try:
-        db_labbook_elem = db.query(models.Labbookchildelement).get(element_pk)
+        db_labbook_elem = db.get(models.Labbookchildelement, element_pk)
     except ValueError:
         return False
 
@@ -379,7 +379,7 @@ def create_note_aside(db: Session, element_pk, user,
     )
 
     db.add(db_labbook_elem)
-    lb_to_update = db.query(models.Labbook).get(labbook_id)
+    lb_to_update = db.get(models.Labbook, labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -392,7 +392,7 @@ def create_note_aside(db: Session, element_pk, user,
 
     db.refresh(db_labbook_elem)
 
-    note = db.query(models.Note).get(db_note.id)
+    note = db.get(models.Note, db_note.id)
     note.elem_id = db_labbook_elem.id
     try:
         db.commit()
@@ -515,8 +515,8 @@ def get_labbooks_from_user(db: Session, params, user):
                 .all()
             )
         for lb in lbs:
-            db_user_created = db.query(models.User).get(lb.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_user_created = db.get(models.User, lb.created_by_id)
+            db_user_modified = db.get(models.User, 
                 lb.last_modified_by_id)
             lb.created_by = db_user_created
             lb.last_modified_by = db_user_modified
@@ -605,8 +605,8 @@ def get_labbooks_from_user(db: Session, params, user):
                 params.get('limit')).all()
 
     for lb in labbooks:
-        db_user_created = db.query(models.User).get(lb.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_created = db.get(models.User, lb.created_by_id)
+        db_user_modified = db.get(models.User, 
             lb.last_modified_by_id)
         lb.created_by = db_user_created
         lb.last_modified_by = db_user_modified
@@ -645,8 +645,8 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
             db.close()
             return None
         db.refresh(db_labbook)
-        db_user_created = db.query(models.User).get(db_labbook.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_created = db.get(models.User, db_labbook.created_by_id)
+        db_user_modified = db.get(models.User, 
             db_labbook.last_modified_by_id)
         db_labbook.created_by = db_user_created
         db_labbook.last_modified_by = db_user_modified
@@ -668,8 +668,8 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
 
 
 def get_labbook_for_export(db: Session, labbook_pk):
-    db_labbook = db.query(models.Labbook).get(labbook_pk)
-    db_user = db.query(models.User).get(db_labbook.created_by_id)
+    db_labbook = db.get(models.Labbook, labbook_pk)
+    db_user = db.get(models.User, db_labbook.created_by_id)
     db_labbook.created_by = db_user
     return db_labbook
 
@@ -688,8 +688,8 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
         lb = db.query(models.Labbook).filter(models.Labbook.deleted == False,
                                              models.Labbook.id == labbook_pk).first()
         if lb:
-            db_user_created = db.query(models.User).get(lb.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_user_created = db.get(models.User, lb.created_by_id)
+            db_user_modified = db.get(models.User, 
                 lb.last_modified_by_id)
             lb.created_by = db_user_created
             lb.last_modified_by = db_user_modified
@@ -736,8 +736,8 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
 
             privileges = create_labbook_privileges(user_roles=user_roles)
 
-        db_user_created = db.query(models.User).get(db_lb.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_created = db.get(models.User, db_lb.created_by_id)
+        db_user_modified = db.get(models.User, 
             db_lb.last_modified_by_id)
         db_lb.created_by = db_user_created
         db_lb.last_modified_by = db_user_modified
@@ -748,7 +748,7 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
 
 
 def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
-    db_labbook = db.query(models.Labbook).get(labbook_pk)
+    db_labbook = db.get(models.Labbook,labbook_pk)
     if db_labbook is None:
         return None
     lb_privileges = None
@@ -813,8 +813,8 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
                       'model_pk': str(labbook_pk)})
         except RuntimeError as e:
             print(e)
-    db_user_created = db.query(models.User).get(db_labbook.created_by_id)
-    db_user_modified = db.query(models.User).get(
+    db_user_created = db.get(models.User, db_labbook.created_by_id)
+    db_user_modified = db.get(models.User, 
         db_labbook.last_modified_by_id)
     db_labbook.created_by = db_user_created
     db_labbook.last_modified_by = db_user_modified
@@ -838,7 +838,7 @@ def get_labbook_export_link(db: Session, labbook_pk, user):
         if not db_lb:
             return None
     else:
-        db_lb = db.query(models.Labbook).get(labbook_pk)
+        db_lb = db.get(models.Labbook, labbook_pk)
 
     db_labbook = build_labbook_download_url_with_token(lb_to_process=db_lb,
                                                        user=user)
@@ -881,7 +881,7 @@ def soft_delete_labbook(db: Session, labbook_uuid, username):
 
 def gui_soft_delete_labbook(db: Session, labbook_uuid, user):
     if user.admin:
-        db_labbook = db.query(models.Labbook).get(labbook_uuid)
+        db_labbook = db.get(models.Labbook, labbook_uuid)
         if db_labbook and not db_labbook.deleted:
             db_labbook.deleted = True
             db_labbook.last_modified_at = datetime.datetime.now()
@@ -893,9 +893,9 @@ def gui_soft_delete_labbook(db: Session, labbook_uuid, user):
                 db.close()
                 return
             db.refresh(db_labbook)
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 db_labbook.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_user_modified = db.get(models.User, 
                 db_labbook.last_modified_by_id)
             db_labbook.created_by = db_user_created
             db_labbook.last_modified_by = db_user_modified
@@ -925,7 +925,7 @@ def restore_labbook(db: Session, labbook_uuid, username):
 
 def gui_restore_labbook(db: Session, labbook_uuid, user):
     if user.admin:
-        db_labbook = db.query(models.Labbook).get(labbook_uuid)
+        db_labbook = db.get(models.Labbook, labbook_uuid)
         if db_labbook and db_labbook.deleted:
             db_labbook.deleted = False
             db_labbook.last_modified_at = datetime.datetime.now()
@@ -937,9 +937,9 @@ def gui_restore_labbook(db: Session, labbook_uuid, user):
                 db.close()
                 return
             db.refresh(db_labbook)
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 db_labbook.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_user_modified = db.get(models.User, 
                 db_labbook.last_modified_by_id)
             db_labbook.created_by = db_user_created
             db_labbook.last_modified_by = db_user_modified
@@ -967,7 +967,7 @@ def remove_deleted_labbook_with_its_content(db: Session, labbook_uuid):
         for elem in elems:
             # note
             if elem.child_object_content_type == 30:
-                note_to_remove = db.query(models.Note).get(elem.child_object_id)
+                note_to_remove = db.get(models.Note, elem.child_object_id)
                 relations = db.query(models.Relation).filter_by(
                     right_object_id=elem.child_object_id,
                     left_content_type=70).all()
@@ -987,7 +987,7 @@ def remove_deleted_labbook_with_its_content(db: Session, labbook_uuid):
                 print(f'{note_to_remove.subject} removed')
 
             if elem.child_object_content_type == 40:
-                pic_to_remove = db.query(models.Picture).get(
+                pic_to_remove = db.get(models.Picture, 
                     elem.child_object_id)
 
                 ri_img_path = f'{PICTURES_BASE_PATH}{pic_to_remove.rendered_image}'
@@ -1030,7 +1030,7 @@ def remove_deleted_labbook_with_its_content(db: Session, labbook_uuid):
                 print(f'{pic_to_remove.title} removed')
 
             if elem.child_object_content_type == 50:
-                file_to_remove = db.query(models.File).get(elem.child_object_id)
+                file_to_remove = db.get(models.File, elem.child_object_id)
                 file_path = f'{FILES_BASE_PATH}{file_to_remove.path}'
                 # only comment relations
                 relations = db.query(models.Relation).filter_by(

@@ -23,16 +23,16 @@ def create_comment(db: Session, comment: CreateComment, user):
         return None
 
     if comment.relates_to_content_type_id == 30:
-        db_note = db.query(models.Note).get(comment.relates_to_pk)
-        lb_elem = db.query(models.Labbookchildelement).get(db_note.elem_id)
+        db_note = db.get(models.Note, comment.relates_to_pk)
+        lb_elem = db.get(models.Labbookchildelement, db_note.elem_id)
 
     elif comment.relates_to_content_type_id == 40:
-        db_pic = db.query(models.Picture).get(comment.relates_to_pk)
-        lb_elem = db.query(models.Labbookchildelement).get(db_pic.elem_id)
+        db_pic = db.get(models.Picture, comment.relates_to_pk)
+        lb_elem = db.get(models.Labbookchildelement, db_pic.elem_id)
 
     elif comment.relates_to_content_type_id == 50:
-        db_file = db.query(models.File).get(comment.relates_to_pk)
-        lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+        db_file = db.get(models.File, comment.relates_to_pk)
+        lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
     else:
         return
 

@@ -89,7 +89,7 @@ def get_all_admins(db: Session, params, user):
 
 def soft_delete_user(db: Session, user_id, user):
     if user.admin:
-        db_user = db.query(models.User).get(user_id)
+        db_user = db.get(models.User, user_id)
         if db_user and not db_user.deleted:
             # remove all user group roles
             try:
@@ -114,7 +114,7 @@ def soft_delete_user(db: Session, user_id, user):
 
 def restore_user(db: Session, user_id, user):
     if user.admin:
-        db_user = db.query(models.User).get(user_id)
+        db_user = db.get(models.User, user_id)
         if db_user and db_user.deleted:
             db_user.deleted = False
             db_user.last_modified_at = datetime.datetime.now()
@@ -132,7 +132,7 @@ def restore_user(db: Session, user_id, user):
 
 def set_as_admin(db: Session, user_id, user):
     if user.admin:
-        db_user = db.query(models.User).get(user_id)
+        db_user = db.get(models.User, user_id)
         # you can't add admin role to oidc user
         if db_user and not db_user.admin and not db_user.oidc_user and user.id != db_user.id:
             db_user.admin = True
@@ -151,7 +151,7 @@ def set_as_admin(db: Session, user_id, user):
 
 def remove_as_admin(db: Session, user_id, user):
     if user.admin:
-        db_user = db.query(models.User).get(user_id)
+        db_user = db.get(models.User, user_id)
         # you can't remove own admnin role
         if db_user and db_user.admin and db_user.username not in [INITIAL_ADMIN,
                                                                   INSTRUMENT_AS_ADMIN]:
@@ -223,7 +223,7 @@ class PrefixTree:
 
 def get_user_by_id(db: Session, user, user_id):
     if user.admin:
-        db_user = db.query(models.User).get(user_id)
+        db_user = db.get(models.User, user_id)
 
         if db_user is None:
             return

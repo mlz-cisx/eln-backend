@@ -39,7 +39,7 @@ try:
             )
 
         if elem.child_object_content_type == 40:
-            pic = db.query(models.Picture).get(elem.child_object_id)
+            pic = db.get(models.Picture, elem.child_object_id)
             objects = json.loads(pic.canvas_content)["objects"]
             texts = " ".join([obj.get("text") for obj in objects if "text" in obj])
 

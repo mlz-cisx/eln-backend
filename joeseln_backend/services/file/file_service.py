@@ -127,17 +127,17 @@ def get_all_files(db: Session, params, user):
                 .all()
             )
         for file in files:
-            db_user_created = db.query(models.User).get(file.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_user_created = db.get(models.User, file.created_by_id)
+            db_user_modified = db.get(models.User, 
                 file.last_modified_by_id)
             file.created_by = db_user_created
             file.last_modified_by = db_user_modified
 
             try:
                 if file.elem_id:
-                    lb_elem = db.query(models.Labbookchildelement).get(
+                    lb_elem = db.get(models.Labbookchildelement, 
                         file.elem_id)
-                    lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+                    lb = db.get(models.Labbook, lb_elem.labbook_id)
                     file.lb_title = lb.title
                 else:
                     file.lb_title = 'None'
@@ -197,14 +197,14 @@ def get_all_files(db: Session, params, user):
         )
 
     for file in files:
-        db_user_created = db.query(models.User).get(file.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_created = db.get(models.User, file.created_by_id)
+        db_user_modified = db.get(models.User, 
             file.last_modified_by_id)
         file.created_by = db_user_created
         file.last_modified_by = db_user_modified
         try:
-            lb_elem = db.query(models.Labbookchildelement).get(file.elem_id)
-            lb = db.query(models.Labbook).get(lb_elem.labbook_id)
+            lb_elem = db.get(models.Labbookchildelement, file.elem_id)
+            lb = db.get(models.Labbook, lb_elem.labbook_id)
             file.lb_title = lb.title
         except SQLAlchemyError:
             file.lb_title = 'None'
@@ -213,9 +213,9 @@ def get_all_files(db: Session, params, user):
 
 
 def get_file(db: Session, file_pk, user):
-    db_file = db.query(models.File).get(file_pk)
-    db_user_created = db.query(models.User).get(db_file.created_by_id)
-    db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
+    db_file = db.get(models.File, file_pk)
+    db_user_created = db.get(models.User, db_file.created_by_id)
+    db_user_modified = db.get(models.User, db_file.last_modified_by_id)
 
     file_content = build_download_url_with_token(
         file_to_process=deepcopy(db_file),
@@ -227,9 +227,9 @@ def get_file(db: Session, file_pk, user):
 
 
 def get_file_for_zip_export(db: Session, file_pk, user):
-    db_file = db.query(models.File).get(file_pk)
-    db_user_created = db.query(models.User).get(db_file.created_by_id)
-    db_user_modified = db.query(models.User).get(db_file.last_modified_by_id)
+    db_file = db.get(models.File, file_pk)
+    db_user_created = db.get(models.User, db_file.created_by_id)
+    db_user_modified = db.get(models.User, db_file.last_modified_by_id)
 
     file_content = build_download_url_with_token_for_zip_export(
         file_to_process=db_file)
@@ -246,10 +246,10 @@ def get_all_deleted_files(db: Session):
 
 
 def get_file_with_privileges(db: Session, file_pk, user):
-    db_file = db.query(models.File).get(file_pk)
+    db_file = db.get(models.File, file_pk)
     if db_file:
-        db_user_created = db.query(models.User).get(db_file.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_created = db.get(models.User, db_file.created_by_id)
+        db_user_modified = db.get(models.User, 
             db_file.last_modified_by_id)
 
         file_content = build_download_url_with_token(
@@ -258,7 +258,7 @@ def get_file_with_privileges(db: Session, file_pk, user):
         file_content.created_by = db_user_created
         file_content.last_modified_by = db_user_modified
 
-        lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+        lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
 
         if not lb_elem:
             return None
@@ -274,8 +274,8 @@ def get_file_with_privileges(db: Session, file_pk, user):
                                         user=user):
             return None
 
-        db_lb = db.query(models.Labbook).get(lb_elem.labbook_id)
-        db_user = db.query(models.User).get(db_file.created_by_id)
+        db_lb = db.get(models.Labbook, lb_elem.labbook_id)
+        db_user = db.get(models.User, db_file.created_by_id)
 
         file_created_by = 'USER'
         if db_user.admin:
@@ -314,8 +314,8 @@ def get_file_with_privileges(db: Session, file_pk, user):
 
 
 def get_file_relations(db: Session, file_pk, params, user):
-    db_file = db.query(models.File).get(file_pk)
-    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+    db_file = db.get(models.File, file_pk)
+    lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
     if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                 user=user):
         if not params:
@@ -333,11 +333,11 @@ def get_file_relations(db: Session, file_pk, params, user):
 
         for rel in relations:
             if rel.left_content_type == 70:
-                db_comment = db.query(models.Comment).get(rel.left_object_id)
+                db_comment = db.get(models.Comment, rel.left_object_id)
 
-                db_user_created = db.query(models.User).get(
+                db_user_created = db.get(models.User, 
                     db_comment.created_by_id)
-                db_user_modified = db.query(models.User).get(
+                db_user_modified = db.get(models.User, 
                     db_comment.last_modified_by_id)
                 rel.created_by = db_user_created
                 rel.last_modified_by = db_user_modified
@@ -347,9 +347,9 @@ def get_file_relations(db: Session, file_pk, params, user):
             else:
                 rel.left_content_object = None
 
-            db_file = db.query(models.File).get(file_pk)
-            db_user_created = db.query(models.User).get(db_file.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_file = db.get(models.File, file_pk)
+            db_user_created = db.get(models.User, db_file.created_by_id)
+            db_user_modified = db.get(models.User, 
                 db_file.last_modified_by_id)
             db_file.created_by = db_user_created
             db_file.last_modified_by = db_user_modified
@@ -360,9 +360,9 @@ def get_file_relations(db: Session, file_pk, params, user):
 
 
 def delete_file_relation(db: Session, file_pk, relation_pk, user):
-    db_file = db.query(models.File).get(file_pk)
-    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
-    db_relation = db.query(models.Relation).get(relation_pk)
+    db_file = db.get(models.File, file_pk)
+    lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
+    db_relation = db.get(models.Relation, relation_pk)
     # comment can only be deteled by its creator or groupadmins
     if (
         db_relation
@@ -403,8 +403,8 @@ def get_file_related_comments_count(db: Session, file_pk, user):
 
 
 def get_lb_pk_from_file(db: Session, file_pk):
-    file = db.query(models.File).get(file_pk)
-    elem = db.query(models.Labbookchildelement).get(file.elem_id)
+    file = db.get(models.File, file_pk)
+    elem = db.get(models.Labbookchildelement, file.elem_id)
     return elem.labbook_id
 
 
@@ -480,7 +480,7 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
 
     elem.description = sanitize_html(elem.description)
 
-    db_file = db.query(models.File).get(file_pk)
+    db_file = db.get(models.File, file_pk)
     old_title = db_file.title
     db_file.title = elem.title
     old_description = db_file.description
@@ -488,11 +488,11 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
     db_file.last_modified_at = datetime.datetime.now()
     db_file.last_modified_by_id = user.id
 
-    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+    lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
 
-    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -502,7 +502,7 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
-            db_user_created = db.query(models.User).get(db_file.created_by_id)
+            db_user_created = db.get(models.User, db_file.created_by_id)
             db_file.created_by = db_user_created
             db_file.last_modified_by = user
 
@@ -512,7 +512,7 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
         db.refresh(db_file)
         transmit({'model_name': 'file', 'model_pk': str(file_pk)})
 
-        db_user_created = db.query(models.User).get(db_file.created_by_id)
+        db_user_created = db.get(models.User, db_file.created_by_id)
         db_file.created_by = db_user_created
         db_file.last_modified_by = user
 
@@ -552,7 +552,7 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
         except SQLAlchemyError as e:
             logger.error(e)
 
-            db_user_created = db.query(models.User).get(db_file.created_by_id)
+            db_user_created = db.get(models.User, db_file.created_by_id)
             db_file.created_by = db_user_created
             db_file.last_modified_by = user
 
@@ -575,7 +575,7 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
         db.refresh(db_file)
         transmit({'model_name': 'file', 'model_pk': str(file_pk)})
 
-        db_user_created = db.query(models.User).get(db_file.created_by_id)
+        db_user_created = db.get(models.User, db_file.created_by_id)
         db_file.created_by = db_user_created
         db_file.last_modified_by = user
 
@@ -617,7 +617,7 @@ def process_file_upload_form(form, db, contents, user):
                 file_to_process=db_file, db=db, user=user,
                 labbook_pk=labbook_pk)
             if description:
-                updated_db_file = db.query(models.File).get(db_file.id)
+                updated_db_file = db.get(models.File, db_file.id)
                 updated_db_file.description = sanitize_html(description)
                 try:
                     db.commit()
@@ -745,7 +745,7 @@ def build_file_download_response(file_pk, db, jwt):
     user = get_user_from_jwt(db=db, token=jwt)
     if user is None:
         return
-    db_file = db.query(models.File).get(file_pk)
+    db_file = db.get(models.File, file_pk)
     file_path = f'{FILES_BASE_PATH}{db_file.path}'
     value = FileResponse(file_path)
 
@@ -753,7 +753,7 @@ def build_file_download_response(file_pk, db, jwt):
 
 
 def get_file_export_link(db: Session, file_pk, user):
-    db_file = db.query(models.File).get(file_pk)
+    db_file = db.get(models.File, file_pk)
     db_file = build_file_download_url_with_token(
         file_to_process=db_file,
         user=user)
@@ -762,7 +762,7 @@ def get_file_export_link(db: Session, file_pk, user):
         'filename': f'{db_file.title}.pdf'
     }
 
-    lb_elem = db.query(models.Labbookchildelement).get(db_file.elem_id)
+    lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
 
     if check_for_labbook_access(
             db=db, labbook_pk=lb_elem.labbook_id,
@@ -785,17 +785,17 @@ def build_file_download_url_with_token(file_to_process, user):
 
 # needs to be heavily factorized
 def soft_delete_file(db: Session, file_pk, labbook_data, user):
-    file_to_update = db.query(models.File).get(file_pk)
+    file_to_update = db.get(models.File, file_pk)
     file_to_update.deleted = True
     file_to_update.last_modified_at = datetime.datetime.now()
     file_to_update.last_modified_by_id = user.id
 
-    lb_elem = db.query(models.Labbookchildelement).get(file_to_update.elem_id)
+    lb_elem = db.get(models.Labbookchildelement, file_to_update.elem_id)
     lb_elem.deleted = True
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
 
-    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -805,7 +805,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 file_to_update.created_by_id)
             file_to_update.created_by = db_user_created
             file_to_update.last_modified_by = user
@@ -823,7 +823,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             except RuntimeError as e:
                 logger.error(e)
 
-        db_user_created = db.query(models.User).get(
+        db_user_created = db.get(models.User, 
             file_to_update.created_by_id)
         file_to_update.created_by = db_user_created
         file_to_update.last_modified_by = user
@@ -850,7 +850,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
                 db.commit()
             except SQLAlchemyError as e:
                 logger.error(e)
-                db_user_created = db.query(models.User).get(
+                db_user_created = db.get(models.User, 
                     file_to_update.created_by_id)
                 file_to_update.created_by = db_user_created
                 file_to_update.last_modified_by = user
@@ -867,7 +867,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
                 except RuntimeError as e:
                     logger.error(e)
 
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 file_to_update.created_by_id)
             file_to_update.created_by = db_user_created
             file_to_update.last_modified_by = user
@@ -892,7 +892,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 file_to_update.created_by_id)
             file_to_update.created_by = db_user_created
             file_to_update.last_modified_by = user
@@ -909,7 +909,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             except RuntimeError as e:
                 logger.error(e)
 
-        db_user_created = db.query(models.User).get(
+        db_user_created = db.get(models.User, 
             file_to_update.created_by_id)
         file_to_update.created_by = db_user_created
         file_to_update.last_modified_by = user
@@ -991,13 +991,13 @@ def hidden_delete_file(db: Session, file_pk,
 
 
 def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
-    file_to_update = db.query(models.File).get(file_pk)
+    file_to_update = db.get(models.File, file_pk)
     file_to_update.deleted = False
     file_to_update.hidden_deleted = False
     file_to_update.last_modified_at = datetime.datetime.now()
     file_to_update.last_modified_by_id = user.id
 
-    lb_elem = db.query(models.Labbookchildelement).get(file_to_update.elem_id)
+    lb_elem = db.get(models.Labbookchildelement, file_to_update.elem_id)
     # already restored
     if not lb_elem.deleted:
         return file_to_update
@@ -1006,7 +1006,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
     lb_elem.last_modified_at = datetime.datetime.now()
     lb_elem.last_modified_by_id = user.id
 
-    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+    lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -1028,7 +1028,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 file_to_update.created_by_id)
             file_to_update.created_by = db_user_created
             file_to_update.last_modified_by = user
@@ -1046,7 +1046,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
             except RuntimeError as e:
                 logger.error(e)
 
-        db_user_created = db.query(models.User).get(
+        db_user_created = db.get(models.User, 
             file_to_update.created_by_id)
         file_to_update.created_by = db_user_created
         file_to_update.last_modified_by = user
@@ -1083,7 +1083,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
                 db.commit()
             except SQLAlchemyError as e:
                 logger.error(e)
-                db_user_created = db.query(models.User).get(
+                db_user_created = db.get(models.User, 
                     file_to_update.created_by_id)
                 file_to_update.created_by = db_user_created
                 file_to_update.last_modified_by = user
@@ -1100,7 +1100,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
                 except RuntimeError as e:
                     logger.error(e)
 
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 file_to_update.created_by_id)
             file_to_update.created_by = db_user_created
             file_to_update.last_modified_by = user
@@ -1138,7 +1138,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
-            db_user_created = db.query(models.User).get(
+            db_user_created = db.get(models.User, 
                 file_to_update.created_by_id)
             file_to_update.created_by = db_user_created
             file_to_update.last_modified_by = user
@@ -1155,7 +1155,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
             except RuntimeError as e:
                 logger.error(e)
 
-        db_user_created = db.query(models.User).get(
+        db_user_created = db.get(models.User, 
             file_to_update.created_by_id)
         file_to_update.created_by = db_user_created
         file_to_update.last_modified_by = user
@@ -1172,11 +1172,11 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
 
 
 def remove_soft_deleted_file(db: Session, file_pk):
-    file_to_remove = db.query(models.File).get(file_pk)
+    file_to_remove = db.get(models.File, file_pk)
     file_path = f'{FILES_BASE_PATH}{file_to_remove.path}'
 
     if file_to_remove and file_to_remove.deleted:
-        lb_elem = db.query(models.Labbookchildelement).get(
+        lb_elem = db.get(models.Labbookchildelement, 
             file_to_remove.elem_id)
         # only comment relations
         relations = db.query(models.Relation).filter_by(
@@ -1308,7 +1308,7 @@ def add_spec_scan_as_file_to_labbook(db, labbook_pk, file_pk, user, position_y):
     )
     db.add(db_labbook_elem)
 
-    lb_to_update = db.query(models.Labbook).get(labbook_pk)
+    lb_to_update = db.get(models.Labbook, labbook_pk)
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
@@ -1319,7 +1319,7 @@ def add_spec_scan_as_file_to_labbook(db, labbook_pk, file_pk, user, position_y):
         db.close()
         return db_labbook_elem
 
-    file = db.query(models.File).get(file_pk)
+    file = db.get(models.File, file_pk)
     file.elem_id = db_labbook_elem.id
     try:
         db.commit()

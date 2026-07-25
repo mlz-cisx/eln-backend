@@ -1,7 +1,7 @@
 fastapi==0.139.2
 uvicorn==0.51.0
 python-multipart==0.0.32
-SQLAlchemy==1.4.54
+SQLAlchemy==2.0.36
 psycopg2-binary==2.9.12
 PyJWT==2.13.0
 passlib==1.7.4

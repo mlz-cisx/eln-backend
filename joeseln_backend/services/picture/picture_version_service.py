@@ -23,15 +23,15 @@ def get_all_picture_versions(db: Session, picture_pk, user):
     for db_picture_version in db_picture_versions:
         db_picture_version.metadata = json.dumps(
             json.loads(json.dumps(db_picture_version.version_metadata)))
-        db_user_created = db.query(models.User).get(
+        db_user_created = db.get(models.User, 
             db_picture_version.created_by_id)
-        db_user_modified = db.query(models.User).get(
+        db_user_modified = db.get(models.User, 
             db_picture_version.last_modified_by_id)
         db_picture_version.created_by = db_user_created
         db_picture_version.last_modified_by = db_user_modified
 
-    db_pic = db.query(models.Picture).get(picture_pk)
-    lb_elem = db.query(models.Labbookchildelement).get(db_pic.elem_id)
+    db_pic = db.get(models.Picture, picture_pk)
+    lb_elem = db.get(models.Labbookchildelement, db_pic.elem_id)
     #
     if lb_elem and check_for_labbook_access(
         db=db, labbook_pk=lb_elem.labbook_id, user=user
@@ -41,20 +41,20 @@ def get_all_picture_versions(db: Session, picture_pk, user):
 
 
 def get_picture_version_metadata(db: Session, picture_pk, version_pk, user):
-    db_pic = db.query(models.Picture).get(picture_pk)
-    lb_elem = db.query(models.Labbookchildelement).get(db_pic.elem_id)
+    db_pic = db.get(models.Picture, picture_pk)
+    lb_elem = db.get(models.Labbookchildelement, db_pic.elem_id)
     if lb_elem and check_for_labbook_access(db=db,
                                             labbook_pk=lb_elem.labbook_id,
                                             user=user) and check_for_version_edit_access_on_lb_elem(
         db=db, lb_elem=lb_elem, user=user):
-        db_picture_version = db.query(models.Version).get(version_pk)
+        db_picture_version = db.get(models.Version, version_pk)
         # renaming and json.dumps for schema
         return db_picture_version.version_metadata
     return None
 
 
 def restore_picture_version(db: Session, picture_pk, version_pk, user):
-    db_picture_version = db.query(models.Version).get(version_pk)
+    db_picture_version = db.get(models.Version, version_pk)
     summary = f'restored from v{db_picture_version.number}'
     version_metadata = db_picture_version.version_metadata
     title = version_metadata['title']
@@ -75,9 +75,9 @@ def restore_picture_version(db: Session, picture_pk, version_pk, user):
 def add_picture_version(db: Session, picture_pk, summary, user,
                         restored_canvas_content=None,
                         restored_title=None):
-    pic_to_test = db.query(models.Picture).get(picture_pk)
+    pic_to_test = db.get(models.Picture, picture_pk)
     if pic_to_test:
-        lb_elem = db.query(models.Labbookchildelement).get(pic_to_test.elem_id)
+        lb_elem = db.get(models.Labbookchildelement, pic_to_test.elem_id)
         if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
                                     user=user) and check_for_version_edit_access_on_lb_elem(
             db=db, lb_elem=lb_elem, user=user):
@@ -90,10 +90,10 @@ def add_picture_version(db: Session, picture_pk, summary, user,
                 number = last_db_picture_version.number + 1
 
             # has new path
-            db_picture = db.query(models.Picture).get(picture_pk)
-            db_user_created = db.query(models.User).get(
+            db_picture = db.get(models.Picture, picture_pk)
+            db_user_created = db.get(models.User, 
                 db_picture.created_by_id)
-            db_user_modified = db.query(models.User).get(
+            db_user_modified = db.get(models.User, 
                 db_picture.last_modified_by_id)
             db_picture.created_by = db_user_created
             db_picture.last_modified_by = db_user_modified

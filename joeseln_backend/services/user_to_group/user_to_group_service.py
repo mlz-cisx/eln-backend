@@ -395,7 +395,7 @@ def check_for_guest_role(db: Session, labbook_pk, user):
 
 def get_groupname(db: Session, group_pk, user):
     if user.admin:
-        group = db.query(models.Group).get(group_pk)
+        group = db.get(models.Group, group_pk)
         return group.groupname
     return
 
@@ -613,7 +613,7 @@ def check_for_admin_role(db: Session, username):
 
 
 def check_for_admin_role_with_user_id(db: Session, user_id):
-    user = db.query(models.User).get(user_id)
+    user = db.get(models.User, user_id)
     return user.admin
 
 
@@ -702,8 +702,8 @@ def add_as_user_to_group(db: Session, username, groupname, external=True):
 def gui_add_as_user_to_group(db: Session, authed_user, user_id, group_pk,
                              external=False):
     if authed_user.admin:
-        user = db.query(models.User).get(user_id)
-        group = db.query(models.Group).get(group_pk)
+        user = db.get(models.User, user_id)
+        group = db.get(models.Group, group_pk)
         role = get_role_by_rolename(db=db, rolename='user')
 
         if user is not None and group is not None and role is not None:
@@ -750,8 +750,8 @@ def remove_as_user_from_group(db: Session, username, groupname, external=False):
 def gui_remove_as_user_from_group(db: Session, authed_user, user_id, group_pk,
                                   external=False):
     if authed_user.admin:
-        user = db.query(models.User).get(user_id)
-        group = db.query(models.Group).get(group_pk)
+        user = db.get(models.User, user_id)
+        group = db.get(models.Group, group_pk)
         role = get_role_by_rolename(db=db, rolename='user')
 
         if user is not None and group is not None and role is not None:
@@ -798,8 +798,8 @@ def add_as_groupadmin_to_group(db: Session, username, groupname,
 def gui_add_as_groupadmin_to_group(db: Session, authed_user, user_id, group_pk,
                                    external=False):
     if authed_user.admin:
-        user = db.query(models.User).get(user_id)
-        group = db.query(models.Group).get(group_pk)
+        user = db.get(models.User, user_id)
+        group = db.get(models.Group, group_pk)
         role = get_role_by_rolename(db=db, rolename='groupadmin')
 
         if user is not None and group is not None and role is not None:
@@ -842,8 +842,8 @@ def remove_as_groupadmin_from_group(db: Session, username, groupname):
 def gui_remove_as_groupadmin_from_group(db: Session, authed_user, user_id,
                                         group_pk):
     if authed_user.admin:
-        user = db.query(models.User).get(user_id)
-        group = db.query(models.Group).get(group_pk)
+        user = db.get(models.User, user_id)
+        group = db.get(models.Group, group_pk)
         role = get_role_by_rolename(db=db, rolename='groupadmin')
 
         if user is not None and group is not None and role is not None:
@@ -897,8 +897,8 @@ def add_as_admin_to_group(db: Session, username, groupname):
 
 def gui_add_as_guest_to_group(db: Session, authed_user, user_id, group_pk):
     if authed_user.admin:
-        user = db.query(models.User).get(user_id)
-        group = db.query(models.Group).get(group_pk)
+        user = db.get(models.User, user_id)
+        group = db.get(models.Group, group_pk)
         role = get_role_by_rolename(db=db, rolename='guest')
 
         if user is not None and group is not None and role is not None:
@@ -919,8 +919,8 @@ def gui_add_as_guest_to_group(db: Session, authed_user, user_id, group_pk):
 
 
 def remove_as_guest_from_group(db: Session, user_id, group_pk):
-    user = db.query(models.User).get(user_id)
-    group = db.query(models.Group).get(group_pk)
+    user = db.get(models.User, user_id)
+    group = db.get(models.Group, group_pk)
     role = get_role_by_rolename(db=db, rolename='guest')
 
     if user is not None and group is not None and role is not None:
@@ -940,8 +940,8 @@ def remove_as_guest_from_group(db: Session, user_id, group_pk):
 def gui_remove_as_guest_from_group(db: Session, authed_user, user_id,
                                    group_pk):
     if authed_user.admin:
-        user = db.query(models.User).get(user_id)
-        group = db.query(models.Group).get(group_pk)
+        user = db.get(models.User, user_id)
+        group = db.get(models.Group, group_pk)
         role = get_role_by_rolename(db=db, rolename='guest')
 
         if user is not None and group is not None and role is not None:

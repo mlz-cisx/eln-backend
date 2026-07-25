@@ -19,7 +19,7 @@ SQLALCHEMY_DATABASE_URL = f"postgresql://{_user}:{_password}@{_addr}:{_port}/{_d
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_size=20, max_overflow=50)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autoflush=False, bind=engine)
 
 Base = declarative_base()
 

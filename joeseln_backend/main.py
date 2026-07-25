@@ -42,6 +42,7 @@ from fastapi.responses import (
     JSONResponse
 )
 from keycloak import KeycloakOpenID
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 
@@ -295,7 +296,7 @@ async def custom_swagger_ui():
 def get_health(db: Session = Depends(get_db)):
     # DB runtime check
     try:
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
     except Exception:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
