@@ -24,6 +24,9 @@ from joeseln_backend.services.picture import picture_version_service
 def get_all_labbook_versions(db: Session, labbook_pk, user):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return None
+    db_labbook = db.query(models.Labbook).get(labbook_pk)
+    if db_labbook is None:
+        return None
     db_labbook_versions = db.query(models.Version).filter_by(
         object_id=labbook_pk).order_by(models.Version.number.desc()).all()
     # renaming and json.dumps for schema
@@ -46,6 +49,8 @@ def get_labbook_version_metadata(db: Session, labbook_pk, version_pk, user):
                                           user=user):
         return None
     db_labbook_version = db.query(models.Version).get(version_pk)
+    if db_labbook_version is None:
+        return None
     # renaming and json.dumps for schema
     return db_labbook_version.version_metadata
 
@@ -56,6 +61,8 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
         return None
 
     db_labbook_version = db.query(models.Version).get(version_pk)
+    if db_labbook_version is None:
+        return None
     version_metadata = db_labbook_version.version_metadata
 
     number = db_labbook_version.number
@@ -192,6 +199,8 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
                                           user=user):
         return None
     db_labbook = db.query(models.Labbook).get(labbook_pk)
+    if db_labbook is None:
+        return None
     number = 1
     last_db_labbook_version = db.query(models.Version).filter_by(
         object_id=labbook_pk).order_by(models.Version.number.desc()).first()

@@ -749,6 +749,8 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
 
 def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
     db_labbook = db.query(models.Labbook).get(labbook_pk)
+    if db_labbook is None:
+        return None
     lb_privileges = None
     if user.admin:
         lb_privileges = ADMIN

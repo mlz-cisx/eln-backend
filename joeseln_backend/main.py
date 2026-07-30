@@ -104,6 +104,7 @@ from joeseln_backend.helper.db_ordering import OrderingParam
 # from joeseln_backend.mylogging.jaeger_logger import jaeger_tracer
 # jaeger_tracer = jaeger_tracer()
 # will create all tables if not exist
+from joeseln_backend.models import models
 from joeseln_backend.models.models import export_link, simple_messege_response
 from joeseln_backend.models.table_creator import table_creator
 
@@ -359,8 +360,11 @@ def patch_labbook(labbook: labbook_schemas.LabbookPatch,
                   user: User = Depends(get_current_user)):
     # logger.info(user)
     # only for admins and groupadmins
-    return labbook_service.patch_labbook(db=db, labbook_pk=labbook_pk,
-                                         labbook=labbook, user=user)
+    patched = labbook_service.patch_labbook(db=db, labbook_pk=labbook_pk,
+                                            labbook=labbook, user=user)
+    if patched is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return patched
 
 
 @app.get("/api/labbooks/{labbook_pk}",
@@ -681,6 +685,9 @@ def get_labbook_history(
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # for all users
+    db_labbook = db.query(models.Labbook).get(labbook_pk)
+    if db_labbook is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return get_history(db=db, elem_id=labbook_pk, user=user)
 
 

@@ -121,6 +121,9 @@ def get_lb_childelements_for_zip_export(db: Session, labbook_pk, user,
 def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return None
+    db_labbook = db.query(models.Labbook).get(labbook_pk)
+    if db_labbook is None:
+        return None
 
     created_by = aliased(models.User)
     last_modified_by = aliased(models.User)
@@ -388,6 +391,8 @@ def patch_lb_childelement_height(db: Session, labbook_pk,
                                 user=user) != "Write":
         return None
     lb_elem = db.query(models.Labbookchildelement).get(element_pk)
+    if lb_elem is None:
+        return None
     lb_elem.height = labbook_childelem.height
     try:
         db.commit()
