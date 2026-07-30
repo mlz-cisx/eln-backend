@@ -1,5 +1,5 @@
-FROM ghcr.io/astral-sh/uv:0.2.12 AS uv
-FROM python:3.10-slim
+FROM ghcr.io/astral-sh/uv:0.9.18 AS uv
+FROM python:3.13-slim-trixie
 
 RUN --mount=from=uv,source=/uv,target=./uv \
   ./uv venv /opt/venv

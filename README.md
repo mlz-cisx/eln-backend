@@ -5,7 +5,7 @@
 
 #### System Requirements
 
-- Python 3.10
+- Python 3.13
 
 #### Installation Steps
 
