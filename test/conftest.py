@@ -269,6 +269,108 @@ def mock_typesense():
 
 
 # ═══════════════════════════════════════════════════════════════════
+# Playwright mocks
+# ═══════════════════════════════════════════════════════════════════
+
+
+def _minimal_pdf():
+    """generate a small pdf for test"""
+    import io
+
+    from pypdf import PdfWriter
+
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+class _FakeAsyncPlaywright:
+    """mock for playwright.async_api.async_playwright()"""
+
+    def __init__(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        page = MagicMock()
+        page.set_content = AsyncMock()
+        page.evaluate = AsyncMock()
+        page.wait_for_function = AsyncMock()
+        page.pdf = AsyncMock(return_value=_minimal_pdf())
+        page.close = AsyncMock()
+
+        browser = MagicMock()
+        browser.new_page = AsyncMock(return_value=page)
+        browser.close = AsyncMock()
+
+        pw = MagicMock()
+        pw.chromium.connect = AsyncMock(return_value=browser)
+        pw.stop = AsyncMock()
+
+        self.pw = pw
+
+    async def __aenter__(self):
+        return self.pw
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def start(self):
+        return self.pw
+
+
+class _FakeSyncPlaywright:
+    """mock for playwright.sync_api.sync_playwright()"""
+
+    def __init__(self):
+        from unittest.mock import MagicMock
+
+        page = MagicMock()
+        page.pdf.return_value = _minimal_pdf()
+        browser = MagicMock()
+        browser.new_page.return_value = page
+        pw = MagicMock()
+        pw.chromium.connect.return_value = browser
+        self.pw = pw
+
+    def __enter__(self):
+        return self.pw
+
+    def __exit__(self, *exc):
+        return False
+
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_playwright():
+    """
+    Mock every Playwright entry point so tests does not
+    require a browser instance
+    """
+    from unittest.mock import patch
+
+    targets = [
+        "playwright.sync_api.sync_playwright",
+        "playwright.async_api.async_playwright",
+        "joeseln_backend.export.export_file.sync_playwright",
+        "joeseln_backend.export.export_note.async_playwright",
+        "joeseln_backend.export.export_picture.async_playwright",
+        "joeseln_backend.export.export_labbook.async_playwright",
+    ]
+    patchers = []
+    for target in targets:
+        attr = target.rsplit(".", 1)[-1]
+        fake = (
+            _FakeSyncPlaywright if attr == "sync_playwright" else _FakeAsyncPlaywright
+        )
+        patchers.append(patch(target, new=fake))
+    for patcher in patchers:
+        patcher.start()
+    yield
+    for patcher in patchers:
+        patcher.stop()
+
+
+# ═══════════════════════════════════════════════════════════════════
 # Client
 # ═══════════════════════════════════════════════════════════════════
 
