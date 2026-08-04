@@ -578,6 +578,7 @@ async def create_labbook_elem(
         labbook_childelem=elem,
         user=user,
         typesense=typesense_client,
+        cloned=elem.cloned
     )
     if lb_element is None:
         raise HTTPException(status_code=404, detail="Labbook not found")

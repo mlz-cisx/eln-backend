@@ -274,8 +274,10 @@ def check_for_version_edit_access_on_lb_elem(db: Session, lb_elem, user):
 
 
 def create_lb_childelement(db: Session, labbook_pk,
-                           labbook_childelem: Labbookchildelement_Create, user, typesense: Client):
-    if check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user) != "Write":
+                           labbook_childelem: Labbookchildelement_Create, user,
+                           typesense: Client, cloned=None):
+    if check_for_labbook_access(db=db, labbook_pk=labbook_pk,
+                                user=user) != "Write":
         return None
 
     existing = (
@@ -369,10 +371,11 @@ def create_lb_childelement(db: Session, labbook_pk,
             db=db,
             file_pk=db_labbook_elem.child_object_id, user=user)
 
-    try:
-        transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
-    except RuntimeError as e:
-        logger.error(e)
+    if not cloned:
+        try:
+            transmit({'model_name': 'labbook', 'model_pk': str(labbook_pk)})
+        except RuntimeError as e:
+            logger.error(e)
 
     return db_labbook_elem
 
@@ -432,7 +435,8 @@ def create_lb_childelement_bottom(
         child_object_content_type=labbook_childelem.child_object_content_type,
     )
 
-    return create_lb_childelement(db, labbook_pk, elem, user, typesense)
+    return create_lb_childelement(db, labbook_pk, elem, user, typesense,
+                                  cloned=labbook_childelem.cloned)
 
 
 def create_lb_childelement_row(

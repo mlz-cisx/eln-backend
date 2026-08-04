@@ -38,6 +38,7 @@ class Labbookchildelement_Create(BaseModel):
     height: int
     child_object_id: int | str | UUID
     child_object_content_type: int
+    cloned: Optional[bool] = None
 
 
 class Labbookchildelement_CreateRow(BaseModel):
@@ -46,6 +47,7 @@ class Labbookchildelement_CreateRow(BaseModel):
     child_object_id: int | str | UUID
     child_object_content_type: int
     position: Optional[int | str] = None
+    cloned: Optional[bool] = None
 
 
 class Labbookchildelement_PatchHeight(BaseModel):
