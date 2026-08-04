@@ -67,3 +67,7 @@ class Labbookchildelement_Update(BaseModel):
 
 class Labbookchildelement_Delete(BaseModel):
     labbook_pk: int | str | UUID
+
+
+class Toggle_Hidden_Delete(BaseModel):
+    hidden_delete: bool

@@ -47,7 +47,7 @@ from joeseln_backend.services.labbook.labbook_service import (
     get_all_labbook_ids_from_non_admin_user,
 )
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import (
-    Labbookchildelement_Create,
+    Labbookchildelement_Create, Toggle_Hidden_Delete,
 )
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import (
     ADMIN,
@@ -69,9 +69,13 @@ def get_all_files(db: Session, params, user):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get("ordering"))
     labbook_id = params.get("labbook_id")
+    hidden_deleted = params.get("hidden_deleted")
     additional_filters = []
     if labbook_id is not None:
         additional_filters.append(models.Labbookchildelement.labbook_id == labbook_id)
+
+    if hidden_deleted is not None:
+        additional_filters.append(models.File.hidden_deleted == False)
 
 
     if user.admin:
@@ -915,9 +919,76 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
     return None
 
 
+# needs to be heavily factorized
+def hidden_delete_file(db: Session, file_pk,
+                       hidden_delete: Toggle_Hidden_Delete, user):
+
+    file_to_update = db.query(models.File).get(file_pk)
+    if not file_to_update:
+        return None
+    if file_to_update.deleted == False:
+        return None
+
+    file_to_update.hidden_deleted = hidden_delete.hidden_delete
+    file_to_update.last_modified_at = datetime.datetime.now()
+    file_to_update.last_modified_by_id = user.id
+    lb_elem = db.query(models.Labbookchildelement).get(file_to_update.elem_id)
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+
+
+    # First possibility
+    if user.admin:
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return file_to_update
+        db.refresh(file_to_update)
+        return file_to_update
+
+    if lb_to_update.strict_mode and user.id != file_to_update.created_by_id:
+        return None
+
+    # Second possibility: it's a file created by admin
+    if check_for_admin_role_with_user_id(db=db,
+                                         user_id=file_to_update.created_by_id):
+
+        # allowed only for groupadmins
+        if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                          user=user):
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return file_to_update
+            db.refresh(file_to_update)
+            return file_to_update
+        else:
+            return None
+
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+        return None
+    # Third possibility: it's a file created by user
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    if lb_elem.labbook_id in labbook_ids:
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return file_to_update
+        db.refresh(file_to_update)
+        return file_to_update
+    return None
+
+
 def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
     file_to_update = db.query(models.File).get(file_pk)
     file_to_update.deleted = False
+    file_to_update.hidden_deleted = False
     file_to_update.last_modified_at = datetime.datetime.now()
     file_to_update.last_modified_by_id = user.id
 

@@ -23,6 +23,7 @@ class Picture(BaseModel):
     last_modified_at: datetime.datetime
     last_modified_by_id: int
     deleted: bool
+    hidden_deleted: bool | None = None
     # src path from uploaded_picture_entry_id with jwt token
     background_image: str = Field(..., alias='download_background_image')
     title: str

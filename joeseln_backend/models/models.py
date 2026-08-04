@@ -93,6 +93,7 @@ class Note(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     elem_id = Column(UUID(as_uuid=True), ForeignKey(Labbookchildelement.id))
     deleted = Column(Boolean, default=False)
+    hidden_deleted = Column(Boolean, default=False)
     subject = Column(Text, default='')
     content = Column(Text, default='')
     version_number = Column(Integer)
@@ -125,6 +126,7 @@ class Picture(Base):
     uploaded_picture_entry_id = Column(UUID(as_uuid=True),
                                        ForeignKey(UploadEntry.id))
     deleted = Column(Boolean, default=False)
+    hidden_deleted = Column(Boolean, default=False)
     title = Column(Text, default='')
     display = Column(Text, default='')
     version_number = Column(Integer)
@@ -152,6 +154,7 @@ class File(Base):
     # path in projects storage
     path = Column(Text, default='')
     deleted = Column(Boolean, default=False)
+    hidden_deleted = Column(Boolean, default=False)
     original_filename = Column(Text, default='')
     name = Column(Text, default='')
     display = Column(Text, default='')

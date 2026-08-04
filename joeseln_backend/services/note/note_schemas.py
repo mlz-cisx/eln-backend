@@ -24,6 +24,7 @@ class Note(BaseModel):
     last_modified_at: datetime.datetime
     last_modified_by_id: int
     deleted: bool
+    hidden_deleted: bool | None = None
 
     content_type: int = note_content_type
     content_type_model: str = note_content_type_model

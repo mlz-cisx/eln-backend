@@ -22,6 +22,7 @@ class File(BaseModel):
     last_modified_at: datetime.datetime
     last_modified_by_id: int
     deleted: bool
+    hidden_deleted: bool | None = None
     imported: bool
     # the display , display, original_filename are the same
     name: str

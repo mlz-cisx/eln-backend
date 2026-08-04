@@ -204,6 +204,36 @@ def update_db_tables():
         END$$;
         """))
 
+        # Note.hidden_deleted
+        connection.execute(
+            text(
+                """
+                ALTER TABLE public.note
+                    ADD COLUMN IF NOT EXISTS hidden_deleted BOOLEAN DEFAULT FALSE;
+                """
+            )
+        )
+
+        # Picture.hidden_deleted
+        connection.execute(
+            text(
+                """
+                ALTER TABLE public.picture
+                    ADD COLUMN IF NOT EXISTS hidden_deleted BOOLEAN DEFAULT FALSE;
+                """
+            )
+        )
+
+        # File.hidden_deleted
+        connection.execute(
+            text(
+                """
+                ALTER TABLE public.file
+                    ADD COLUMN IF NOT EXISTS hidden_deleted BOOLEAN DEFAULT FALSE;
+                """
+            )
+        )
+
         transaction.commit()
     except sqlalchemy.exc.ProgrammingError as e:
         logger.info(e)

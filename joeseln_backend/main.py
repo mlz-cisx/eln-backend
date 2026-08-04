@@ -869,6 +869,22 @@ def restore_note(
     return db_note
 
 
+@app.patch("/api/notes/{note_pk}/hidden_delete/",
+           response_model=note_schemas.Note)
+def hidden_delete_note(
+        note_pk: UUID,
+        hidden_delete: labbookchildelement_schemas.Toggle_Hidden_Delete,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    # admin notes can only be deleted  by admins or groupadmins
+    db_note = note_service.hidden_delete_note(db=db, note_pk=note_pk,
+                                              hidden_delete=hidden_delete,
+                                              user=user)
+    if db_note is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return db_note
+
+
 @app.get("/api/notes/{note_pk}/",
          response_model=note_schemas.NoteWithPrivileges)
 def get_note(
@@ -1205,6 +1221,27 @@ def restore_picture(
     )
     if db_pic is None:
         raise HTTPException(status_code=204, detail="Labbook not found")
+
+    return db_pic
+
+
+@app.patch("/api/pictures/{picture_pk}/hidden_delete/",
+           response_model=picture_schemas.Picture)
+def hidden_delete_picture(
+        picture_pk: UUID,
+        hidden_delete: labbookchildelement_schemas.Toggle_Hidden_Delete,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user),
+):
+    # logger.info(user)
+    db_pic = picture_service.hidden_delete_picture(
+        db=db,
+        picture_pk=picture_pk,
+        hidden_delete=hidden_delete,
+        user=user,
+    )
+    if db_pic is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
 
     return db_pic
 
@@ -1580,6 +1617,22 @@ def restore_file(
     db_file = file_service.restore_file(db=db, file_pk=file_pk, user=user, restored_row=restored_row)
     if db_file is None:
         raise HTTPException(status_code=204, detail="Labbook not found")
+    return db_file
+
+
+@app.patch("/api/files/{file_pk}/hidden_delete/",
+           response_model=file_schemas.File)
+def hidden_delete_file(
+        file_pk: UUID,
+        hidden_delete: labbookchildelement_schemas.Toggle_Hidden_Delete,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)):
+    # logger.info(user)
+    db_file = file_service.hidden_delete_file(db=db, file_pk=file_pk,
+                                            hidden_delete=hidden_delete,
+                                            user=user)
+    if db_file is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
     return db_file
 
 

@@ -44,6 +44,8 @@ from joeseln_backend.services.labbook.labbook_service import (
     check_for_labbook_admin_access,
     get_all_labbook_ids_from_non_admin_user,
 )
+from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import \
+    Toggle_Hidden_Delete
 from joeseln_backend.services.picture.picture_schemas import (
     PictureUpload,
     UpdatePictureTitle,
@@ -68,9 +70,13 @@ def get_all_pictures(db: Session, params, user):
     # print(params.get('ordering'))
     order_params = db_ordering.get_order_params(ordering=params.get("ordering"))
     labbook_id = params.get("labbook_id")
+    hidden_deleted = params.get("hidden_deleted")
     additional_filters = []
     if labbook_id is not None:
         additional_filters.append(models.Labbookchildelement.labbook_id == labbook_id)
+
+    if hidden_deleted is not None:
+        additional_filters.append(models.Picture.hidden_deleted == False)
 
     if user.admin:
         if params.get("search"):
@@ -922,10 +928,74 @@ def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data,
     return None
 
 
+# needs to be heavily factorized
+def hidden_delete_picture(db: Session, picture_pk,
+                          hidden_delete: Toggle_Hidden_Delete, user):
+    pic_to_update = db.query(models.Picture).get(picture_pk)
+    if not pic_to_update:
+        return None
+    if pic_to_update.deleted == False:
+        return None
+    pic_to_update.hidden_deleted = hidden_delete.hidden_delete
+    pic_to_update.last_modified_at = datetime.datetime.now()
+    pic_to_update.last_modified_by_id = user.id
+    lb_elem = db.query(models.Labbookchildelement).get(pic_to_update.elem_id)
+    lb_to_update = db.query(models.Labbook).get(lb_elem.labbook_id)
+
+    # First possibility
+    if user.admin:
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return pic_to_update
+        db.refresh(pic_to_update)
+        return pic_to_update
+
+    if lb_to_update.strict_mode and user.id != pic_to_update.created_by_id:
+        return None
+
+    # Second possibility: it's a picture created by admin
+    if check_for_admin_role_with_user_id(db=db,
+                                         user_id=pic_to_update.created_by_id):
+
+        # allowed only for groupadmins
+        if check_for_labbook_admin_access(db=db, labbook_pk=lb_elem.labbook_id,
+                                          user=user):
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return pic_to_update
+            db.refresh(pic_to_update)
+            return pic_to_update
+        else:
+            return None
+
+    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+        return None
+    # Third possibility: it's a picture created by user
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+
+    if lb_elem.labbook_id in labbook_ids:
+        try:
+            db.commit()
+        except SQLAlchemyError as e:
+            logger.error(e)
+            db.close()
+            return pic_to_update
+        db.refresh(pic_to_update)
+        return pic_to_update
+    return None
+
+
 def restore_picture(db: Session, tsClient: Client, picture_pk, user,
                     restored_row: int | None = None):
     pic_to_update = db.query(models.Picture).get(picture_pk)
     pic_to_update.deleted = False
+    pic_to_update.hidden_deleted = False
     pic_to_update.last_modified_at = datetime.datetime.now()
     pic_to_update.last_modified_by_id = user.id
 
