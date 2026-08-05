@@ -98,7 +98,6 @@ async def handle_client(websocket, path):
         # close websocket cleanly
         try:
             await websocket.close()
-            await websocket.wait_closed()
         except Exception:
             pass
 
@@ -150,12 +149,43 @@ def reset_user_connected_ws():
 
 
 async def main():
+
+    # reset_user_connected_ws() INSIDE the event loop.
+    #
+    # If it runs BEFORE asyncio.run(), SQLAlchemy creates background
+    # tasks and threadpool futures outside the loop that will later
+    # host the WebSocket server. During shutdown, these tasks survive
+    # longer than the WS protocol tasks, contributing to:
+    #
+    #   "Task was destroyed but it is pending"
+    #   "RuntimeError: no running event loop"
+    #
+    # Running the DB reset inside main() ensures:
+    # - DB engine + sessions are created inside the same loop
+    # - WS server startup happens after DB cleanup
+    # - shutdown is fully contained in one loop
+    reset_user_connected_ws()
+
+    # Start WS server using old websockets.serve API
     server = await websockets.serve(
         handle_client, WS_INTERNAL_IP, WS_PORT, max_size=1024
     )
-    await server.wait_closed()
+
+    try:
+        await server.wait_closed()
+    finally:
+        # Explicit shutdown
+        server.close()
+        await server.wait_closed()
+
+        # Cancel leftover tasks
+        pending = asyncio.all_tasks()
+        for task in pending:
+            if task is not asyncio.current_task():
+                task.cancel()
+
+        await asyncio.gather(*pending, return_exceptions=True)
 
 
 if __name__ == "__main__":
-    reset_user_connected_ws()
     asyncio.run(main())
