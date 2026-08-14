@@ -61,7 +61,6 @@ INSTRUMENT_AS_ADMIN = get_secure_env_variable("INSTRUMENT_AS_ADMIN", "instrument
 
 # Token
 STATIC_ADMIN_TOKEN = get_secure_env_variable("STATIC_ADMIN_TOKEN")
-STATIC_WS_TOKEN = get_secure_env_variable("STATIC_WS_TOKEN")
 
 # Query mode
 LABBOOK_QUERY_MODE = get_secure_env_variable("LABBOOK_QUERY_MODE", "match")
@@ -72,12 +71,7 @@ FILES_BASE_PATH = get_secure_env_variable("FILES_BASE_PATH", "/data/files/")
 
 # Base URL
 URL_BASE_PATH = ensure_trailing_slash(get_secure_env_variable("URL_BASE_PATH"))
-WS_URL = ensure_trailing_slash(get_secure_env_variable("WS_URL"))
 APP_BASE_PATH = ensure_trailing_slash(get_secure_env_variable("APP_BASE_PATH", ""))
-
-WS_PORT = get_secure_env_variable("WS_PORT")
-
-WS_INTERNAL_IP = get_secure_env_variable("WS_INTERNAL_IP")
 
 # CORS settings
 ORIGINS = get_secure_env_variable("ORIGINS", "").split(",")

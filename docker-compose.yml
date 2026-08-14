@@ -35,18 +35,6 @@ services:
       retries: 3
       start_period: 10s
 
-  eln-backend-websocket:
-    image: eln-backend
-    build:
-      context: ./backend
-    ports:
-      - "8011:8011"
-    env_file: .env
-    command: ["python", "-m", "joeseln_backend.ws.ws_server"]
-    depends_on:
-      eln-postgres:
-        condition: service_healthy
-
   eln-frontend:
     image: eln-frontend
     build:
@@ -54,7 +42,6 @@ services:
     environment:
       SERVER_NAME: "<SERVER_NAME>"
       API_URL: "<API_URL>"
-      WS_URL: "<WS_URL>"
       KEYCLOAK_INTEGRATION: "<KEYCLOAK_INTEGRATION>"
       KEYCLOAK_BEHIND_NGINX: "<KEYCLOAK_BEHIND_NGINX>"
       INSTR_CSV_ALL: "<INSTR_CSV_ALL>"

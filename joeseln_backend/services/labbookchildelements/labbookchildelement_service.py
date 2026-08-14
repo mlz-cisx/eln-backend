@@ -36,7 +36,7 @@ from joeseln_backend.services.picture.picture_service import (
     get_picture_related_comments_count,
     get_picture_relations,
 )
-from joeseln_backend.ws.ws_client import transmit
+from joeseln_backend.ws.events import transmit
 
 
 def map_to_child_object_model(child_object_content_type):

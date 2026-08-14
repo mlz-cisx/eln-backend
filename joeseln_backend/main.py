@@ -172,7 +172,7 @@ from joeseln_backend.services.user_to_group import (
 from joeseln_backend.services.user_to_group.user_to_group_service import (
     update_oidc_user_groups,
 )
-from joeseln_backend.ws.ws_client import ws_client
+from joeseln_backend.ws.events import events_router, reset_user_connected_ws
 
 
 @asynccontextmanager
@@ -203,14 +203,10 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Typesense unavailable at startup: {e}")
 
-    # connect websocket
-    await ws_client.connect()
+    # Mark all users as disconnected
+    reset_user_connected_ws()
 
     yield
-
-    # close websocket
-    await ws_client.close()
-
 
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url="/api/redoc")
@@ -224,6 +220,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(events_router)
 
 keycloak_openid = KeycloakOpenID(server_url=KEYCLOAK_SERVER_URL,
                                  client_id=KEYCLOAK_CLIENT_ID,

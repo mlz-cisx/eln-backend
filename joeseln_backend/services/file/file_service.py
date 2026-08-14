@@ -62,7 +62,7 @@ from joeseln_backend.services.user_to_group.user_to_group_service import (
     get_user_group_roles,
     get_user_group_roles_with_match,
 )
-from joeseln_backend.ws.ws_client import transmit
+from joeseln_backend.ws.events import transmit
 
 
 def get_all_files(db: Session, params, user):

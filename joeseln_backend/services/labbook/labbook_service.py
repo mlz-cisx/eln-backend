@@ -41,7 +41,7 @@ from joeseln_backend.services.user_to_group.user_to_group_service import (
     get_user_groups_role_groupadmin,
     get_user_groups_role_user,
 )
-from joeseln_backend.ws.ws_client import transmit
+from joeseln_backend.ws.events import transmit
 
 
 def is_clean_title(s: str) -> bool:

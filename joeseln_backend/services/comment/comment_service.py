@@ -15,7 +15,7 @@ from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.comment.comment_schemas import CreateComment
 from joeseln_backend.services.labbook.labbook_service import check_for_labbook_access
-from joeseln_backend.ws.ws_client import transmit
+from joeseln_backend.ws.events import transmit
 
 
 def create_comment(db: Session, comment: CreateComment, user):
