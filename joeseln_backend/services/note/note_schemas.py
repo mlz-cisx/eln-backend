@@ -17,7 +17,7 @@ from joeseln_backend.services.user.user_schema import User
 class Note(BaseModel):
     id: int | str | UUID = Field(..., alias='pk')
     subject: str
-    content: str
+    content: str| None
     version_number: int
     created_at: datetime.datetime
     created_by_id: int
@@ -83,3 +83,4 @@ class NoteWithPrivileges(BaseModel):
 
 class NoteWithLbTitle(Note):
     lb_title: str | None
+    content: str | None = Field(default=None, exclude=True)

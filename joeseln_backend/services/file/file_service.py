@@ -14,7 +14,7 @@ from reportlab.pdfgen import canvas
 from spec2nexus import spec
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy.sql import text
 
 from joeseln_backend.auth import security
@@ -72,7 +72,8 @@ def get_all_files(db: Session, params, user):
     hidden_deleted = params.get("hidden_deleted")
     additional_filters = []
     if labbook_id is not None:
-        additional_filters.append(models.Labbookchildelement.labbook_id == labbook_id)
+        additional_filters.append(
+            models.Labbookchildelement.labbook_id == labbook_id)
 
     if hidden_deleted is not None:
         additional_filters.append(models.File.hidden_deleted == False)
@@ -83,6 +84,7 @@ def get_all_files(db: Session, params, user):
             search_text = params.get("search")
             files = (
                 db.query(models.File)
+                .options(defer(models.File.description))
                 .filter_by(deleted=bool(params.get("deleted")))
                 .join(
                     models.Labbookchildelement,
@@ -108,6 +110,7 @@ def get_all_files(db: Session, params, user):
         else:
             files = (
                 db.query(models.File)
+                .options(defer(models.File.description))
                 .filter_by(deleted=bool(params.get("deleted")))
                 .join(
                     models.Labbookchildelement,
@@ -150,6 +153,7 @@ def get_all_files(db: Session, params, user):
         search_text = params.get("search")
         files = (
             db.query(models.File)
+            .options(defer(models.File.description))
             .filter_by(deleted=bool(params.get("deleted")))
             .join(
                 models.Labbookchildelement,
@@ -175,6 +179,7 @@ def get_all_files(db: Session, params, user):
     else:
         files = (
             db.query(models.File)
+            .options(defer(models.File.description))
             .filter_by(deleted=bool(params.get("deleted")))
             .join(
                 models.Labbookchildelement,

@@ -4,7 +4,7 @@ import sys
 from fastapi.exceptions import HTTPException
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy.sql import text
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
@@ -61,18 +61,19 @@ def get_all_notes(db: Session, params, user):
     hidden_deleted = params.get("hidden_deleted")
 
     additional_filters = []
-
     if labbook_id is not None:
         additional_filters.append(models.Labbookchildelement.labbook_id == labbook_id)
 
     if hidden_deleted is not None:
         additional_filters.append(models.Note.hidden_deleted == False)
 
+
     if user.admin:
         if params.get("search"):
             search_text = params.get("search")
             notes = (
                 db.query(models.Note)
+                .options(defer(models.Note.content))
                 .filter_by(deleted=bool(params.get("deleted")))
                 .join(
                     models.Labbookchildelement,
@@ -98,6 +99,7 @@ def get_all_notes(db: Session, params, user):
         else:
             notes = (
                 db.query(models.Note)
+                .options(defer(models.Note.content))
                 .filter_by(deleted=bool(params.get("deleted")))
                 .join(
                     models.Labbookchildelement,
@@ -119,7 +121,6 @@ def get_all_notes(db: Session, params, user):
                 note.last_modified_by_id)
             note.created_by = db_user_created
             note.last_modified_by = db_user_modified
-
             try:
                 lb_elem = db.query(models.Labbookchildelement).get(note.elem_id)
                 lb = db.query(models.Labbook).get(lb_elem.labbook_id)
@@ -135,6 +136,7 @@ def get_all_notes(db: Session, params, user):
         search_text = params.get("search")
         notes = (
             db.query(models.Note)
+            .options(defer(models.Note.content))
             .filter_by(deleted=bool(params.get("deleted")))
             .join(
                 models.Labbookchildelement,
@@ -160,6 +162,7 @@ def get_all_notes(db: Session, params, user):
     else:
         notes = (
             db.query(models.Note)
+            .options(defer(models.Note.content))
             .filter_by(deleted=bool(params.get("deleted")))
             .join(
                 models.Labbookchildelement,
@@ -182,7 +185,6 @@ def get_all_notes(db: Session, params, user):
             note.last_modified_by_id)
         note.created_by = db_user_created
         note.last_modified_by = db_user_modified
-
         try:
             lb_elem = db.query(models.Labbookchildelement).get(note.elem_id)
             lb = db.query(models.Labbook).get(lb_elem.labbook_id)

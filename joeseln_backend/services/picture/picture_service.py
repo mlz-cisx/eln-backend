@@ -12,7 +12,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy.sql import text
 from typesense.client import Client
 from typesense.exceptions import TypesenseClientError
@@ -83,6 +83,7 @@ def get_all_pictures(db: Session, params, user):
             search_text = params.get("search")
             pics = (
                 db.query(models.Picture)
+                .options(defer(models.Picture.canvas_content))
                 .filter_by(deleted=bool(params.get("deleted")))
                 .join(
                     models.Labbookchildelement,
@@ -108,6 +109,7 @@ def get_all_pictures(db: Session, params, user):
         else:
             pics = (
                 db.query(models.Picture)
+                .options(defer(models.Picture.canvas_content))
                 .filter_by(deleted=bool(params.get("deleted")))
                 .join(
                     models.Labbookchildelement,
@@ -146,6 +148,7 @@ def get_all_pictures(db: Session, params, user):
         search_text = params.get("search")
         pics = (
             db.query(models.Picture)
+            .options(defer(models.Picture.canvas_content))
             .filter_by(deleted=bool(params.get("deleted")))
             .join(
                 models.Labbookchildelement,
@@ -171,6 +174,7 @@ def get_all_pictures(db: Session, params, user):
     else:
         pics = (
             db.query(models.Picture)
+            .options(defer(models.Picture.canvas_content))
             .filter_by(deleted=bool(params.get("deleted")))
             .join(
                 models.Labbookchildelement,

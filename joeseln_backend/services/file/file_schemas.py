@@ -31,7 +31,7 @@ class File(BaseModel):
     # title from description
     title: str
     # editor content
-    description: str
+    description: str | None
     file_size: int
     # download url we overwrite path
     path: str = Field(..., alias='download')
@@ -105,6 +105,7 @@ class FileWithPrivileges(BaseModel):
 
 class FileWithLbTitle(File):
     lb_title: str | None
+    description: str | None = Field(default=None, exclude=True)
 
 
 class FileClonePayload(BaseModel):
