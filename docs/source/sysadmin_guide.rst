@@ -120,18 +120,23 @@ Reverse Proxy
 -------------
 
 When ELN is placed behind reverse proxy, proxy should route the frontend
-application, API and WebSocket traffic individually.
+application and API traffic individually.
 
 
 API proxy — ``location /api/``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All requests under ``/api/`` are forwarded to the FastAPI backend:
+All requests under ``/api/`` are forwarded to the FastAPI backend. This
+includes ``GET /api/events``, the Server-Sent Events (SSE) stream that
+delivers real-time change notifications to the browser. SSE must not be
+buffered by the proxy, so buffering is disabled:
 
 .. code-block:: nginx
 
    location /api/ {
        proxy_pass http://127.0.0.1:8010;
+       proxy_buffering off;
+       proxy_cache off;
    }
 
 The default Nginx upload limit (1 MB) is often too low for file
@@ -140,27 +145,6 @@ attachments in labbook entries. Increase it with:
 .. code-block:: nginx
 
    client_max_body_size 50M;
-
-
-WebSocket proxy — ``location /ws/``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Real-time collaboration uses WebSocket connections routed through a
-dedicated WebSocket server. A mapping is needed to preserve the
-``Upgrade`` header:
-
-.. code-block:: nginx
-
-   map $http_upgrade $connection_upgrade {
-       default upgrade;
-       '' close;
-   }
-
-   location /ws/ {
-       proxy_pass http://127.0.0.1:8011;
-       proxy_set_header Upgrade $http_upgrade;
-       proxy_set_header Connection "upgrade";
-   }
 
 
 Static frontend — ``location /``

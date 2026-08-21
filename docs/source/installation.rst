@@ -54,9 +54,6 @@ The following was tested on **Ubuntu 22.04.4 Desktop** with **Python 3.10** and 
     # start backend service
     cd backend && uvicorn main:app --reload --port 8010 --host 0.0.0.0 --loop asyncio
 
-    # start websocket service
-    cd backend && python -m joeseln_backend.ws.ws_server
-
     # build frontend and start a development server
     cd frontend && npx ng serve
 

@@ -137,24 +137,6 @@ backend
 
    Base path for the eln **backend**, eg. ``https://eln.example.com/api``
 
-.. confval:: WS_URL
-   :type: :code-py:`str`
-   :required: True
-
-   Path to Websocket services, eg. ``https://eln.example.com/ws``
-
-.. confval:: WS_PORT
-   :type: :code-py:`int`
-   :required: True
-
-   Websocket services port
-
-.. confval:: WS_INTERNAL_IP
-   :type: :code-py:`str`
-   :default: ``0.0.0.0``
-
-   Internal IP address for Websocket service to bind to
-
 .. confval:: ORIGINS
    :type: :code-py:`list[str]`
    :required: True
@@ -178,12 +160,6 @@ backend
    :required: True
 
    token for ingestor (pick random string)
-
-.. confval:: STATIC_WS_TOKEN
-   :type: :code-py:`str`
-   :required: True
-
-   token for internal Websocket connection (pick random string)
 
 .. confval:: LABBOOK_QUERY_MODE
    :type: :code-py:`str`
@@ -277,12 +253,6 @@ frontend
    :required: True
 
    Base path for SNI filtering, eg. ``eln.example.com``
-
-.. confval:: WS_URL
-   :type: :code-js:`String`
-   :required: True
-
-   Path to Websocket service, eg. ``wss://eln.example.com``
 
 .. confval:: API_URL
    :type: :code-js:`String`

@@ -45,16 +45,9 @@
   ```bash
   source venv/bin/activate
   ```
-- Start the websocket server:
-  ```bash
-  python joeseln_backend/ws/ws_server.py
-  ```
-  
-  Please refer to the websocket configuration in `.env` according to [.env.sample](.env.sample)
-
 - [joeseln_backend/main.py](joeseln_backend/main.py) creates tables and initial admin users
 - ```cd joeseln_backend```
-- Due to nested async calls with websockets, use `--loop asyncio` to start the development server from directory where ```main.py``` is located.
+- Start the development server from directory where ```main.py``` is located.
   Here the application will automatically reload if you change any of the source files:
   ```bash
   uvicorn main:app --reload --port 8010 --host 0.0.0.0 --loop asyncio

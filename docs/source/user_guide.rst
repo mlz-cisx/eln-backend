@@ -207,9 +207,9 @@ between elements.
 Live Collaboration
 -------------
 
-The ELN supports real-time collaboration through a WebSocket connection.
-When multiple users work on the same labbook simultaneously, changes are
-propagated automatically so everyone sees an up-to-date view.
+The ELN supports real-time collaboration through a Server-Sent Events
+connection. When multiple users work on the same labbook simultaneously,
+changes are propagated automatically so everyone sees an up-to-date view.
 
 Live reload
 ^^^^^^^^^^^
