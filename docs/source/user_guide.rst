@@ -205,7 +205,7 @@ between elements.
 
 
 Live Collaboration
--------------
+------------------
 
 The ELN supports real-time collaboration through a Server-Sent Events
 connection. When multiple users work on the same labbook simultaneously,
@@ -256,7 +256,7 @@ Accessing the restore search
 The restore search bar is located at the top right of the labbook page.
 
 .. image:: _static/user_guide/restore_search.png
-   :scale: 40 %
+   :scale: 50 %
    :alt: Restore search bar
    :align: right
 
@@ -277,8 +277,42 @@ Search results can be dragged directly from the results list onto the grid:
    labbook are shown.
 
 
+Additional Restore Actions
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Beyond drag-and-drop restoration, the restore list provides two direct
+actions for each deleted element: ``showMeta`` and ``Hide``.
+
+**showMeta**
+
+Hovering over the ``showMeta`` button displays a tooltip with metadata
+about the element.
+Clicking ``showMeta`` redirects you to the element’s metadata page,
+where you can inspect its content, attachments, and revision history.
+
+**Hide**
+
+Clicking ``Hide`` removes the element from the labbook's search-to-restore
+list.
+Internally, this sets the ``hidden_deleted`` flag to ``true`` for that
+element, ensuring it no longer appears in the restore list.
+
+Resetting Hidden Deleted Elements
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Elements hidden via the ``Hide`` action (i.e. those with
+``hidden_deleted = true``) can be made visible again in the search-to-restore
+list.
+The reset option is available on the **element’s page**, which can be
+accessed through the **Elements List** page under thrashed items.
+Clearing the ``hidden_deleted`` flag makes the element visible again in
+the labbook restore list.
+
+
+
+
 Labbook Versioning
-----------
+------------------
 
 Labbooks support snapshot versioning. A version captures the full
 state of a labbook — including all elements, their content, and their

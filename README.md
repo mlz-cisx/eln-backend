@@ -5,7 +5,7 @@
 
 #### System Requirements
 
-- Tested on **Ubuntu 22.04.4 Desktop** with **Python 3.10**
+- Python 3.10
 
 #### Installation Steps
 
