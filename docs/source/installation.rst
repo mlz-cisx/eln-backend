@@ -62,7 +62,7 @@ From Source code
 
 .. _target:
 
-* System requirements: Python 3.10 , Node 24
+* System requirements: Python 3.13 , Node 24
 * Refer to offcial installation guides, install `PostgreSQL`_, `Typesense`_, and `Playwright`_
 * Adjust parameter in ``backend/.env`` and  ``frontend/source/assets/config/env.js`` according to :doc:`configuration`
 

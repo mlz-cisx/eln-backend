@@ -97,33 +97,34 @@ backend
 
 .. confval:: KEYCLOAK_INTEGRATION
    :type: :code-py:`bool`
-   :required: True
+   :required: False
 
-   enable SSO login with Keycloak
+   Set to ``True`` to enable Keycloak SSO.
 
 .. confval:: KEYCLOAK_SERVER_URL
    :type: :code-py:`str`
    :required: False
 
-   Keycloak server URL
+   Base URL of the Keycloak server, e.g. ``https://auth.example.com``.
+   This is the root of the realm's well-known configuration.
 
 .. confval:: KEYCLOAK_REALM_NAME
    :type: :code-py:`str`
    :required: False
 
-   Keycloak realm name
+   Name of the Keycloak realm, e.g. ``dev``.
 
 .. confval:: KEYCLOAK_CLIENT_ID
    :type: :code-py:`str`
    :required: False
 
-   Keycloak client ID
+   The client ID configured in Keycloak, e.g. ``eln``.
 
 .. confval:: KEYCLOAK_CLIENT_SECRET
    :type: :code-py:`str`
    :required: False
 
-   Keycloak client secret
+   The client secret from Keycloak's "Credentials" tab.
 
 .. confval:: APP_BASE_PATH
    :type: :code-py:`str`
