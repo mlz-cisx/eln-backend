@@ -78,7 +78,7 @@ ORIGINS = get_secure_env_variable("ORIGINS", "").split(",")
 
 
 # --- Keycloak integration flag ---
-KEYCLOAK_INTEGRATION = get_secure_env_variable("KEYCLOAK_INTEGRATION", "True") == "True"
+KEYCLOAK_INTEGRATION = get_secure_env_variable("KEYCLOAK_INTEGRATION", "False") == "True"
 
 # --- Load Keycloak variables normally ---
 KEYCLOAK_REALM_NAME = get_secure_env_variable("KEYCLOAK_REALM_NAME", "")
