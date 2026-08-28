@@ -9,7 +9,7 @@ import asyncio
 import json
 import uuid
 
-from fastapi import APIRouter, Header, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -120,15 +120,10 @@ events_router = APIRouter(prefix="/api")
 
 
 @events_router.get("/events")
-async def sse_events(
-    token: str = Query(default=""), authorization: str = Header(default="")
-):
+async def sse_events(token: str = Query(default="")):
     """stream notification events to the authenticated browser."""
     # prevent circular import
     from joeseln_backend.auth.security import get_current_jwt_user_for_ws
-
-    if not token and authorization.startswith("Bearer "):
-        token = authorization[len("Bearer ") :].strip()
 
     uname = await get_current_jwt_user_for_ws(token)
     if not uname:
