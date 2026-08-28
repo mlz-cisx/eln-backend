@@ -199,147 +199,148 @@ def add_labbook_version(db: Session, labbook_pk, summary, user,
                                           user=user):
         return None
     db_labbook = db.get(models.Labbook, labbook_pk)
-    number = 1
-    last_db_labbook_version = db.query(models.Version).filter_by(
-        object_id=labbook_pk).order_by(models.Version.number.desc()).first()
-    if last_db_labbook_version:
-        number = last_db_labbook_version.number + 1
+    if db_labbook is not None:
+        number = 1
+        last_db_labbook_version = db.query(models.Version).filter_by(
+            object_id=labbook_pk).order_by(models.Version.number.desc()).first()
+        if last_db_labbook_version:
+            number = last_db_labbook_version.number + 1
 
-    if restored_title:
-        db_labbook.title = restored_title
+        if restored_title:
+            db_labbook.title = restored_title
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                logger.error(e)
+                db.close()
+                return db_labbook
+            db.refresh(db_labbook)
+        # removed elements do not appear in query
+        query = db.query(models.Labbookchildelement).filter_by(
+            labbook_id=labbook_pk, deleted=False).order_by(
+            models.Labbookchildelement.position_y).all()
+
+        child_elements = []
+
+        elem_summary = f'v{number} of labbook {db_labbook.title}'
+        for elem in query:
+            if elem.child_object_content_type == 30:
+                child_object_version = \
+                    note_version_service.add_note_version(db=db,
+                                                          note_pk=elem.child_object_id,
+                                                          summary=elem_summary,
+                                                          user=user
+                                                          )[
+                        1]
+                note = db.get(models.Note, elem.child_object_id)
+                child_elements.append(
+                    {"width": elem.width,
+                     "height": elem.height,
+                     "position_x": elem.position_x,
+                     "position_y": elem.position_y,
+                     "lab_book_id": str(elem.labbook_id),
+                     "child_object_id": str(elem.child_object_id),
+                     "child_element_id": str(elem.id),
+                     "metadata_version": elem.version_number,
+                     "child_object_version_id": str(child_object_version.id),
+                     "child_object_version_number": child_object_version.number,
+                     "child_object_content_type_id": child_object_version.content_type_pk,
+                     'type': 'Note',
+                     "content_type": note_content_type_model,
+                     "display_name": note.subject,
+                     "version_number": child_object_version.number,
+                     "viewable": True
+                     }
+                )
+            if elem.child_object_content_type == 40:
+                child_object_version = \
+                    picture_version_service.add_picture_version(db=db,
+                                                                picture_pk=elem.child_object_id,
+                                                                summary=elem_summary,
+                                                                user=user)[
+                        1]
+                picture = db.get(models.Picture, elem.child_object_id)
+                child_elements.append(
+                    {"width": elem.width,
+                     "height": elem.height,
+                     "position_x": elem.position_x,
+                     "position_y": elem.position_y,
+                     "lab_book_id": str(elem.labbook_id),
+                     "child_object_id": str(elem.child_object_id),
+                     "child_element_id": str(elem.id),
+                     "metadata_version": elem.version_number,
+                     "child_object_version_id": str(child_object_version.id),
+                     "child_object_version_number": child_object_version.number,
+                     "child_object_content_type_id": child_object_version.content_type_pk,
+                     'type': 'Picture',
+                     "content_type": picture_content_type_model,
+                     "display_name": picture.title,
+                     "version_number": child_object_version.number,
+                     "viewable": True
+                     }
+                )
+            if elem.child_object_content_type == 50:
+                child_object_version = file_version_service.add_file_version(db=db,
+                                                                             file_pk=elem.child_object_id,
+                                                                             summary=elem_summary,
+                                                                             user=user)[
+                    1]
+                file = db.get(models.File, elem.child_object_id)
+                child_elements.append(
+                    {"width": elem.width,
+                     "height": elem.height,
+                     "position_x": elem.position_x,
+                     "position_y": elem.position_y,
+                     "lab_book_id": str(elem.labbook_id),
+                     "child_object_id": str(elem.child_object_id),
+                     "child_element_id": str(elem.id),
+                     "metadata_version": elem.version_number,
+                     "child_object_version_id": str(child_object_version.id),
+                     "child_object_version_number": child_object_version.number,
+                     "child_object_content_type_id": child_object_version.content_type_pk,
+                     'type': 'File',
+                     "content_type": file_content_type_model,
+                     "display_name": file.title,
+                     "version_number": child_object_version.number,
+                     "viewable": True
+                     }
+                )
+
+        version_metadata = {
+            'title': db_labbook.title,
+            'description': db_labbook.description,
+            'child_elements': child_elements,
+            'metadata': [],
+            'projects': [],
+            'metadata_version': 1
+        }
+
+        db_labbook_version = models.Version(
+            object_id=labbook_pk,
+            version_metadata=version_metadata,
+            number=number,
+            summary=summary,
+            display=summary,
+            content_type_pk=picture_content_type_version,
+            created_at=datetime.datetime.now(),
+            created_by_id=user.id,
+            last_modified_at=datetime.datetime.now(),
+            last_modified_by_id=user.id
+        )
+
+        db.add(db_labbook_version)
         try:
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
             db.close()
             return db_labbook
-        db.refresh(db_labbook)
-    # removed elements do not appear in query
-    query = db.query(models.Labbookchildelement).filter_by(
-        labbook_id=labbook_pk, deleted=False).order_by(
-        models.Labbookchildelement.position_y).all()
+        db.refresh(db_labbook_version)
 
-    child_elements = []
-
-    elem_summary = f'v{number} of labbook {db_labbook.title}'
-    for elem in query:
-        if elem.child_object_content_type == 30:
-            child_object_version = \
-                note_version_service.add_note_version(db=db,
-                                                      note_pk=elem.child_object_id,
-                                                      summary=elem_summary,
-                                                      user=user
-                                                      )[
-                    1]
-            note = db.get(models.Note, elem.child_object_id)
-            child_elements.append(
-                {"width": elem.width,
-                 "height": elem.height,
-                 "position_x": elem.position_x,
-                 "position_y": elem.position_y,
-                 "lab_book_id": str(elem.labbook_id),
-                 "child_object_id": str(elem.child_object_id),
-                 "child_element_id": str(elem.id),
-                 "metadata_version": elem.version_number,
-                 "child_object_version_id": str(child_object_version.id),
-                 "child_object_version_number": child_object_version.number,
-                 "child_object_content_type_id": child_object_version.content_type_pk,
-                 'type': 'Note',
-                 "content_type": note_content_type_model,
-                 "display_name": note.subject,
-                 "version_number": child_object_version.number,
-                 "viewable": True
-                 }
-            )
-        if elem.child_object_content_type == 40:
-            child_object_version = \
-                picture_version_service.add_picture_version(db=db,
-                                                            picture_pk=elem.child_object_id,
-                                                            summary=elem_summary,
-                                                            user=user)[
-                    1]
-            picture = db.get(models.Picture, elem.child_object_id)
-            child_elements.append(
-                {"width": elem.width,
-                 "height": elem.height,
-                 "position_x": elem.position_x,
-                 "position_y": elem.position_y,
-                 "lab_book_id": str(elem.labbook_id),
-                 "child_object_id": str(elem.child_object_id),
-                 "child_element_id": str(elem.id),
-                 "metadata_version": elem.version_number,
-                 "child_object_version_id": str(child_object_version.id),
-                 "child_object_version_number": child_object_version.number,
-                 "child_object_content_type_id": child_object_version.content_type_pk,
-                 'type': 'Picture',
-                 "content_type": picture_content_type_model,
-                 "display_name": picture.title,
-                 "version_number": child_object_version.number,
-                 "viewable": True
-                 }
-            )
-        if elem.child_object_content_type == 50:
-            child_object_version = file_version_service.add_file_version(db=db,
-                                                                         file_pk=elem.child_object_id,
-                                                                         summary=elem_summary,
-                                                                         user=user)[
-                1]
-            file = db.get(models.File, elem.child_object_id)
-            child_elements.append(
-                {"width": elem.width,
-                 "height": elem.height,
-                 "position_x": elem.position_x,
-                 "position_y": elem.position_y,
-                 "lab_book_id": str(elem.labbook_id),
-                 "child_object_id": str(elem.child_object_id),
-                 "child_element_id": str(elem.id),
-                 "metadata_version": elem.version_number,
-                 "child_object_version_id": str(child_object_version.id),
-                 "child_object_version_number": child_object_version.number,
-                 "child_object_content_type_id": child_object_version.content_type_pk,
-                 'type': 'File',
-                 "content_type": file_content_type_model,
-                 "display_name": file.title,
-                 "version_number": child_object_version.number,
-                 "viewable": True
-                 }
-            )
-
-    version_metadata = {
-        'title': db_labbook.title,
-        'description': db_labbook.description,
-        'child_elements': child_elements,
-        'metadata': [],
-        'projects': [],
-        'metadata_version': 1
-    }
-
-    db_labbook_version = models.Version(
-        object_id=labbook_pk,
-        version_metadata=version_metadata,
-        number=number,
-        summary=summary,
-        display=summary,
-        content_type_pk=picture_content_type_version,
-        created_at=datetime.datetime.now(),
-        created_by_id=user.id,
-        last_modified_at=datetime.datetime.now(),
-        last_modified_by_id=user.id
-    )
-
-    db.add(db_labbook_version)
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
-        return db_labbook
-    db.refresh(db_labbook_version)
-
-    db_user_created = db.get(models.User, db_labbook.created_by_id)
-    db_user_modified = db.get(models.User, 
-        db_labbook.last_modified_by_id)
-    db_labbook.created_by = db_user_created
-    db_labbook.last_modified_by = db_user_modified
+        db_user_created = db.get(models.User, db_labbook.created_by_id)
+        db_user_modified = db.get(models.User,
+            db_labbook.last_modified_by_id)
+        db_labbook.created_by = db_user_created
+        db_labbook.last_modified_by = db_user_modified
 
     return db_labbook
