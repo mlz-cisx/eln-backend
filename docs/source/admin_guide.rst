@@ -1,5 +1,6 @@
 Admin Guide
 ============
+.. _admin_guide:
 
 .. role:: code-py(code)
    :language: Python

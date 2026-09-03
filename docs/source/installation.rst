@@ -92,6 +92,28 @@ From Source code
     cd frontend && npx ng serve
 
 
+First Steps
+-----------
+
+* Login as user **admin** or as user **instrument** with the initial password ``secret``
+* Change passwords under **Profile** for security reasons
+* Navigate to **Labbooks** Page
+* Create a new **Labbook**
+
+.. image:: _static/admin_guide/create_labbook.png
+   :scale: 30 %
+   :alt: Create Labbook
+
+* Add notes , files, sketches to the labbook
+
+
+.. image:: _static/admin_guide/first_labbook.png
+   :scale: 30 %
+   :alt: First Labbook
+
+* Have a look at the :ref:`Admin Guide <admin_guide>` for more information.
+
+
 .. _Install Docker: https://docs.docker.com/engine/install/
 .. _PostgreSQL: https://www.postgresql.org/docs/current/tutorial-install.html
 .. _Typesense: https://typesense.org/docs/guide/install-typesense.html

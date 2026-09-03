@@ -71,6 +71,18 @@ and the frontend applies its built‑in defaults:
 * :code-js:`NOTE_MAXIMUM_SIZE` — defaults to ``5000`` KB
 * :code-js:`HSDS_URL`, :code-js:`HSDS_USERNAME`, :code-js:`HSDS_PASSWORD`, :code-js:`HSDS_DOMAIN` — default to empty strings
 
+
+
+.. tip::
+    Although these variables appear in the same subsection
+    as the Keycloak integration settings,
+    they are not part of Keycloak itself. They are general Docker‑Compose environment
+    variables used by the frontend loader, and they are worth documenting because each
+    of them has a defined optional‑value behavior. When omitted, Docker supplies an empty
+    string and the frontend applies its own defaults, ensuring predictable runtime behavior
+    and preventing placeholder literals from leaking into the application.
+
+
 Example docker-compose configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -95,12 +107,12 @@ Below is the recommended configuration aligned with the frontend loader:
        HSDS_PASSWORD: "${HSDS_PASSWORD:-}"
        HSDS_DOMAIN: "${HSDS_DOMAIN:-}"
 
-This ensures:
-
-* missing variables become empty strings
-* boolean flags behave correctly
-* the Angular loader applies its documented defaults
-* no literal placeholder strings leak into the application
+.. tip::
+    By the way, this configuration pattern ensures that unset variables resolve to
+    empty strings, boolean flags retain predictable semantics,
+    and the Angular loader can safely apply its documented defaults.
+    It also prevents accidental leakage of placeholder literals
+    into the running application, keeping the environment clean and reproducible.
 
 
 Authentication Flow
