@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
   --mount=from=uv,source=/uv,target=./uv \
   ./uv pip install  -r requirements.txt
 
-RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils \
+RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils git \
   && rm -rf /var/lib/apt/lists/*
 
 # Copy the rest of the application files

@@ -10,4 +10,5 @@ class StatResponse(BaseModel):
     total_pics: int
     image_folder_size: int
     files_folder_size: int
-
+    git_commit_hash: str | None = None
+    git_commit_msg: str | None = None
