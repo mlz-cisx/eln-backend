@@ -17,12 +17,11 @@ from sqlalchemy.sql import text
 from typesense import Client
 from typesense.exceptions import TypesenseClientError
 
+import joeseln_backend.conf.base_conf as base_conf
 from joeseln_backend.auth import security
 from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.conf.base_conf import (
-    ELEM_MAXIMUM_SIZE,
     LABBOOK_QUERY_MODE,
-    PICTURES_BASE_PATH,
     URL_BASE_PATH,
 )
 from joeseln_backend.full_text_search.typesense_service import (
@@ -573,7 +572,7 @@ def get_picture_for_zip_export(db: Session, picture_pk):
     db_user_modified = db.get(models.User, db_picture.last_modified_by_id)
     db_picture.created_by = db_user_created
     db_picture.last_modified_by = db_user_modified
-    db_picture.background_image = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
+    db_picture.background_image = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
 
     return db_picture
 
@@ -588,8 +587,8 @@ def create_picture(db: Session, title: str, display: str,
                    user, size: int = 0, canvas_content: str = None):
     canvas_content = '{"version":"6.9.0","objects":[],"background":"#F8F8FF"}' \
         if canvas_content is None else canvas_content
-    if size > ELEM_MAXIMUM_SIZE << 10 or sys.getsizeof(
-            canvas_content) > ELEM_MAXIMUM_SIZE << 10:
+    if size > base_conf.ELEM_MAXIMUM_SIZE << 10 or sys.getsizeof(
+            canvas_content) > base_conf.ELEM_MAXIMUM_SIZE << 10:
         return
 
     bi_file_path = f'{create_path(db=db)}'
@@ -644,7 +643,7 @@ def clone_picture(db, bi_img_contents, info, user):
     if not db_picture:
         return None
 
-    bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
+    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
 
     with open(bi_img_path, 'wb') as image:
         if bi_img_contents:
@@ -664,6 +663,13 @@ def clone_picture(db, bi_img_contents, info, user):
 
 
 def process_picture_upload_form(form, db, tsClient: Client, contents, user):
+    if "labbook_pk" not in form:
+        raise HTTPException(status_code=400, detail="Missing labbook_pk")
+
+    if check_for_labbook_access(db=db, labbook_pk=form['labbook_pk'],
+                                user=user) != 'Write':
+        raise HTTPException(status_code=403)
+
     db_picture = create_picture(db=db, title=form['title'],
                                 display=form['background_image'].filename,
                                 size=form['background_image'].size, user=user)
@@ -671,7 +677,7 @@ def process_picture_upload_form(form, db, tsClient: Client, contents, user):
     if not db_picture:
         return None
 
-    bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
+    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
 
     base64_string = base64.b64encode(contents).decode("utf-8")
 
@@ -703,6 +709,13 @@ def process_picture_upload_form(form, db, tsClient: Client, contents, user):
 
 
 async def process_sketch_upload_form(form, db, tsClient: Client, user):
+    if "labbook_pk" not in form:
+        raise HTTPException(status_code=400, detail="Missing labbook_pk")
+
+    if check_for_labbook_access(db=db, labbook_pk=form['labbook_pk'],
+                                user=user) != 'Write':
+        raise HTTPException(status_code=403)
+
     content = None
     canvas_content = form.get("canvas_content")
     if canvas_content:
@@ -713,7 +726,7 @@ async def process_sketch_upload_form(form, db, tsClient: Client, user):
                                 display=form['title'],
                                 user=user, canvas_content=content)
 
-    bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
+    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
 
     with open(bi_img_path, 'wb'):
         pass  # do nothing, file is created empty
@@ -752,7 +765,7 @@ def build_bi_download_response(picture_pk, db, jwt):
     if user is None:
         return
     db_picture = db.get(models.Picture, picture_pk)
-    bi_img_path = f'{PICTURES_BASE_PATH}{db_picture.background_image}'
+    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
     value = FileResponse(bi_img_path)
 
     return value
@@ -1177,7 +1190,7 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user,
 def remove_soft_deleted_picture(db: Session, picture_pk):
     pic_to_remove = db.get(models.Picture, picture_pk)
 
-    bi_img_path = f'{PICTURES_BASE_PATH}{pic_to_remove.background_image}'
+    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{pic_to_remove.background_image}'
 
     if pic_to_remove and pic_to_remove.deleted:
         lb_elem = db.get(models.Labbookchildelement, 
