@@ -2,11 +2,13 @@ import base64
 import datetime
 import io
 import json
+import os
 import pathlib
 import sys
 from copy import deepcopy
 
 import pandas as pd
+from fastapi import HTTPException
 from fastapi.responses import FileResponse
 from pdf2image import convert_from_bytes
 from reportlab.lib.pagesizes import letter
@@ -17,14 +19,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, defer
 from sqlalchemy.sql import text
 
+import joeseln_backend.conf.base_conf as base_conf
 from joeseln_backend.auth import security
 from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.conf.base_conf import (
     ELEM_MAXIMUM_SIZE,
-    FILES_BASE_PATH,
     LABBOOK_QUERY_MODE,
-    URL_BASE_PATH,
-    DESY_INTEGRATION
+    URL_BASE_PATH
 )
 from joeseln_backend.full_text_search.html_stripper import sanitize_html
 from joeseln_backend.helper import db_ordering
@@ -423,6 +424,9 @@ def create_file(
     ):
         return
 
+    if user is None:
+        return
+
     description = sanitize_html(description)
 
     file_path = f'{create_path(db=db)}'
@@ -585,11 +589,13 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
 
 
 def process_file_upload_form(form, db, contents, user):
-    # print(form)
-    # print(len(contents))
-    # print(form['path'].size)
-    # print(form['path'].content_type)  # mime_type
-    # print(form['path'].filename)  # is form[name]
+
+    if "labbook_pk" not in form:
+        raise HTTPException(status_code=400, detail="Missing labbook_pk")
+
+    if check_for_labbook_access(db=db, labbook_pk=form['labbook_pk'],
+                                user=user) != 'Write':
+        raise HTTPException(status_code=403)
 
     db_file = create_file(
         db=db,
@@ -604,13 +610,24 @@ def process_file_upload_form(form, db, contents, user):
     )
     if not db_file:
         return None
-    file_path = f'{FILES_BASE_PATH}{db_file.path}'
+    # --- Normalize base path (safe for tests, harmless in production) ---
+    base = base_conf.FILES_BASE_PATH.rstrip("/") + "/"
+
+    # --- Normalize filename (remove leading slash, directory traversal) ---
+    raw = str(db_file.path)
+    filename = os.path.basename(raw.lstrip("/"))
+
+    # --- Construct final path safely ---
+    file_path = os.path.join(base, filename)
+
+    # Ensure directory exists
+    pathlib.Path(base).mkdir(parents=True, exist_ok=True)
 
     with open(file_path, 'wb') as file:
         file.write(contents)
         file.close()
 
-    if DESY_INTEGRATION and db_file.name.endswith('.spc'):
+    if base_conf.DESY_INTEGRATION and db_file.name.endswith('.spc'):
         try:
             labbook_pk = form['labbook_pk']
             description = create_plot_content_from_spec_file(
@@ -650,7 +667,7 @@ def clone_file(db, contents, info, user):
                           user=user)
     if not db_file:
         return None
-    file_path = f'{FILES_BASE_PATH}{db_file.path}'
+    file_path = f'{base_conf.FILES_BASE_PATH}{db_file.path}'
 
     with open(file_path, 'wb') as file:
         file.write(contents)
@@ -704,7 +721,7 @@ def clone_lxf_file(db, contents, info, user):
                           user=user)
     if not db_file:
         return None
-    file_path = f'{FILES_BASE_PATH}{db_file.path}'
+    file_path = f'{base_conf.FILES_BASE_PATH}{db_file.path}'
     # Write either the original PDF or a warning PDF
     if not conversion_failed:
         # Write original PDF bytes
@@ -737,7 +754,7 @@ def build_download_url_with_token(file_to_process, user):
 
 
 def build_download_url_with_token_for_zip_export(file_to_process):
-    file_to_process.path = f'{FILES_BASE_PATH}{file_to_process.path}'
+    file_to_process.path = f'{base_conf.FILES_BASE_PATH}{file_to_process.path}'
     return file_to_process
 
 
@@ -746,7 +763,7 @@ def build_file_download_response(file_pk, db, jwt):
     if user is None:
         return
     db_file = db.get(models.File, file_pk)
-    file_path = f'{FILES_BASE_PATH}{db_file.path}'
+    file_path = f'{base_conf.FILES_BASE_PATH}{db_file.path}'
     value = FileResponse(file_path)
 
     return value
@@ -1173,7 +1190,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
 
 def remove_soft_deleted_file(db: Session, file_pk):
     file_to_remove = db.get(models.File, file_pk)
-    file_path = f'{FILES_BASE_PATH}{file_to_remove.path}'
+    file_path = f'{base_conf.FILES_BASE_PATH}{file_to_remove.path}'
 
     if file_to_remove and file_to_remove.deleted:
         lb_elem = db.get(models.Labbookchildelement, 
@@ -1211,7 +1228,7 @@ def remove_soft_deleted_file(db: Session, file_pk):
 
 
 def create_plot_content_from_spec_file(file_to_process, db, user, labbook_pk):
-    file_path = f'{FILES_BASE_PATH}{file_to_process.path}'
+    file_path = f'{base_conf.FILES_BASE_PATH}{file_to_process.path}'
     if not spec.is_spec_file(file_path):
         return
 
@@ -1272,7 +1289,7 @@ def create_file_from_spec_scan(db, dataframe, info, user):
     )
     if not db_file:
         return None
-    file_path = f'{FILES_BASE_PATH}{db_file.path}'
+    file_path = f'{base_conf.FILES_BASE_PATH}{db_file.path}'
 
     with open(file_path, 'wb') as file:
         dataframe.to_csv(file, index=False)
