@@ -403,33 +403,40 @@ def client():
 
 
 @pytest.fixture(scope="function")
-def as_admin(client):
+def as_admin():
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture(scope="function")
-def as_nonadmin(client):
+def as_nonadmin():
     app.dependency_overrides[get_current_user] = mock_get_current_user_nonadmin
     yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture(scope="function")
-def as_groupadmin(client):
-    app.dependency_overrides[get_current_user] = mock_get_current_user_groupadmin
+def as_groupadmin():
+    app.dependency_overrides[
+        get_current_user] = mock_get_current_user_groupadmin
     yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture(scope="function")
-def as_groupuser(client):
+def as_groupuser():
     app.dependency_overrides[get_current_user] = mock_get_current_user_groupuser
     yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture(scope="function")
-def as_groupguest(client):
-    app.dependency_overrides[get_current_user] = mock_get_current_user_groupguest
+def as_groupguest():
+    app.dependency_overrides[
+        get_current_user] = mock_get_current_user_groupguest
     yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 # ═══════════════════════════════════════════════════════════════════
