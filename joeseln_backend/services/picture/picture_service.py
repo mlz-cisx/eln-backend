@@ -761,7 +761,7 @@ def build_download_url_with_token(picture, user):
 
 
 def build_bi_download_response(picture_pk, db, jwt):
-    user = get_user_from_jwt(db=db, token=jwt)
+    user = get_user_from_jwt(db=db, token=jwt, resource_uuid=picture_pk)
     if user is None:
         return
     db_picture = db.get(models.Picture, picture_pk)
@@ -795,11 +795,7 @@ def get_picture_export_link(db: Session, picture_pk, user):
 
 
 def build_picture_download_url_with_token(picture_to_process, user):
-    access_token_expires = security.timedelta(
-        minutes=security.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+    access_token = security.build_download_token(user, picture_to_process.id)
 
     picture_to_process.path = f'{URL_BASE_PATH}pictures/{picture_to_process.id}/export?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     return picture_to_process

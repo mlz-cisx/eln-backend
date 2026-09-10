@@ -127,7 +127,8 @@ def build_download_token(user, resource_uuid) -> str:
         access_token_expires = timedelta(
             minutes=JWT_DOWNLOAD_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.username}, expires_delta=access_token_expires
+            data={"sub": user.username, "res": str(resource_uuid)},
+            expires_delta=access_token_expires,
         )
         expires_at = current_time + access_token_expires.total_seconds()
         token_cache[cache_key] = (access_token, expires_at)
@@ -146,7 +147,11 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-def get_user_from_jwt(db: Session, token: Annotated[str, Depends(oauth2_scheme)]):
+def get_user_from_jwt(
+    db: Session,
+    token: Annotated[str, Depends(oauth2_scheme)],
+    resource_uuid=None,
+):
     try:
         if token == STATIC_ADMIN_TOKEN:
             # logger.info('you can do everything')
@@ -157,6 +162,10 @@ def get_user_from_jwt(db: Session, token: Annotated[str, Depends(oauth2_scheme)]
             # we aligned to keycloak's sub
             username: str = payload.get("sub")
             if username is None:
+                return
+            # download tokens are bound to a single resource
+            if resource_uuid is not None and payload.get("res") != str(
+                    resource_uuid):
                 return
             user = get_user_with_groups_by_uname(db=db, username=username)
             if user is None:

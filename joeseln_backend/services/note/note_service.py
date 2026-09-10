@@ -899,11 +899,7 @@ def get_note_export_link(db: Session, note_pk, user):
 
 
 def build_note_download_url_with_token(note_to_process, user):
-    access_token_expires = security.timedelta(
-        minutes=security.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+    access_token = security.build_download_token(user, note_to_process.id)
 
     note_to_process.path = f'{URL_BASE_PATH}notes/{note_to_process.id}/export?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     return note_to_process

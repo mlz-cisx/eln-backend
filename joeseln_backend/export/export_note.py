@@ -30,7 +30,7 @@ async def wait_for_mathjax(page):
 
 
 async def get_export_data(db, note_pk, jwt):
-    user = get_user_from_jwt(db=db, token=jwt)
+    user = get_user_from_jwt(db=db, token=jwt, resource_uuid=note_pk)
     if user is None:
         return
     root = os.path.dirname(os.path.abspath(__file__))
