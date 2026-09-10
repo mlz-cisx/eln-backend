@@ -7,7 +7,11 @@ from playwright.async_api import async_playwright
 
 from joeseln_backend.auth.security import get_user_from_jwt
 from joeseln_backend.conf.base_conf import PLAYWRIGHT_WS
+from joeseln_backend.services.labbook.labbook_service import (
+    check_for_labbook_access,
+)
 from joeseln_backend.services.picture.picture_service import (
+    get_lb_pk_from_picture,
     get_picture_for_export,
     get_picture_relations,
 )
@@ -22,6 +26,10 @@ def get_base64_image(image_path):
 async def get_export_data(db, picture_pk, jwt):
     user = get_user_from_jwt(db=db, token=jwt, resource_uuid=picture_pk)
     if user is None:
+        return
+    labbook_pk = get_lb_pk_from_picture(db=db, picture_pk=picture_pk)
+    if labbook_pk is None or not check_for_labbook_access(
+            db=db, labbook_pk=labbook_pk, user=user):
         return
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, '', 'templates')

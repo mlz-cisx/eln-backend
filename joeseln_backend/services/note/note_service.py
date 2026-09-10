@@ -204,6 +204,16 @@ def get_note(db: Session, note_pk):
     return db_note
 
 
+def get_lb_pk_from_note(db: Session, note_pk):
+    db_note = db.get(models.Note, note_pk)
+    if db_note is None or db_note.elem_id is None:
+        return None
+    elem = db.get(models.Labbookchildelement, db_note.elem_id)
+    if elem is None:
+        return None
+    return elem.labbook_id
+
+
 def get_note_with_privileges(db: Session, note_pk, user, etag):
     db_note = db.get(models.Note, note_pk)
     if db_note:

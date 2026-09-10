@@ -408,6 +408,9 @@ async def export_labbook_content(
     background_tasks: BackgroundTasks = None,
     user: User = Depends(get_current_user),
 ):
+    if not labbook_service.check_for_labbook_access(
+            db=db, labbook_pk=labbook_pk, user=user):
+        raise HTTPException(status_code=403)
     export_identifier = str(uuid.uuid4())
     export_filter = labbook_schemas.ExportFilter(
         containTypes=containTypes, users=users, startTime=startTime, endTime=endTime
@@ -444,6 +447,9 @@ def export_labbook_content_zip(
         user: User = Depends(get_current_user),
         background_tasks: BackgroundTasks = None
 ):
+    if not labbook_service.check_for_labbook_access(
+            db=db, labbook_pk=labbook_pk, user=user):
+        raise HTTPException(status_code=403)
     export_identifier = str(uuid.uuid4())
     export_filter = labbook_schemas.ExportFilter(containTypes=containTypes,
                                                  users=users,
@@ -471,6 +477,9 @@ def export_labbook_content_lxf(
         user: User = Depends(get_current_user),
         background_tasks: BackgroundTasks = None
 ):
+    if not labbook_service.check_for_labbook_access(
+            db=db, labbook_pk=labbook_pk, user=user):
+        raise HTTPException(status_code=403)
     export_identifier = str(uuid.uuid4())
     export_filter = labbook_schemas.ExportFilter(containTypes=containTypes,
                                                  users=users,

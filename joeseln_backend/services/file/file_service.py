@@ -405,7 +405,11 @@ def get_file_related_comments_count(db: Session, file_pk, user):
 
 def get_lb_pk_from_file(db: Session, file_pk):
     file = db.get(models.File, file_pk)
+    if file is None or file.elem_id is None:
+        return None
     elem = db.get(models.Labbookchildelement, file.elem_id)
+    if elem is None:
+        return None
     return elem.labbook_id
 
 

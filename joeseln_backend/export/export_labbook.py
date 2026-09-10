@@ -91,6 +91,10 @@ async def get_export_data(
     export_filter: ExportFilter,
     background_tasks: BackgroundTasks,
 ):
+    if not check_for_labbook_access(db=db, labbook_pk=lb_pk, user=user):
+        pending_export[export_identifier] = "err"
+        return None
+
     # ----------------------------
     # Load template + fetch data
     # ----------------------------
@@ -323,6 +327,7 @@ def create_export_zip_file(
     db: Session, labbook_pk, user, export_identifier: str, export_filter: ExportFilter
 ):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
+        pending_export[export_identifier] = "err"
         return None
 
     lb = get_labbook_for_export(db=db, labbook_pk=labbook_pk)
@@ -484,6 +489,10 @@ async def get_lxf_export_data(
         export_identifier: str,
         export_filter: ExportFilter,
 ):
+    if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
+        pending_export[export_identifier] = "err"
+        return None
+
     # ----------------------------
     # Templates
     # ----------------------------
