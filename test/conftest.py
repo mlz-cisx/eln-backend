@@ -17,9 +17,11 @@ from joeseln_backend.conf.content_types import (
     picture_content_type,
     picture_content_type_model,
 )
-from joeseln_backend.conf.mocks.mock_role import ROLE_GROUPADMIN, ROLE_GUEST, ROLE_USER
+from joeseln_backend.conf.mocks.mock_role import ROLE_GROUPADMIN, ROLE_GUEST, \
+    ROLE_USER
 from joeseln_backend.full_text_search import typesense_service
-from joeseln_backend.main import app, get_current_user, get_db, get_typesense_client
+from joeseln_backend.main import app, get_current_user, get_db, \
+    get_typesense_client
 from joeseln_backend.models import models
 from joeseln_backend.models.models import User
 from joeseln_backend.services.role.role_schema import Role_Create
@@ -570,7 +572,8 @@ def a_note(client, a_labbook):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     response = client.post(
         "/api/notes/",
-        json={"subject": "Test Note", "content": "This is a test note"},
+        json={"subject": "Test Note", "content": "This is a test note",
+              "labbook_pk": a_labbook},
     )
     assert response.status_code == 200
     pk = response.json()["pk"]
@@ -642,7 +645,8 @@ def a_labbook_element_pk(client, a_labbook):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "Fixture Note", "content": "For element tests"},
+        json={"subject": "Fixture Note", "content": "For element tests",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
