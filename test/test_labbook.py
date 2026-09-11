@@ -20,7 +20,8 @@ def _create_fresh_element(client, labbook_pk, position_y):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "Fresh Element", "content": "For aside/below tests"},
+        json={"subject": "Fresh Element", "content": "For aside/below tests",
+              "labbook_pk": labbook_pk},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
@@ -547,7 +548,8 @@ def test_get_elements_nonexistent_labbook(client, as_admin):
 def test_create_elem(a_labbook, client, as_admin):
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "Element Note", "content": "For element creation test"},
+        json={"subject": "Element Note", "content": "For element creation test",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
@@ -588,7 +590,8 @@ def test_create_elem_as_groupadmin(a_labbook, client, as_groupadmin):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "Groupadmin Elem Note", "content": "For groupadmin"},
+        json={"subject": "Groupadmin Elem Note", "content": "For groupadmin",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
@@ -613,7 +616,8 @@ def test_create_elem_as_groupuser(a_labbook, client, as_groupuser):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "Groupuser Elem Note", "content": "For groupuser"},
+        json={"subject": "Groupuser Elem Note", "content": "For groupuser",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
@@ -744,7 +748,8 @@ def test_create_elem_bottom(a_labbook, client, as_admin):
     # create a fresh note
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "Bottom Note", "content": "For bottom test"},
+        json={"subject": "Bottom Note", "content": "For bottom test",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
@@ -777,7 +782,8 @@ def test_create_elem_bottom_as_groupadmin(a_labbook, client, as_groupadmin):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "GA Bottom Note", "content": "For groupadmin bottom"},
+        json={"subject": "GA Bottom Note", "content": "For groupadmin bottom",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
@@ -799,7 +805,8 @@ def test_create_elem_bottom_as_groupuser(a_labbook, client, as_groupuser):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "GU Bottom Note", "content": "For groupuser bottom"},
+        json={"subject": "GU Bottom Note", "content": "For groupuser bottom",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
@@ -839,7 +846,8 @@ def test_create_elem_bottom_rejected_for_groupguest(
 def test_create_elem_row(a_labbook, client, as_admin):
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "Row Note", "content": "For row test"},
+        json={"subject": "Row Note", "content": "For row test",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
@@ -874,7 +882,8 @@ def test_create_elem_row_as_groupadmin(a_labbook, client, as_groupadmin):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "GA Row Note", "content": "For groupadmin row"},
+        json={"subject": "GA Row Note", "content": "For groupadmin row",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
@@ -897,7 +906,8 @@ def test_create_elem_row_as_groupuser(a_labbook, client, as_groupuser):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     note_resp = client.post(
         "/api/notes/",
-        json={"subject": "GU Row Note", "content": "For groupuser row"},
+        json={"subject": "GU Row Note", "content": "For groupuser row",
+              "labbook_pk": a_labbook},
     )
     assert note_resp.status_code == 200
     note_pk = note_resp.json()["pk"]
