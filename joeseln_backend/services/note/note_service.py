@@ -375,6 +375,14 @@ def get_note_related_comments_count(db: Session, note_pk, user):
 
 
 def create_note(db: Session, note: NoteCreate, user, typesense: Client):
+
+    if note.labbook_pk is None:
+        raise HTTPException(status_code=400, detail="Missing labbook_pk")
+
+    if check_for_labbook_access(db=db, labbook_pk=note.labbook_pk,
+                                user=user) != 'Write':
+        raise HTTPException(status_code=403)
+
     if sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10:
         return
 

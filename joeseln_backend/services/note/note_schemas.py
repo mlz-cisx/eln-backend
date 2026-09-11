@@ -43,6 +43,7 @@ class Note(BaseModel):
 class NoteCreate(BaseModel):
     subject: str
     content: str
+    labbook_pk: UUID | None = None
 
 
 class NoteVersionSummary(BaseModel):
