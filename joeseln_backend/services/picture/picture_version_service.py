@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from joeseln_backend.auth import security
 from joeseln_backend.conf.content_types import picture_content_type_version
+from joeseln_backend.full_text_search.typesense_service import \
+    get_typesense_client
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.labbook.labbook_service import \
@@ -108,7 +110,7 @@ def add_picture_version(db: Session, picture_pk, summary, user,
                 except SQLAlchemyError as e:
                     logger.error(e)
                 db.refresh(db_picture)
-                picture_service.restore_picture(db=db, picture_pk=picture_pk,
+                picture_service.restore_picture(db=db, tsClient=get_typesense_client(), picture_pk=picture_pk,
                                                 user=user)
 
             version_metadata = {
