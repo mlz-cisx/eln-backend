@@ -103,7 +103,7 @@ config: ConfigDict = {
             "protocol": TYPESENSE_PROTOCOL,
         }
     ],
-    "timeout_seconds": 2,
+    "connection_timeout_seconds": 2,
 }
 
 
