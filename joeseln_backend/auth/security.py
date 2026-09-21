@@ -1,10 +1,11 @@
 import time
 from datetime import datetime, timedelta, timezone
+from ipaddress import ip_address, ip_network
 from typing import Annotated, Any
 
 import jwt
 from cachetools import TTLCache, cached
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from pydantic import BaseModel
@@ -19,6 +20,7 @@ from joeseln_backend.conf.base_conf import (
     JWT_LEEWAY,
     JWT_SECRET_KEY,
     STATIC_ADMIN_TOKEN,
+    ALLOWED_STATIC_TOKEN_NETS
 )
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.mylogging.root_logger import logger
@@ -154,24 +156,19 @@ def get_user_from_jwt(
     resource_uuid=None,
 ):
     try:
-        if token == STATIC_ADMIN_TOKEN:
-            # logger.info('you can do everything')
-            user = get_user_by_uname(db=db, username=INSTRUMENT_AS_ADMIN)
-            return user
-        else:
-            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-            # we aligned to keycloak's sub
-            username: str = payload.get("sub")
-            if username is None:
-                return
-            # download tokens are bound to a single resource
-            if resource_uuid is not None and payload.get("res") != str(
-                    resource_uuid):
-                return
-            user = get_user_with_groups_by_uname(db=db, username=username)
-            if user is None:
-                return
-            return user
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        # we aligned to keycloak's sub
+        username: str = payload.get("sub")
+        if username is None:
+            return
+        # download tokens are bound to a single resource
+        if resource_uuid is not None and payload.get("res") != str(
+                resource_uuid):
+            return
+        user = get_user_with_groups_by_uname(db=db, username=username)
+        if user is None:
+            return
+        return user
     except jwt.exceptions.ExpiredSignatureError:
         # logger.info('token expired ')
         return
@@ -180,8 +177,28 @@ def get_user_from_jwt(
         logger.error(f'PyJWTError: {e}')
         return
 
+
+def is_allowed_ip(client_ip: str) -> bool:
+    # wildcard => no restriction
+    if "*" in ALLOWED_STATIC_TOKEN_NETS:
+        return True
+    try:
+        ip = ip_address(client_ip)
+    except ValueError:
+        return False
+
+    return any(
+        ip in ip_network(net)
+        for net in ALLOWED_STATIC_TOKEN_NETS
+    )
+
+
+
+
 @cached(cache=TTLCache(maxsize=1024, ttl=120))
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+def get_current_user(
+        request: Request,
+        token: Annotated[str, Depends(oauth2_scheme)]):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -189,7 +206,12 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     )
     try:
         if token == STATIC_ADMIN_TOKEN:
-            # logger.info('you can do everything')
+            client_ip = request.client.host
+            if not is_allowed_ip(client_ip=client_ip):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"STATIC_ADMIN_TOKEN not allowed from {client_ip}"
+                )
             user = get_user_with_groups_by_uname(db=SessionLocal(),
                                                  username=INSTRUMENT_AS_ADMIN)
             return user

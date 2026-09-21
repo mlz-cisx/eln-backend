@@ -4,6 +4,8 @@ import secrets
 import sys
 import uuid
 
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
 # append path of parent dir to have joeseln_backend as module
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), os.pardir)))
 
@@ -70,6 +72,7 @@ from joeseln_backend.conf.base_conf import (
     PICTURES_BASE_PATH,
     TOKEN_VALIDITY,
     URL_BASE_PATH,
+    TRUSTED_HOSTS,
 )
 from joeseln_backend.database.database import SessionLocal, get_db
 
@@ -199,6 +202,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url="/api/redoc")
 
 
+app.add_middleware(
+    ProxyHeadersMiddleware,
+    trusted_hosts=TRUSTED_HOSTS
+)
 
 app.add_middleware(
     CORSMiddleware,

@@ -62,6 +62,17 @@ INSTRUMENT_AS_ADMIN = get_secure_env_variable("INSTRUMENT_AS_ADMIN", "instrument
 # Token
 STATIC_ADMIN_TOKEN = get_secure_env_variable("STATIC_ADMIN_TOKEN")
 
+ALLOWED_STATIC_TOKEN_NETS = [
+    item.strip()
+    for item in os.getenv(
+        "ALLOWED_STATIC_TOKEN_NETS",
+        "*"
+    ).split(",")
+]
+
+# ProxyHeadersMiddleware settings
+TRUSTED_HOSTS = get_secure_env_variable("TRUSTED_HOSTS", "*").split(",")
+
 # Query mode
 LABBOOK_QUERY_MODE = get_secure_env_variable("LABBOOK_QUERY_MODE", "match")
 
