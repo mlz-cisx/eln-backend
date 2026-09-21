@@ -85,6 +85,11 @@
 - For using a production-like environment or actual deployment, please refer to the build structure and the comments in [docker-compose.yml](docker-compose.yml). Specify your environment variables there.
 It is recommended to start eln-postgres initially, as it provides the necessary database backend for dependent services.
 
+## Documentation
+
+There is a documentation of the
+[current release](https://forge.frm2.tum.de/mlzeln/doc/mlzeln-master)  available.
+
 ## License
 
 License: [AGPL 3](LICENSE)  
