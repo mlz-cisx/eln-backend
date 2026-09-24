@@ -2,12 +2,10 @@ import datetime
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session
 from typesense import Client
 from typesense.exceptions import TypesenseClientError
 
-from joeseln_backend.auth import security
-from joeseln_backend.conf.base_conf import URL_BASE_PATH
 from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
@@ -125,9 +123,6 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
     if db_labbook is None:
         return None
 
-    created_by = aliased(models.User)
-    last_modified_by = aliased(models.User)
-
     # uncorrelated subquery to get comment count
     related_comments_count = (
         select(models.Relation.right_object_id, func.count().label('count'))
@@ -141,128 +136,22 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
         .alias('num_related_comment')
     )
 
-    # note query
+    elem = models.Labbookchildelement
     query = (
         select(
-            models.Labbookchildelement,
-            models.Note,
-            created_by,
-            last_modified_by,
-            func.coalesce(related_comments_count.c.count, 0).label('num_related_comments')
+            *elem.__table__.columns,
+            func.coalesce(related_comments_count.c.count, 0).label('num_related_comments'),
         )
-        .join(models.Note, models.Labbookchildelement.child_object_id == models.Note.id)
-        .join(created_by, models.Note.created_by_id == created_by.id)
-        .join(last_modified_by, models.Note.last_modified_by_id == last_modified_by.id)
         .outerjoin(
             related_comments_count,
-            models.Labbookchildelement.child_object_id == related_comments_count.c.right_object_id
+            elem.child_object_id == related_comments_count.c.right_object_id,
         )
         .where(
-            and_(
-                models.Labbookchildelement.labbook_id == labbook_pk,
-                models.Labbookchildelement.deleted == False,
-                models.Labbookchildelement.child_object_content_type == 30
-            )
+            and_(elem.labbook_id == labbook_pk, elem.deleted == False)
         )
+        .order_by(elem.position_y)
     )
-    results = db.execute(query).fetchall()
-
-    notes = [
-        {
-            **item[0].__dict__,
-            'child_object': {**item[1].__dict__, 
-                             'created_by': item[2], 
-                             'last_modified_by': item[3]},
-            'num_related_comments': item[4]
-        }
-        for item in results
-    ]
-
-    # picture query
-    query = (
-        select(
-            models.Labbookchildelement,
-            models.Picture,
-            created_by,
-            last_modified_by,
-            func.coalesce(related_comments_count.c.count, 0).label('num_related_comments')
-        )
-        .join(models.Picture, models.Labbookchildelement.child_object_id == models.Picture.id)
-        .join(created_by, models.Picture.created_by_id == created_by.id)
-        .join(last_modified_by, models.Picture.last_modified_by_id == last_modified_by.id)
-        .outerjoin(
-            related_comments_count,
-            models.Labbookchildelement.child_object_id == related_comments_count.c.right_object_id
-        )
-        .where(
-            and_(
-                models.Labbookchildelement.labbook_id == labbook_pk,
-                models.Labbookchildelement.deleted == False,
-                models.Labbookchildelement.child_object_content_type == 40
-            )
-        )
-    )
-    results = db.execute(query).fetchall()
-
-    pictures = []
-    for item in results:
-        token = security.build_download_token(user, item[1].id)
-        pictures.append(
-            {
-                **item[0].__dict__,
-                "child_object": {
-                    **item[1].__dict__,
-                    "created_by": item[2],
-                    "last_modified_by": item[3],
-                    "background_image": f"{URL_BASE_PATH}pictures/{item[1].id}/bi_download/?jwt={token}",
-                },
-                "num_related_comments": item[4],
-            }
-        )
-
-    # file query
-    query = (
-        select(
-            models.Labbookchildelement,
-            models.File,
-            created_by,
-            last_modified_by,
-            func.coalesce(related_comments_count.c.count, 0).label('num_related_comments')
-        )
-        .join(models.File, models.Labbookchildelement.child_object_id == models.File.id)
-        .join(created_by, models.File.created_by_id == created_by.id)
-        .join(last_modified_by, models.File.last_modified_by_id == last_modified_by.id)
-        .outerjoin(
-            related_comments_count,
-            models.Labbookchildelement.child_object_id == related_comments_count.c.right_object_id
-        )
-        .where(
-            and_(
-                models.Labbookchildelement.labbook_id == labbook_pk,
-                models.Labbookchildelement.deleted == False,
-                models.Labbookchildelement.child_object_content_type == 50
-            )
-        )
-    )
-    results = db.execute(query).fetchall()
-
-    files = [
-        {
-            **item[0].__dict__,
-            "child_object": {
-                **item[1].__dict__,
-                "created_by": item[2],
-                "last_modified_by": item[3],
-                "path": f"{URL_BASE_PATH}files/{item[1].id}/download?jwt={security.build_download_token(user, item[1].id)}",
-            },
-            "num_related_comments": item[4],
-        }
-        for item in results
-    ]
-
-    elems= notes + pictures + files
-    elems = sorted(elems, key=lambda elem: elem['position_y'])
-    return elems
+    return db.execute(query).mappings().all()
 
 
 def check_for_version_edit_access_on_lb_elem(db: Session, lb_elem, user):

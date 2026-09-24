@@ -531,7 +531,7 @@ def restore_labbook(
 
 
 @app.get("/api/labbooks/{labbook_pk}/elements/",
-         response_model=list[labbookchildelement_schemas.Labbookchildelement])
+         response_model=list[labbookchildelement_schemas.Labbookchildelement_List])
 def read_labbook_elems(labbook_pk: UUID,
                        db: Session = Depends(get_db),
                        user: User = Depends(get_current_user)):

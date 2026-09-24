@@ -31,6 +31,28 @@ class Labbookchildelement(BaseModel):
         from_attributes = True
 
 
+class Labbookchildelement_List(BaseModel):
+    id: int | str | UUID = Field(..., alias='pk')
+    labbook_id: int | str | UUID
+
+    position_x: int
+    position_y: int
+    width: int
+    height: int
+
+    child_object_id: int | str | UUID
+    child_object_content_type: int
+    child_object_content_type_model: str
+    version_number: int
+    created_by_id: int
+
+    num_related_comments: Optional[int] = None
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
+
+
 class Labbookchildelement_Create(BaseModel):
     position_x: int
     position_y: int
@@ -52,7 +74,6 @@ class Labbookchildelement_CreateRow(BaseModel):
 
 class Labbookchildelement_PatchHeight(BaseModel):
     height: int
-
 
 
 class Labbookchildelement_Update(BaseModel):
