@@ -887,13 +887,17 @@ def hidden_delete_note(
 def get_note(
     response: Response,
     note_pk: UUID,
+    ignore_etag: bool = Query(False),
     If_None_Match: Annotated[str | None, Header()] = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     # logger.info(user)
     db_note = note_service.get_note_with_privileges(
-        db=db, note_pk=note_pk, user=user, etag=If_None_Match
+        db=db,
+        note_pk=note_pk,
+        user=user,
+        etag=None if ignore_etag else If_None_Match
     )
     if db_note is None:
         raise HTTPException(status_code=204)
@@ -1124,13 +1128,17 @@ def read_pictures(
 def get_picture(
     response: Response,
     picture_pk: UUID,
+    ignore_etag: bool = Query(False),
     If_None_Match: Annotated[str | None, Header()] = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     # logger.info(user)
     db_picture = picture_service.get_picture_with_privileges(
-        db=db, picture_pk=picture_pk, user=user, If_None_Match=If_None_Match
+        db=db,
+        picture_pk=picture_pk,
+        user=user,
+        If_None_Match = None if ignore_etag else If_None_Match
     )
 
     if db_picture is None:
