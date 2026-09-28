@@ -223,21 +223,30 @@ def get_all_groupadmins(db: Session, group_pk, params, authed_user):
             if not group_groupadmin:
 
                 # all non-guest member in this group
-                subquery = db.query(models.UserToGroupRole.user_id).join(
-                    models.Role,
-                    models.Role.id == models.UserToGroupRole.user_group_role) \
+                subquery = (
+                    db.query(models.UserToGroupRole.user_id)
+                    .join(
+                        models.Role,
+                        models.Role.id == models.UserToGroupRole.user_group_role
+                    )
                     .filter(
-                    models.UserToGroupRole.group_id == group_pk,
-                    models.Role.rolename != 'guest'
-                ).subquery()
+                        models.UserToGroupRole.group_id == group_pk,
+                        models.Role.rolename != 'guest'
+                    )
+                )
 
                 # all non-guest member in the group but not groupdomain
-                all_other_users = db.query(models.User).filter(
-                    models.User.admin == False,
-                    models.User.id.in_(subquery)) \
-                    .order_by(
-                    text(order_params)).offset(params.get('offset')).limit(
-                    params.get('limit')).all()
+                all_other_users = (
+                    db.query(models.User)
+                    .filter(
+                        models.User.admin == False,
+                        models.User.id.in_(subquery)
+                    )
+                    .order_by(text(order_params))
+                    .offset(params.get('offset'))
+                    .limit(params.get('limit'))
+                    .all()
+                )
                 for user_elem in users:
                     if user_elem in all_other_users:
                         all_other_users.remove(user_elem)
@@ -289,14 +298,18 @@ def get_all_groupguests(db: Session, group_pk, params, authed_user):
             if not group_groupguest:
 
                 # all users in this group
-                subquery = db.query(models.UserToGroupRole.user_id).filter(
-                    models.UserToGroupRole.group_id == group_pk
-                ).subquery()
+                subquery = (
+                    db.query(models.UserToGroupRole.user_id)
+                    .filter(models.UserToGroupRole.group_id == group_pk)
+                )
 
                 # all matched users outside this group
-                all_other_users = db.query(models.User).filter(
-                    models.User.id.notin_(subquery),
-                    models.User.admin == False
+                all_other_users = (
+                    db.query(models.User)
+                    .filter(
+                        models.User.id.notin_(subquery),
+                        models.User.admin == False
+                    )
                 ).filter(or_(
                     models.User.username.ilike(f'%{search_text}%'),
                     models.User.first_name.ilike(f'%{search_text}%'),
