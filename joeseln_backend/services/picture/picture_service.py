@@ -3,6 +3,7 @@ import datetime
 import gzip
 import io
 import json
+import os
 import pathlib
 import sys
 from copy import deepcopy
@@ -572,14 +573,19 @@ def get_picture_for_zip_export(db: Session, picture_pk):
     db_user_modified = db.get(models.User, db_picture.last_modified_by_id)
     db_picture.created_by = db_user_created
     db_picture.last_modified_by = db_user_modified
-    db_picture.background_image = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
+    db_picture.background_image = os.path.join(base_conf.PICTURES_BASE_PATH,
+                                               db_picture.background_image)
 
     return db_picture
 
 
 def get_lb_pk_from_picture(db: Session, picture_pk):
     pic = db.get(models.Picture, picture_pk)
+    if pic is None or pic.elem_id is None:
+        return None
     elem = db.get(models.Labbookchildelement, pic.elem_id)
+    if elem is None:
+        return None
     return elem.labbook_id
 
 
@@ -643,7 +649,8 @@ def clone_picture(db, bi_img_contents, info, user):
     if not db_picture:
         return None
 
-    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
+    bi_img_path = os.path.join(base_conf.PICTURES_BASE_PATH,
+                               db_picture.background_image)
 
     with open(bi_img_path, 'wb') as image:
         if bi_img_contents:
@@ -651,7 +658,6 @@ def clone_picture(db, bi_img_contents, info, user):
             image.close()
         else:
             pass
-
 
     pic = build_download_url_with_token(
         picture=deepcopy(db_picture), user=user)
@@ -677,14 +683,14 @@ def process_picture_upload_form(form, db, tsClient: Client, contents, user):
     if not db_picture:
         return None
 
-    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
+    bi_img_path = os.path.join(base_conf.PICTURES_BASE_PATH,
+                               db_picture.background_image)
 
     base64_string = base64.b64encode(contents).decode("utf-8")
 
     with open(bi_img_path, 'wb') as image:
         image.write(contents)
         image.close()
-
 
     deepcopied_pic = deepcopy(db_picture)
     pic_to_update = db.get(models.Picture, deepcopied_pic.id)
@@ -726,7 +732,8 @@ async def process_sketch_upload_form(form, db, tsClient: Client, user):
                                 display=form['title'],
                                 user=user, canvas_content=content)
 
-    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
+    bi_img_path = os.path.join(base_conf.PICTURES_BASE_PATH,
+                               db_picture.background_image)
 
     with open(bi_img_path, 'wb'):
         pass  # do nothing, file is created empty
@@ -765,7 +772,8 @@ def build_bi_download_response(picture_pk, db, jwt):
     if user is None:
         return
     db_picture = db.get(models.Picture, picture_pk)
-    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{db_picture.background_image}'
+    bi_img_path = os.path.join(base_conf.PICTURES_BASE_PATH,
+                               db_picture.background_image)
     value = FileResponse(bi_img_path)
 
     return value
@@ -776,6 +784,8 @@ def build_bi_download_response(picture_pk, db, jwt):
 
 def get_picture_export_link(db: Session, picture_pk, user):
     db_picture = db.get(models.Picture, picture_pk)
+    if db_picture is None:
+        return None
     db_picture = build_picture_download_url_with_token(
         picture_to_process=db_picture,
         user=user)
@@ -1186,7 +1196,8 @@ def restore_picture(db: Session, tsClient: Client, picture_pk, user,
 def remove_soft_deleted_picture(db: Session, picture_pk):
     pic_to_remove = db.get(models.Picture, picture_pk)
 
-    bi_img_path = f'{base_conf.PICTURES_BASE_PATH}{pic_to_remove.background_image}'
+    bi_img_path = os.path.join(base_conf.PICTURES_BASE_PATH,
+                               pic_to_remove.background_image)
 
     if pic_to_remove and pic_to_remove.deleted:
         lb_elem = db.get(models.Labbookchildelement, 

@@ -39,7 +39,7 @@ def _create_labbook_and_assign_roles(client):
 def _temp_storage(monkeypatch):
     temp_dir = tempfile.mkdtemp(prefix="mlzeln_files_")
     monkeypatch.setattr("joeseln_backend.conf.base_conf.FILES_BASE_PATH",
-                        temp_dir)
+                        temp_dir + "/")
     return temp_dir
 
 
@@ -168,9 +168,7 @@ def test_upload_file_as_admin(client, as_admin, monkeypatch):
     db_file = _get_db_file(file_pk)
     assert db_file is not None
 
-    normalized = os.path.basename(db_file.path.lstrip("/"))
-    stored_path = os.path.join(temp_dir, normalized)
-    assert os.path.exists(stored_path)
+    assert os.path.exists(os.path.join(temp_dir, db_file.path))
 
     shutil.rmtree(temp_dir)
 
