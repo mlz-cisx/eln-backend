@@ -404,6 +404,14 @@ def get_picture_with_privileges(db: Session, picture_pk, user, If_None_Match):
         pic = build_download_url_with_token(
             picture=deepcopy(db_picture), user=user)
 
+        lb_elem = db.get(models.Labbookchildelement, db_picture.elem_id)
+
+        if not lb_elem:
+            return None
+
+        pic.position_y = lb_elem.position_y
+        pic.labbook_id = lb_elem.labbook_id
+
         if user.admin:
             return {'content': {'privileges': ADMIN,
                                 'picture': pic},
