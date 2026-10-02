@@ -737,11 +737,7 @@ def clone_lxf_file(db, contents, info, user):
 
 
 def build_download_url_with_token(file_to_process, user):
-    access_token_expires = security.timedelta(
-        minutes=security.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+    access_token = security.build_download_token(user, file_to_process.id)
 
     file_to_process.path = f'{URL_BASE_PATH}files/{file_to_process.id}/download?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     return file_to_process
@@ -784,11 +780,7 @@ def get_file_export_link(db: Session, file_pk, user):
 
 
 def build_file_download_url_with_token(file_to_process, user):
-    access_token_expires = security.timedelta(
-        minutes=security.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+    access_token = security.build_download_token(user, file_to_process.id)
 
     file_to_process.path = f'{URL_BASE_PATH}files/{file_to_process.id}/export?jwt={security.Token(access_token=access_token, token_type="bearer").access_token}'
     return file_to_process

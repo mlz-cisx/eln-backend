@@ -1564,7 +1564,7 @@ def download_file(
     return dwldable_file
 
 
-@app.get("/api/files/{file_pk}/export",
+@app.get("/api/files/{file_pk}/export/",
          response_class=FileResponse)
 def export_file_content(
         request: Request,
