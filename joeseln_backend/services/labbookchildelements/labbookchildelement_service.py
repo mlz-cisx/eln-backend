@@ -1,12 +1,13 @@
 import datetime
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, literal, or_
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from typesense import Client
 from typesense.exceptions import TypesenseClientError
 
 from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
+from joeseln_backend.helper import db_ordering
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
 from joeseln_backend.services.file import file_service
@@ -152,6 +153,245 @@ def get_lb_childelements_from_user(db: Session, labbook_pk, as_export, user):
         .order_by(elem.position_y)
     )
     return db.execute(query).mappings().all()
+
+
+def get_lb_childelements_from_user_for_tableview(
+        db: Session,
+        labbook_id,
+        params,
+        user
+):
+    if not check_for_labbook_access(
+            db=db,
+            labbook_pk=labbook_id,
+            user=user
+    ):
+        return None
+
+    db_labbook = db.query(models.Labbook).get(labbook_id)
+    if db_labbook is None:
+        return None
+
+    order_params = db_ordering.get_order_params(
+        ordering=params.get("ordering")
+    )
+
+    search_text = params.get("search")
+    deleted = False
+
+    #
+    # FILES
+    #
+    file_created_user = aliased(models.User)
+    file_modified_user = aliased(models.User)
+
+    file_query = (
+        db.query(
+            models.File.id.label("entity_id"),
+            literal("file").label("entity_type"),
+            models.File.title.label("title"),
+            models.File.created_at.label("created_at"),
+            models.File.last_modified_at.label("last_modified_at"),
+
+            file_created_user.username.label("created_by"),
+            file_modified_user.username.label("last_modified_by"),
+
+            models.Labbook.title.label("labbook_title"),
+        )
+        .join(
+            models.Labbookchildelement,
+            models.File.elem_id == models.Labbookchildelement.id,
+        )
+        .join(
+            models.Labbook,
+            models.Labbook.id == models.Labbookchildelement.labbook_id,
+        )
+        .outerjoin(
+            file_created_user,
+            file_created_user.id == models.File.created_by_id,
+        )
+        .outerjoin(
+            file_modified_user,
+            file_modified_user.id == models.File.last_modified_by_id,
+        )
+        .filter(
+            models.File.deleted == deleted,
+            models.Labbook.deleted == False,
+            models.Labbookchildelement.labbook_id == labbook_id,
+        )
+    )
+
+    if search_text:
+        search_term = f"%{search_text}%"
+        file_query = file_query.filter(
+            or_(
+                models.File.title.ilike(search_term),
+                file_created_user.username.ilike(search_term),
+                file_modified_user.username.ilike(search_term),
+                literal("file").ilike(search_term),
+            )
+        )
+
+    #
+    # NOTES
+    #
+    note_created_user = aliased(models.User)
+    note_modified_user = aliased(models.User)
+
+    note_query = (
+        db.query(
+            models.Note.id.label("entity_id"),
+            literal("note").label("entity_type"),
+            models.Note.subject.label("title"),
+            models.Note.created_at.label("created_at"),
+            models.Note.last_modified_at.label("last_modified_at"),
+
+            note_created_user.username.label("created_by"),
+            note_modified_user.username.label("last_modified_by"),
+
+            models.Labbook.title.label("labbook_title"),
+        )
+        .join(
+            models.Labbookchildelement,
+            models.Note.elem_id == models.Labbookchildelement.id,
+        )
+        .join(
+            models.Labbook,
+            models.Labbook.id == models.Labbookchildelement.labbook_id,
+        )
+        .outerjoin(
+            note_created_user,
+            note_created_user.id == models.Note.created_by_id,
+        )
+        .outerjoin(
+            note_modified_user,
+            note_modified_user.id == models.Note.last_modified_by_id,
+        )
+        .filter(
+            models.Note.deleted == deleted,
+            models.Labbook.deleted == False,
+            models.Labbookchildelement.labbook_id == labbook_id,
+        )
+    )
+
+    if search_text:
+        search_term = f"%{search_text}%"
+        note_query = note_query.filter(
+            or_(
+                models.Note.subject.ilike(search_term),
+                note_created_user.username.ilike(search_term),
+                note_modified_user.username.ilike(search_term),
+                literal("note").ilike(search_term),
+            )
+        )
+
+    #
+    # PICTURES
+    #
+    picture_created_user = aliased(models.User)
+    picture_modified_user = aliased(models.User)
+
+    picture_query = (
+        db.query(
+            models.Picture.id.label("entity_id"),
+            literal("picture").label("entity_type"),
+            models.Picture.title.label("title"),
+            models.Picture.created_at.label("created_at"),
+            models.Picture.last_modified_at.label("last_modified_at"),
+
+            picture_created_user.username.label("created_by"),
+            picture_modified_user.username.label("last_modified_by"),
+
+            models.Labbook.title.label("labbook_title"),
+        )
+        .join(
+            models.Labbookchildelement,
+            models.Picture.elem_id == models.Labbookchildelement.id,
+        )
+        .join(
+            models.Labbook,
+            models.Labbook.id == models.Labbookchildelement.labbook_id,
+        )
+        .outerjoin(
+            picture_created_user,
+            picture_created_user.id == models.Picture.created_by_id,
+        )
+        .outerjoin(
+            picture_modified_user,
+            picture_modified_user.id == models.Picture.last_modified_by_id,
+        )
+        .filter(
+            models.Picture.deleted == deleted,
+            models.Labbook.deleted == False,
+            models.Labbookchildelement.labbook_id == labbook_id,
+        )
+    )
+
+    if search_text:
+        search_term = f"%{search_text}%"
+        picture_query = picture_query.filter(
+            or_(
+                models.Picture.title.ilike(search_term),
+                picture_created_user.username.ilike(search_term),
+                picture_modified_user.username.ilike(search_term),
+                literal("picture").ilike(search_term),
+            )
+        )
+
+    #
+    # UNION ALL
+    #
+    union_subquery = (
+        file_query
+        .union_all(note_query)
+        .union_all(picture_query)
+        .subquery()
+    )
+
+    merged = select(
+        union_subquery.c[0].label("entity_id"),
+        union_subquery.c[1].label("entity_type"),
+        union_subquery.c[2].label("title"),
+        union_subquery.c[3].label("created_at"),
+        union_subquery.c[4].label("last_modified_at"),
+        union_subquery.c[5].label("created_by"),
+        union_subquery.c[6].label("last_modified_by"),
+        union_subquery.c[7].label("labbook_title"),
+    ).subquery("merged")
+
+
+    #
+    # ORDERING
+    #
+    column_name, direction = order_params.split()
+
+    order_mapping = {
+        "title": merged.c.title,
+        "created_at": merged.c.created_at,
+        "created_by": merged.c.created_by,
+        "last_modified_at": merged.c.last_modified_at,
+        "last_modified_by": merged.c.last_modified_by,
+        "entity_type": merged.c.entity_type,
+    }
+
+    column = order_mapping.get(column_name)
+
+    if column is None:
+        order_column = merged.c.created_at.desc()
+    elif direction.lower() == "desc":
+        order_column = column.desc()
+    else:
+        order_column = column.asc()
+
+    rows = (
+        db.query(merged)
+        .order_by(order_column)
+        .offset(params.get("offset", 0))
+        .limit(params.get("limit", 20))
+        .all()
+    )
+
+    return rows
 
 
 def check_for_version_edit_access_on_lb_elem(db: Session, lb_elem, user):

@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -52,6 +53,23 @@ class Labbookchildelement_List(BaseModel):
         populate_by_name = True
         from_attributes = True
 
+
+class LabbookchildelementTableView(BaseModel):
+    entity_id: int | str | UUID
+    entity_type: str
+
+    title: str | None = None
+
+    created_at: datetime.datetime
+    last_modified_at: datetime.datetime | None = None
+
+    created_by: str | None = None
+    last_modified_by: str | None = None
+
+    labbook_title: str
+
+    class Config:
+        from_attributes = True
 
 class Labbookchildelement_Create(BaseModel):
     position_x: int

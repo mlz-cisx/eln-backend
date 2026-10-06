@@ -554,6 +554,23 @@ def read_labbook_elems(labbook_pk: UUID,
     return lb_elements
 
 
+@app.get("/api/labbooks/{labbook_pk}/elements_table/",
+         response_model=list[
+             labbookchildelement_schemas.LabbookchildelementTableView])
+def read_labbook_elems_table(labbook_pk: UUID,
+                             request: Request,
+                             db: Session = Depends(get_db),
+                             user: User = Depends(get_current_user)):
+    # logger.info(user)
+    lb_elements = labbookchildelement_service.get_lb_childelements_from_user_for_tableview(
+        db=db,
+        labbook_id=labbook_pk,
+        params=dict(request.query_params), user=user)
+    if lb_elements is None:
+        raise HTTPException(status_code=404, detail="Labbook not found")
+    return lb_elements
+
+
 @app.post("/api/labbooks/{labbook_pk}/elements/",
           response_model=labbookchildelement_schemas.Labbookchildelement)
 async def create_labbook_elem(

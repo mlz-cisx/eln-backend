@@ -33,6 +33,12 @@ OrderingParam = Literal[
     "-oidc_user",
     "connected",
     "-connected",
+    "entity_type",
+    "-entity_type",
+    "created_by_uname",
+    "-created_by_uname",
+    "last_modified_by_uname",
+    "-last_modified_by_uname",
 ]
 
 
@@ -103,6 +109,18 @@ def get_order_params(ordering: Optional[OrderingParam]) -> str:
             return 'connected asc'
         case '-connected':
             return 'connected desc'
+        case 'entity_type':
+            return 'entity_type asc'
+        case '-entity_type':
+            return 'entity_type desc'
+        case 'created_by_uname':
+            return 'created_by asc'
+        case '-created_by_uname':
+            return 'created_by desc'
+        case 'last_modified_by_uname':
+            return 'last_modified_by asc'
+        case '-last_modified_by_uname':
+            return 'last_modified_by desc'
         case None:
             return 'created_at desc'
         case _:
