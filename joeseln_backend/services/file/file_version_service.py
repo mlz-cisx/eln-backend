@@ -119,6 +119,7 @@ def add_file_version(db: Session, file_pk, summary, user,
             db.add(db_file_version)
             db.commit()
             db.refresh(db_file_version)
+            file_service.update_file_typesense(db_file, lb_elem)
             # first element for main and restore, second for labbook_version_service
             return [db_file, db_file_version]
         return [None, None]

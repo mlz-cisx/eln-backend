@@ -496,6 +496,10 @@ def create_lb_childelement(db: Session, labbook_pk,
             logger.error(e)
 
     if db_labbook_elem.child_object_content_type == 50:
+        file_service.update_file_typesense(
+            db.get(models.File, db_labbook_elem.child_object_id),
+            db_labbook_elem, typesense,
+        )
         db_labbook_elem.child_object = file_service.get_file(db=db,
                                                              file_pk=db_labbook_elem.child_object_id,
                                                              user=user)

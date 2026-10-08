@@ -10,11 +10,13 @@ from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
 from joeseln_backend.full_text_search.typesense_service import (
     get_typesense_client,
     typesense_client,
+    update_file_typesense,
 )
 from joeseln_backend.models import models
 from joeseln_backend.services.note.note_service import get_note
 
 typesense_client.connect_typesense_client()
+typesense_client.create_collection()
 client = get_typesense_client()
 db = SessionLocal()
 
@@ -54,6 +56,11 @@ try:
                     "soft_delete": bool(pic.deleted),
                 }
             )
+
+        if elem.child_object_content_type == 50:
+            file = db.get(models.File, elem.child_object_id)
+            if file:
+                update_file_typesense(file, elem, client)
 
 finally:
     db.close()

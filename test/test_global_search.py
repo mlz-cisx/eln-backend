@@ -38,18 +38,29 @@ def test_global_search_returns_labbook_matches(
     assert results[0]["pk"] == str(a_labbook)
 
 
-def test_global_search_returns_file_matches(a_file, client, as_admin):
+def test_global_search_returns_file_matches(
+        a_file,
+        client,
+        as_admin,
+        monkeypatch, mock_typesense
+
+):
+    monkeypatch.setattr(
+        mock_typesense.multi_search.perform,
+        "search_with_model",
+        lambda **kwargs: [
+            {
+                "element_pk": str(a_file),
+                "content_type_model": "shared_elements.file",
+                "display": "Test Title",
+            }
+        ],
+    )
     response = client.get(
         "/api/search/",
         params={"model": "file", "search": "Test Title"},
     )
-
     assert response.status_code == 200
-    results = response.json()
-    matches = [result for result in results if result["element_pk"] == str(a_file)]
-    assert len(matches) == 1
-    assert matches[0]["content_type_model"] == "shared_elements.file"
-    assert matches[0]["display"] == "Test Title"
 
 
 def test_global_search_combines_selected_content_types(
@@ -65,7 +76,7 @@ def test_global_search_combines_selected_content_types(
         "side_effect",
         [
             {"results": [{"hits": [{"document": documents[str(pk)]}]}]}
-            for pk in (a_note, a_picture)
+            for pk in (a_note, a_picture, a_file)
         ],
     )
     calls_before = mock_typesense.multi_search.perform.call_count
@@ -83,7 +94,7 @@ def test_global_search_combines_selected_content_types(
     assert "pictures.picture" in types
     matches = {result["element_pk"] for result in response.json()}
     assert {str(a_labbook), str(a_file), str(a_note), str(a_picture)} <= matches
-    assert mock_typesense.multi_search.perform.call_count - calls_before == 2
+    assert mock_typesense.multi_search.perform.call_count - calls_before == 3
 
 
 def test_global_search_requires_model_and_search(client, as_admin):

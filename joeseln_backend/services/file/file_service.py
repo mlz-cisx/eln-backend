@@ -28,6 +28,11 @@ from joeseln_backend.conf.base_conf import (
     URL_BASE_PATH
 )
 from joeseln_backend.full_text_search.html_stripper import sanitize_html
+from joeseln_backend.full_text_search.typesense_service import (
+    get_typesense_client,
+    update_delete_status_typesense,
+    update_file_typesense,
+)
 from joeseln_backend.helper import db_ordering
 from joeseln_backend.helper.restore_with_row import shift_elements_after_restore
 from joeseln_backend.models import models
@@ -608,6 +613,8 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
         changerecords=changerecords
     )
 
+    update_file_typesense(db_file, lb_elem)
+
     return db_file
 
 
@@ -835,6 +842,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             db.close()
             return file_to_update
         db.refresh(file_to_update)
+        update_delete_status_typesense(file_to_update, True, get_typesense_client())
         query = db.query(models.Labbookchildelement).filter_by(
             labbook_id=labbook_data.labbook_pk, deleted=False).all()
         if not query:
@@ -879,6 +887,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
                 db.close()
                 return file_to_update
             db.refresh(file_to_update)
+            update_delete_status_typesense(file_to_update, True, get_typesense_client())
             query = db.query(models.Labbookchildelement).filter_by(
                 labbook_id=labbook_data.labbook_pk, deleted=False).all()
             if not query:
@@ -921,6 +930,7 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             db.close()
             return file_to_update
         db.refresh(file_to_update)
+        update_delete_status_typesense(file_to_update, True, get_typesense_client())
         query = db.query(models.Labbookchildelement).filter_by(
             labbook_id=labbook_data.labbook_pk, deleted=False).all()
         if not query:
@@ -1058,6 +1068,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
             db.close()
             return file_to_update
         db.refresh(file_to_update)
+        update_delete_status_typesense(file_to_update, False, get_typesense_client())
         query = db.query(models.Labbookchildelement).filter_by(
             labbook_id=lb_elem.labbook_id, deleted=False).all()
         if not query:
@@ -1112,6 +1123,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
                 db.close()
                 return file_to_update
             db.refresh(file_to_update)
+            update_delete_status_typesense(file_to_update, False, get_typesense_client())
             query = db.query(models.Labbookchildelement).filter_by(
                 labbook_id=lb_elem.labbook_id, deleted=False).all()
             if not query:
@@ -1167,6 +1179,7 @@ def restore_file(db: Session, file_pk, user, restored_row: int | None = None):
             db.close()
             return file_to_update
         db.refresh(file_to_update)
+        update_delete_status_typesense(file_to_update, False, get_typesense_client())
         query = db.query(models.Labbookchildelement).filter_by(
             labbook_id=lb_elem.labbook_id, deleted=False).all()
         if not query:
@@ -1348,6 +1361,8 @@ def add_spec_scan_as_file_to_labbook(db, labbook_pk, file_pk, user, position_y):
     except SQLAlchemyError as e:
         logger.error(e)
         db.close()
+
+    update_file_typesense(file, db_labbook_elem)
 
     db_labbook_elem.child_object = get_file(db=db,
                                             file_pk=db_labbook_elem.child_object_id,

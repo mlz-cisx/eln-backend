@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_, and_
+from sqlalchemy import func, or_
 from typesense import Client
 from typing_extensions import TypedDict
 
@@ -101,40 +101,21 @@ def search_with_model(db, model, search_text, user, typesense: Client):
 
         # subject content
     if 'file' in model:
-        encoded_search_text = encode_umlauts_to_html(search_text)
-        cleaned_f = func.regexp_replace(
-            func.regexp_replace(
-                func.regexp_replace(
-                    models.File.description,
-                    r'data:([a-zA-Z0-9]+/[a-zA-Z0-9.+-]+);base64,[A-Za-z0-9+/=]+',
-                    '',
-                    'g'
-                ),
-                r'&nbsp;',
-                ' ',
-                'g'
-            ),
-            r'<[^>]+>',
-            '',
-            'g'
-        )
+        search_res = typesense_search_all(
+            typesense, "files", search_text, ','.join(labbook_ids)
+        ) if labbook_ids else []
 
-        results = db.query(models.File).filter(
-            or_(models.File.title.ilike(f'%{search_text}%'),
-                func.lower(cleaned_f).ilike(
-                    f'%{encoded_search_text.lower()}%'))).all()
-
-        for result in results:
-            lb_elem = db.get(models.Labbookchildelement, result.elem_id)
-            if lb_elem and str(lb_elem.labbook_id) in labbook_ids:
-                created_by = db.get(models.User, 
-                    lb_elem.created_by_id)
+        for result in search_res:
+            result = result["document"]
+            lb_elem = db.get(models.Labbookchildelement, result["elem_id"])
+            if lb_elem and not lb_elem.deleted and str(lb_elem.labbook_id) in labbook_ids:
+                created_by = db.get(models.User, lb_elem.created_by_id)
                 res_dic = {'content_type_model': 'shared_elements.file',
-                           'display': result.title,
+                           'display': result["subject"],
                            'created_by': created_by,
                            'pk': str(lb_elem.labbook_id),
                            'labbook_pos_y': lb_elem.position_y,
-                           'element_pk': str(result.id)}
+                           'element_pk': str(result["id"])}
                 result_array.append(res_dic)
         # title description
     if 'picture' in model:
@@ -231,47 +212,21 @@ def search_in_labbook(db, labbook_pk, search_text, user, typesense: Client):
                        'labbook_pos_y': lb_elem.position_y}
             result_array.append(res_dic)
 
-    # search in files
-    encoded_search_text = encode_umlauts_to_html(search_text)
-    cleaned_f = func.regexp_replace(
-        func.regexp_replace(
-            models.File.description,
-            r'data:([a-zA-Z0-9]+/[a-zA-Z0-9.+-]+);base64,[A-Za-z0-9+/=]+',
-            '',
-            'g'
-        ),
-        r'<[^>]+>',
-        '',
-        'g'
+    search_res = typesense_search_all(
+        typesense=typesense,
+        collection="files",
+        search_text=search_text,
+        labbook_id=labbook_id,
     )
 
-    results = (
-        db.query(models.File)
-        .filter_by(deleted=False)
-        .filter(
-            or_(
-                models.File.title.ilike(f"%{search_text}%"),
-                func.lower(cleaned_f).ilike(f"%{encoded_search_text.lower()}%")
-            )
-        )
-        .join(
-            models.Labbookchildelement,
-            and_(
-                models.File.elem_id == models.Labbookchildelement.id,
-                models.Labbookchildelement.labbook_id == labbook_pk
-            )
-        )
-        .all()
-    )
-
-    for result in results:
-        if result.elem_id:
-            lb_elem = db.get(models.Labbookchildelement, result.elem_id)
-            if lb_elem:
-                res_dic = {'content_type_model': 'shared_elements.file',
-                           'element_pk': str(result.id),
-                           'labbook_pos_y': lb_elem.position_y}
-                result_array.append(res_dic)
+    for result in search_res:
+        result = result["document"]
+        lb_elem = db.get(models.Labbookchildelement, result["elem_id"])
+        if lb_elem and not lb_elem.deleted and str(lb_elem.labbook_id) == labbook_id:
+            res_dic = {'content_type_model': 'shared_elements.file',
+                       'element_pk': str(result["id"]),
+                       'labbook_pos_y': lb_elem.position_y}
+            result_array.append(res_dic)
 
     search_res = typesense_search_all(
         typesense=typesense,
@@ -308,7 +263,7 @@ def typesense_search_all(typesense, collection, search_text, labbook_id,
             "filter_by": f"labbook_id:[{labbook_id}] && soft_delete:=false",
             "query_by": "subject,content",
             "fuzzy": True,
-            "limit": per_page,
+            "per_page": per_page,
             "page": page,
         }]
 

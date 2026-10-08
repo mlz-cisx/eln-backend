@@ -11,7 +11,8 @@ from joeseln_backend.conf.base_conf import (
     TYPESENSE_PORT,
     TYPESENSE_PROTOCOL,
 )
-from joeseln_backend.models.models import Note, Picture
+from joeseln_backend.full_text_search.html_stripper import strip_html_and_binary
+from joeseln_backend.models.models import File, Note, Picture
 from joeseln_backend.mylogging.root_logger import logger
 
 
@@ -94,6 +95,8 @@ collections: Dict[str, CollectionCreateSchema] = {
     },
 }
 
+collections["files"] = {**collections["notes"], "name": "files"}
+
 config: ConfigDict = {
     "api_key": TYPESENSE_API_KEY,
     "nodes": [
@@ -115,12 +118,29 @@ def get_typesense_client():
 
 
 def update_delete_status_typesense(
-    elem: Note | Picture, deleted: bool, typesense: Client
+    elem: Note | Picture | File, deleted: bool, typesense: Client
 ):
     try:
-        table = "notes" if isinstance(elem, Note) else "pictures"
+        table = {Note: "notes", Picture: "pictures", File: "files"}[type(elem)]
         typesense.collections[table].documents[str(elem.id)].update(
             {"soft_delete": deleted}
         )
+    except TypesenseClientError as e:
+        logger.error(e)
+
+
+def update_file_typesense(file, lb_elem, typesense=None):
+    try:
+        if typesense is None:
+            typesense = get_typesense_client()
+        typesense.collections["files"].documents.upsert({
+            "id": str(file.id),
+            "elem_id": str(lb_elem.id),
+            "subject": file.title or "",
+            "content": strip_html_and_binary(file.description or ""),
+            "last_modified_at": int(file.last_modified_at.timestamp()),
+            "labbook_id": str(lb_elem.labbook_id),
+            "soft_delete": bool(file.deleted or lb_elem.deleted),
+        })
     except TypesenseClientError as e:
         logger.error(e)
