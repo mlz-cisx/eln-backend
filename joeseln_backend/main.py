@@ -1848,9 +1848,9 @@ async def login_for_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 @app.post("/api/refresh-token")
-def refresh_access_token(access_token: Token) -> Token:
+def refresh_access_token(access_token: Token, db: Session = Depends(get_db)) -> Token:
     try:
-        username = verify_jwt_with_leeway(access_token)
+        username = verify_jwt_with_leeway(access_token, db=db)
         access_token_expires = timedelta(seconds=JWT_ACCESS_TOKEN_EXPIRE_SECONDS)
         new_token = create_access_token(
             data={"sub": username}, expires_delta=access_token_expires

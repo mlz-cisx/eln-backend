@@ -138,11 +138,12 @@ def build_download_token(user, resource_uuid) -> str:
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
+    issued_at = datetime.now(timezone.utc)
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = issued_at + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+        expire = issued_at + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire, "iat": issued_at.timestamp()})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
@@ -212,9 +213,17 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         logger.error(f'oidc user is considered as non oidc user: {e}')
 
 
-def verify_jwt_with_leeway(token, leeway=JWT_LEEWAY):
-    payload  = jwt.decode(token.access_token.encode(), JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM], leeway=leeway)
-    username = payload.get("sub")
+def verify_jwt_with_leeway(token, db: Session, leeway=JWT_LEEWAY):
+    payload = jwt.decode(
+        token.access_token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM],
+        leeway=leeway, options={"require": ["sub", "exp", "iat"]},
+    )
+    username = payload["sub"]
+    user = get_user_by_uname(db=db, username=username)
+    if user is None or user.deleted or user.last_modified_at is None:
+        raise jwt.exceptions.InvalidTokenError("Account is unavailable")
+    if user.last_modified_at.timestamp() > payload["iat"]:
+        raise jwt.exceptions.InvalidTokenError("Account changed after token issuance")
     return username
 
 async def get_current_jwt_user_for_ws(token):
