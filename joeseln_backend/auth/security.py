@@ -217,6 +217,8 @@ def get_current_user(
             return user
         else:
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            if "res" in payload:
+                raise credentials_exception
             # we aligned to keycloak's sub
             username: str = payload.get("sub")
             if username is None:
@@ -241,6 +243,8 @@ def verify_jwt_with_leeway(token, db: Session, leeway=JWT_LEEWAY):
         token.access_token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM],
         leeway=leeway, options={"require": ["sub", "exp", "iat"]},
     )
+    if "res" in payload:
+        raise jwt.exceptions.InvalidTokenError("Download tokens cannot be refreshed")
     username = payload["sub"]
     user = get_user_by_uname(db=db, username=username)
     if user is None or user.deleted or user.last_modified_at is None:
@@ -252,6 +256,8 @@ def verify_jwt_with_leeway(token, db: Session, leeway=JWT_LEEWAY):
 async def get_current_jwt_user_for_ws(token):
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        if "res" in payload:
+            return
         uname: str = payload.get("sub")
         return uname
     except jwt.exceptions.PyJWTError:
