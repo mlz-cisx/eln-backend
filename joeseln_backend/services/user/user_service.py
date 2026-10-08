@@ -19,6 +19,9 @@ def get_user_by_uname(db: Session, username):
 
 def update_oidc_user(db: Session, oidc_user: OIDCUserCreate):
     db_user = get_user_by_uname(db=db, username=oidc_user.preferred_username)
+    # never allow a oidc identity to take over a local account.
+    if db_user and not db_user.oidc_user:
+        return
     if not db_user:
         db_user = models.User(username=oidc_user.preferred_username,
                               email=oidc_user.email,
