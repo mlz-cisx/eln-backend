@@ -536,7 +536,22 @@ def a_group(client, admin_user):
 
 
 @pytest.fixture(scope="module")
-def a_file(client, a_labbook):
+def upload_storage(tmp_path_factory):
+    """Keep fixture uploads in temporary directories instead of application storage."""
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            "joeseln_backend.conf.base_conf.FILES_BASE_PATH",
+            str(tmp_path_factory.mktemp("files")) + "/",
+        )
+        monkeypatch.setattr(
+            "joeseln_backend.conf.base_conf.PICTURES_BASE_PATH",
+            str(tmp_path_factory.mktemp("pictures")) + "/",
+        )
+        yield
+
+
+@pytest.fixture(scope="module")
+def a_file(client, a_labbook, upload_storage):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     file_content = b"test content"
     file_name = "testfile"
@@ -546,10 +561,11 @@ def a_file(client, a_labbook):
             "title": "Test Title",
             "name": "Test Name",
             "description": "Test description",
+            "labbook_pk": str(a_labbook),
         },
         files={"path": (file_name, file_content, "application/octet-stream")},
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     pk = response.json()["pk"]
 
     # add to labbook
@@ -593,13 +609,14 @@ def a_note(client, a_labbook):
 
 
 @pytest.fixture(scope="module")
-def a_picture(client, a_labbook):
+def a_picture(client, a_labbook, upload_storage):
     app.dependency_overrides[get_current_user] = mock_get_current_user_admin
     picture_content = b"test content"
     picture_name = "testpic"
     response = client.post(
         "/api/pictures/",
-        data={"title": "Test Title", "width": 15, "height": 15},
+        data={"title": "Test Title", "width": 15, "height": 15,
+              "labbook_pk": str(a_labbook)},
         files={
             "rendered_image": (
                 picture_name,
@@ -608,7 +625,7 @@ def a_picture(client, a_labbook):
             ),
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     pk = response.json()["pk"]
 
     lb_data = {
