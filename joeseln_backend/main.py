@@ -704,7 +704,7 @@ def get_labbook_history(
     db_labbook = db.query(models.Labbook).get(labbook_pk)
     if db_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
-    return get_history(db=db, elem_id=labbook_pk, user=user)
+    return get_history(db=db, elem_id=labbook_pk, user=user, object_model=models.Labbook)
 
 
 @app.get("/api/labbooks/{labbook_pk}/versions/",
@@ -967,7 +967,7 @@ def get_note_history(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return get_history(db=db, elem_id=note_pk, user=user)
+    return get_history(db=db, elem_id=note_pk, user=user, object_model=models.Note)
 
 
 @app.get("/api/notes/{note_pk}/versions/",
@@ -1338,7 +1338,7 @@ def get_picture_history(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return get_history(db=db, elem_id=picture_pk, user=user)
+    return get_history(db=db, elem_id=picture_pk, user=user, object_model=models.Picture)
 
 
 @app.get("/api/pictures/{picture_pk}/versions/",
@@ -1675,7 +1675,7 @@ def get_file_history(
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return get_history(db=db, elem_id=file_pk, user=user)
+    return get_history(db=db, elem_id=file_pk, user=user, object_model=models.File)
 
 
 @app.get("/api/files/{file_pk}/versions/",

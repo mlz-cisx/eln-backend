@@ -1096,28 +1096,33 @@ def test_get_labbook_history(a_labbook, client, as_admin):
     assert len(data) >= 1
 
 
-# scenario: non-admin also gets history — get_history has no permission check
+# scenario: user without labbook access cannot read history
 def test_get_labbook_history_as_nonadmin(a_labbook, client, as_nonadmin):
     response = client.get(f"/api/labbooks/{a_labbook}/history/")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.status_code == 404
 
 
-# scenario: groupadmin sees history — no permission check on get_history
+def test_get_element_history_as_nonadmin(a_note, a_file, a_picture, client, as_nonadmin):
+    for route, pk in [("notes", a_note), ("files", a_file), ("pictures", a_picture)]:
+        response = client.get(f"/api/{route}/{pk}/history/")
+        assert response.status_code == 404
+
+
+# scenario: groupadmin with labbook access sees history
 def test_get_labbook_history_as_groupadmin(a_labbook, client, as_groupadmin):
     response = client.get(f"/api/labbooks/{a_labbook}/history/")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 
-# scenario: groupuser sees history — no permission check on get_history
+# scenario: groupuser with labbook access sees history
 def test_get_labbook_history_as_groupuser(a_labbook, client, as_groupuser):
     response = client.get(f"/api/labbooks/{a_labbook}/history/")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 
-# scenario: groupguest sees history — no permission check on get_history
+# scenario: groupguest with read access sees history
 def test_get_labbook_history_as_groupguest(a_labbook, client, as_groupguest):
     response = client.get(f"/api/labbooks/{a_labbook}/history/")
     assert response.status_code == 200

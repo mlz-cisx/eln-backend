@@ -1,11 +1,18 @@
 import datetime
 
+from fastapi import HTTPException
 from sqlalchemy import desc
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from joeseln_backend.conf.base_conf import STATIC_HISTORY_DEBOUNCE
-from joeseln_backend.conf.content_types import type2model
+from joeseln_backend.conf.content_types import (
+    file_content_type,
+    labbook_content_type,
+    note_content_type,
+    picture_content_type,
+    type2model,
+)
 from joeseln_backend.helper.debouncer import debounce
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
@@ -70,9 +77,32 @@ def create_file_update_history_entry(db: Session, elem_id, user, object_type_id,
                          changerecords=changerecords)
 
 
-def get_history(db: Session, elem_id, user):
+def get_history(db: Session, elem_id, user, object_model):
+    # avoid circular import
+    from joeseln_backend.services.labbook.labbook_service import check_for_labbook_access
+
+    object_type_id = {
+        models.Labbook: labbook_content_type,
+        models.Note: note_content_type,
+        models.Picture: picture_content_type,
+        models.File: file_content_type,
+    }[object_model]
+    obj = db.get(object_model, elem_id)
+    if obj is None or user is None or user.deleted:
+        raise HTTPException(status_code=404, detail="History not found")
+
+    if object_model is models.Labbook:
+        labbook = obj
+    else:
+        element = db.get(models.Labbookchildelement, obj.elem_id) if obj.elem_id else None
+        labbook = db.get(models.Labbook, element.labbook_id) if element else None
+    if labbook is None or not check_for_labbook_access(
+        db=db, labbook_pk=labbook.id, user=user
+    ):
+        raise HTTPException(status_code=404, detail="History not found")
+
     history_elems = db.query(models.ChangesetChangeset).filter_by(
-        object_uuid=elem_id).order_by(
+        object_uuid=elem_id, object_type_id=object_type_id).order_by(
         desc(models.ChangesetChangeset.date)).all()
     for elem in history_elems:
         elem.user = db.get(models.User, elem.user_id)
