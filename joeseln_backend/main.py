@@ -1,5 +1,6 @@
 import base64
 import os
+import secrets
 import sys
 import uuid
 
@@ -11,7 +12,7 @@ import zlib
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Annotated, Any, List, Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from uuid import UUID
 from sqlalchemy.exc import DBAPIError
 import psycopg2
@@ -49,6 +50,8 @@ from sqlalchemy.exc import OperationalError
 from joeseln_backend.auth.security import (
     JWT_ACCESS_TOKEN_EXPIRE_SECONDS,
     JWT_LEEWAY,
+    JWT_ALGORITHM,
+    JWT_SECRET_KEY,
     Token,
     TokenWithDelta,
     authenticate_user,
@@ -1796,11 +1799,25 @@ def change_password(
 @app.get("/api/login-keycloak", response_class=RedirectResponse)
 def keycloak_redirect():
     redirect_uri = f"{URL_BASE_PATH}callback"
+    state = secrets.token_urlsafe(32)
     auth_url =  keycloak_openid.auth_url(
             redirect_uri=redirect_uri,
-            scope="openid profile email"
+            scope="openid profile email",
+            state=state,
     )
-    return RedirectResponse(url=auth_url)
+    response = RedirectResponse(url=auth_url)
+    state_cookie = jwt.encode(
+        {"oauth_state": state,
+         "exp": datetime.datetime.now(datetime.timezone.utc) + timedelta(minutes=5)},
+        JWT_SECRET_KEY, algorithm=JWT_ALGORITHM,
+    )
+    response.set_cookie(
+        "keycloak_state", state_cookie, max_age=300,
+        path=urlsplit(redirect_uri).path,
+        secure=urlsplit(redirect_uri).scheme == "https",
+        httponly=True, samesite="lax",
+    )
+    return response
 
 
 @app.get("/api/logout-keycloak", response_class=RedirectResponse)
@@ -1812,7 +1829,29 @@ def keycloak_logout():
 
 
 @app.get("/api/callback", response_class=RedirectResponse)
-def keycloak_callback(code: str, db: Session = Depends(get_db)):
+def keycloak_callback(
+    request: Request, code: str, state: str | None = None,
+    db: Session = Depends(get_db),
+):
+    try:
+        saved_state = jwt.decode(
+            request.cookies.get("keycloak_state", ""), JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM], options={"require": ["exp", "oauth_state"]},
+        )["oauth_state"]
+        if not state or not isinstance(saved_state, str) or not secrets.compare_digest(
+            state.encode(), saved_state.encode()
+        ):
+            raise ValueError("State mismatch")
+    except (jwt.exceptions.PyJWTError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid or expired login state")
+
+    def login_redirect(url):
+        response = RedirectResponse(url=url)
+        response.delete_cookie(
+            "keycloak_state", path=urlsplit(f"{URL_BASE_PATH}callback").path,
+        )
+        return response
+
     # fetch token
     token = keycloak_openid.token(
         grant_type='authorization_code',
@@ -1820,12 +1859,12 @@ def keycloak_callback(code: str, db: Session = Depends(get_db)):
         redirect_uri=f"{URL_BASE_PATH}callback"
     )
     if not token:
-        return RedirectResponse(url=f"{APP_BASE_PATH}login")
+        return login_redirect(f"{APP_BASE_PATH}login")
 
     # introsepction
     userinfo = keycloak_openid.introspect(token['access_token'])
     if not userinfo:
-        return RedirectResponse(url=f"{APP_BASE_PATH}login")
+        return login_redirect(f"{APP_BASE_PATH}login")
 
     # update user
     user = update_oidc_user(db=db, oidc_user=OIDCUserCreate.parse_obj(userinfo))
@@ -1837,9 +1876,9 @@ def keycloak_callback(code: str, db: Session = Depends(get_db)):
             )
         # redirect to login page with token parameter
         params = {"token": access_token}
-        return RedirectResponse(url=f"{APP_BASE_PATH}login?{urlencode(params)}")
+        return login_redirect(f"{APP_BASE_PATH}login?{urlencode(params)}")
 
-    return RedirectResponse(url=f"{APP_BASE_PATH}login")
+    return login_redirect(f"{APP_BASE_PATH}login")
 
 
 @app.post("/api/token")
