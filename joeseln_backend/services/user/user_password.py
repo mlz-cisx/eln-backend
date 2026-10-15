@@ -1,9 +1,10 @@
 import datetime
 
+from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from joeseln_backend.auth.security import get_password_hash
+from joeseln_backend.auth.security import get_password_hash, verify_password
 from joeseln_backend.conf.base_conf import INITIAL_ADMIN, INSTRUMENT_AS_ADMIN
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
@@ -27,10 +28,22 @@ def change_user_password(db: Session, username, hashed_password):
     return
 
 
-def gui_password_change(db: Session, user,
-                        none_hashed_password: user_schema.PasswordChange):
+def _require_old_password(db_user, old_password):
+    if (
+        not old_password
+        or not db_user.password
+        or not verify_password(old_password.strip(), db_user.password)
+    ):
+        raise HTTPException(status_code=400, detail="Incorrect old password")
+
+
+def gui_password_change(
+    db: Session, user, none_hashed_password: user_schema.PasswordChange
+):
     db_user = db.get(models.User, user.id)
     if db_user and not db_user.oidc_user:
+        _require_old_password(db_user, none_hashed_password.old_password)
+        db_user.password = get_password_hash(none_hashed_password.password.strip())
         db_user.password = get_password_hash(
             none_hashed_password.password.strip())
         db_user.last_modified_at = datetime.datetime.now()

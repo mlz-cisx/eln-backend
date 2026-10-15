@@ -107,10 +107,12 @@ class OIDCUserCreate(BaseModel):
 
 class PasswordChange(BaseModel):
     password: str
+    old_password: str = Field(..., min_length=1)
 
 
 class PasswordPatch(BaseModel):
     password_patch: str
+    old_password: str | None = None
 
 
 class UserWithPrivileges(BaseModel):

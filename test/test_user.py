@@ -1,7 +1,9 @@
 import pytest
 
+from joeseln_backend.auth.security import get_password_hash, verify_password
 from joeseln_backend.main import app, get_current_user
-from test.conftest import mock_get_current_user_admin
+from joeseln_backend.models.models import User
+from test.conftest import TestSession, mock_get_current_user_admin
 
 # ═══════════════════════════════════════════════════════════════════
 # Shared fixtures
@@ -445,6 +447,8 @@ def test_patch_user_password(a_second_user, client, as_admin):
         json={"password_patch": "newpass456"},
     )
     assert response.status_code == 200
+    with TestSession() as db:
+        assert verify_password("newpass456", db.get(User, a_second_user["id"]).password)
 
 
 # scenario: rejected for non-admin — non-admin cannot patch others' passwords
@@ -470,18 +474,52 @@ def test_patch_password_nonexistent_user(client, as_admin):
 # ═══════════════════════════════════════════════════════════════════
 
 
+@pytest.fixture
+def own_passwords():
+    with TestSession() as db:
+        original = {user_id: db.get(User, user_id).password for user_id in (1, 2)}
+        for user_id in original:
+            db.get(User, user_id).password = get_password_hash("oldsecret")
+        db.commit()
+    yield
+    with TestSession() as db:
+        for user_id, password in original.items():
+            db.get(User, user_id).password = password
+        db.commit()
+
+
 # scenario: admin changes own password → 200 "ok"
-def test_change_own_password(client, as_admin):
-    response = client.put("/api/change_password", json={"password": "newsecret"})
+def test_change_own_password(client, as_admin, own_passwords):
+    response = client.put("/api/change_password", json={
+        "password": "newsecret", "old_password": "oldsecret"})
     assert response.status_code == 200
     assert response.json() == "ok"
+    with TestSession() as db:
+        assert verify_password("newsecret", db.get(User, 1).password)
 
 
 # scenario: non-admin changes own password → 200 "ok"
-def test_change_own_password_as_nonadmin(client, as_nonadmin):
-    response = client.put("/api/change_password", json={"password": "newsecret2"})
+def test_change_own_password_as_nonadmin(client, as_nonadmin, own_passwords):
+    response = client.put("/api/change_password", json={
+        "password": "newsecret2", "old_password": "oldsecret"})
     assert response.status_code == 200
     assert response.json() == "ok"
+    with TestSession() as db:
+        assert verify_password("newsecret2", db.get(User, 2).password)
+
+
+@pytest.mark.parametrize("actor,user_id", [("as_admin", 1), ("as_nonadmin", 2)])
+@pytest.mark.parametrize("old_password", [None, "", "wrong"])
+def test_change_own_password_requires_old_password(
+        client, own_passwords, request, actor, user_id, old_password):
+    request.getfixturevalue(actor)
+    payload = {"password": "newsecret"}
+    if old_password is not None:
+        payload["old_password"] = old_password
+    response = client.put("/api/change_password", json=payload)
+    assert response.status_code == (400 if old_password == "wrong" else 422)
+    with TestSession() as db:
+        assert verify_password("oldsecret", db.get(User, user_id).password)
 
 
 # ═══════════════════════════════════════════════════════════════════
