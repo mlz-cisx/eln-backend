@@ -482,34 +482,61 @@ def create_file(
 
 
 def update_file(file_pk, db: Session, elem: FilePatch, user):
-    if (sys.getsizeof(elem.description) + sys.getsizeof(
-            elem.title)) > ELEM_MAXIMUM_SIZE << 10:
+    db_file = db.get(models.File, file_pk)
+
+    if db_file is None:
         return None
 
-    elem.description = sanitize_html(elem.description)
+    updates = elem.model_dump(exclude_unset=True)
 
-    db_file = db.get(models.File, file_pk)
-    old_title = db_file.title
-    db_file.title = elem.title
-    old_description = db_file.description
-    db_file.description = elem.description
-    db_file.last_modified_at = datetime.datetime.now()
+    changerecords = []
+
+    # Collect changes
+    for field in ("title", "description"):
+        if field not in updates:
+            continue
+
+        new_value = updates[field]
+
+        if field == "description" and new_value is not None:
+            new_value = sanitize_html(new_value)
+
+        old_value = getattr(db_file, field)
+
+        if old_value != new_value:
+            changerecords.append([field, old_value, new_value])
+            setattr(db_file, field, new_value)
+
+    # Size check only for values that will be stored
+    title_size = sys.getsizeof(db_file.title or "")
+    description_size = sys.getsizeof(db_file.description or "")
+
+    if (title_size + description_size) > (ELEM_MAXIMUM_SIZE << 10):
+        return None
+
+    now = datetime.datetime.now()
+
+    db_file.last_modified_at = now
     db_file.last_modified_by_id = user.id
 
     lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
-    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem.last_modified_at = now
     lb_elem.last_modified_by_id = user.id
 
     lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
-    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update.last_modified_at = now
     lb_to_update.last_modified_by_id = user.id
 
-    # First possibility
+    # First possibility: admin edits anything
     if user.admin:
+        if not changerecords:
+            return db_file
+
         try:
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+
             db_user_created = db.get(models.User, db_file.created_by_id)
             db_file.created_by = db_user_created
             db_file.last_modified_by = user
@@ -518,43 +545,52 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
             return db_file
 
         db.refresh(db_file)
-        transmit({'model_name': 'file', 'model_pk': str(file_pk)})
+
+        transmit({
+            'model_name': 'file',
+            'model_pk': str(file_pk)
+        })
 
         db_user_created = db.get(models.User, db_file.created_by_id)
         db_file.created_by = db_user_created
         db_file.last_modified_by = user
 
-        # changerecord = [field_name,old_value,new_value]
-        # changerecords = [changerecord, changerecord, .....]
-
-        changerecords = [['title', old_title, elem.title],
-                         ['description', old_description, elem.description]]
-        # changeset_types:
-        # U : edited/updated, R : restored, S: trashed , I initialized/created
-        create_file_update_history_entry(db=db,
-                                         elem_id=db_file.id,
-                                         user=user,
-                                         object_type_id=50,
-                                         changeset_type='U',
-                                         changerecords=changerecords)
+        create_file_update_history_entry(
+            db=db,
+            elem_id=db_file.id,
+            user=user,
+            object_type_id=50,
+            changeset_type='U',
+            changerecords=changerecords
+        )
 
         return db_file
 
-    # Second possibility: file is created by admin und user is now not admin
-    if check_for_admin_role_with_user_id(db=db,
-                                         user_id=db_file.created_by_id):
+    # Second possibility: file was created by admin
+    if check_for_admin_role_with_user_id(
+            db=db,
+            user_id=db_file.created_by_id):
         return None
 
     if lb_to_update.strict_mode and user.id != db_file.created_by_id:
         return None
 
-    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+    if check_for_guest_role(
+            db=db,
+            labbook_pk=lb_elem.labbook_id,
+            user=user):
         return None
 
-    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(
+        db=db,
+        user=user
+    )
 
-    # Third possibility: consider a file created by non admin
+    # Third possibility: file created by non-admin
     if lb_elem.labbook_id in labbook_ids:
+        if not changerecords:
+            return db_file
+
         try:
             db.commit()
         except SQLAlchemyError as e:
@@ -565,23 +601,23 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
             db_file.last_modified_by = user
 
             db.close()
-
             return db_file
 
-        changerecords = [['title', old_title, elem.title],
-                         ['description', old_description, elem.description]]
-
-        # changeset_types:
-        # U : edited/updated, R : restored, S: trashed , I initialized/created
-        create_file_update_history_entry(db=db,
-                                         elem_id=db_file.id,
-                                         user=user,
-                                         object_type_id=50,
-                                         changeset_type='U',
-                                         changerecords=changerecords)
+        create_file_update_history_entry(
+            db=db,
+            elem_id=db_file.id,
+            user=user,
+            object_type_id=50,
+            changeset_type='U',
+            changerecords=changerecords
+        )
 
         db.refresh(db_file)
-        transmit({'model_name': 'file', 'model_pk': str(file_pk)})
+
+        transmit({
+            'model_name': 'file',
+            'model_pk': str(file_pk)
+        })
 
         db_user_created = db.get(models.User, db_file.created_by_id)
         db_file.created_by = db_user_created

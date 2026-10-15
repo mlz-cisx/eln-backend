@@ -2,7 +2,7 @@ import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, Json
+from pydantic import BaseModel, Field, Json, field_validator
 
 from joeseln_backend.conf.content_types import (
     file_content_type,
@@ -56,8 +56,15 @@ class File(BaseModel):
 
 
 class FilePatch(BaseModel):
-    title: str
-    description: str
+    title: str | None = None
+    description: str | None = None
+
+    @field_validator("title", "description")
+    @classmethod
+    def reject_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Must not be null")
+        return value
 
 
 class FileVersionSummary(BaseModel):
