@@ -38,7 +38,8 @@ from joeseln_backend.services.labbook.labbook_service import (
 )
 from joeseln_backend.services.labbookchildelements.labbookchildelement_schemas import \
     Toggle_Hidden_Delete
-from joeseln_backend.services.note.note_schemas import Note, NoteCreate
+from joeseln_backend.services.note.note_schemas import Note, NoteCreate, \
+    NotePatch
 from joeseln_backend.services.privileges.admin_privileges.privileges_service import (
     ADMIN,
 )
@@ -446,103 +447,154 @@ def update_note_typesense(note: Note, typesense: Client):
     except TypesenseClientError as e:
         logger.error(e)
 
-def update_note(db: Session, note_pk, note: NoteCreate, user, typesense: Client):
-    if sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10:
-        return
 
-    note.content = sanitize_html(note.content)
-
+def update_note(
+        db: Session,
+        note_pk,
+        note: NotePatch,
+        user,
+        typesense: Client):
     note_to_update = db.get(models.Note, note_pk)
-    old_subject = note_to_update.subject
-    old_content = note_to_update.content
-    note_to_update.subject = note.subject
-    note_to_update.content = note.content
-    note_to_update.last_modified_at = datetime.datetime.now()
+
+    if note_to_update is None:
+        return None
+
+    updates = note.model_dump(exclude_unset=True)
+
+    changerecords = []
+
+    for field in ("subject", "content"):
+        if field not in updates:
+            continue
+
+        new_value = updates[field]
+
+        if field == "content" and new_value is not None:
+            new_value = sanitize_html(new_value)
+
+        old_value = getattr(note_to_update, field)
+
+        if old_value != new_value:
+            changerecords.append([field, old_value, new_value])
+            setattr(note_to_update, field, new_value)
+
+    if sys.getsizeof(note_to_update.content or "") > (
+            ELEM_MAXIMUM_SIZE << 10):
+        return None
+
+    now = datetime.datetime.now()
+
+    note_to_update.last_modified_at = now
     note_to_update.last_modified_by_id = user.id
 
-    db_user_created = db.get(models.User, note_to_update.created_by_id)
+    db_user_created = db.get(
+        models.User,
+        note_to_update.created_by_id
+    )
 
-    lb_elem = db.get(models.Labbookchildelement, note_to_update.elem_id)
-    lb_elem.last_modified_at = datetime.datetime.now()
+    lb_elem = db.get(
+        models.Labbookchildelement,
+        note_to_update.elem_id
+    )
+    lb_elem.last_modified_at = now
     lb_elem.last_modified_by_id = user.id
 
-    lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
-    lb_to_update.last_modified_at = datetime.datetime.now()
+    lb_to_update = db.get(
+        models.Labbook,
+        lb_elem.labbook_id
+    )
+    lb_to_update.last_modified_at = now
     lb_to_update.last_modified_by_id = user.id
 
-    # First possibility
+    # First possibility: admin edits note
     if user.admin:
+        if not changerecords:
+            return note_to_update
+
         try:
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+
             db.close()
+
             note_to_update.created_by = db_user_created
             note_to_update.last_modified_by = user
+
             return note_to_update
+
         db.refresh(note_to_update)
-        # ws transmit via event
+
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
 
-        # changerecord = [field_name,old_value,new_value]
-        # changerecords = [changerecord, changerecord, .....]
-        changerecords = [['subject', old_subject, note.subject],
-                         ['content', old_content, note.content]]
-        # changeset_types:
-        # U : edited/updated, R : restored, S: trashed , I initialized/created
-        create_note_update_history_entry(db=db,
-                                         elem_id=note_pk,
-                                         user=user,
-                                         object_type_id=30,
-                                         changeset_type='U',
-                                         changerecords=changerecords)
+        create_note_update_history_entry(
+            db=db,
+            elem_id=note_pk,
+            user=user,
+            object_type_id=30,
+            changeset_type='U',
+            changerecords=changerecords
+        )
 
         update_note_typesense(note_to_update, typesense)
+
         return note_to_update
 
-    # Second possibility: note is created by admin und user is now not admin
-    if check_for_admin_role_with_user_id(db=db,
-                                         user_id=note_to_update.created_by_id):
+    # Second possibility: note was created by admin
+    if check_for_admin_role_with_user_id(
+            db=db,
+            user_id=note_to_update.created_by_id):
         return None
 
-    if lb_to_update.strict_mode and user.id != note_to_update.created_by_id:
+    if (lb_to_update.strict_mode and
+            user.id != note_to_update.created_by_id):
         return None
 
-    if check_for_guest_role(db=db, labbook_pk=lb_elem.labbook_id, user=user):
+    if check_for_guest_role(
+            db=db,
+            labbook_pk=lb_elem.labbook_id,
+            user=user):
         return None
 
-    labbook_ids = get_all_labbook_ids_from_non_admin_user(db=db, user=user)
+    labbook_ids = get_all_labbook_ids_from_non_admin_user(
+        db=db,
+        user=user
+    )
 
-    # Third possibility: consider a note created by non admin
+    # Third possibility: note created by non-admin
     if lb_elem.labbook_id in labbook_ids:
+        if not changerecords:
+            return note_to_update
+
         try:
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
+
             db.close()
+
             note_to_update.created_by = db_user_created
             note_to_update.last_modified_by = user
+
             return note_to_update
+
         db.refresh(note_to_update)
-        # ws transmit via event
+
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
 
-        # changerecord = [field_name,old_value,new_value]
-        # changerecords = [changerecord, changerecord, .....]
-        changerecords = [['subject', None, note.subject],
-                         ['content', None, note.content]]
-        # changeset_types:
-        # U : edited/updated, R : restored, S: trashed , I initialized/created
-        create_note_update_history_entry(db=db,
-                                         elem_id=note_pk,
-                                         user=user,
-                                         object_type_id=30,
-                                         changeset_type='U',
-                                         changerecords=changerecords)
+        create_note_update_history_entry(
+            db=db,
+            elem_id=note_pk,
+            user=user,
+            object_type_id=30,
+            changeset_type='U',
+            changerecords=changerecords
+        )
 
         update_note_typesense(note_to_update, typesense)
+
         return note_to_update
 
     return None

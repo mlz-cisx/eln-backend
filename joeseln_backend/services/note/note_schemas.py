@@ -2,7 +2,7 @@ import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, Json
+from pydantic import BaseModel, Field, Json, field_validator
 
 from joeseln_backend.conf.content_types import (
     note_content_type,
@@ -44,6 +44,18 @@ class NoteCreate(BaseModel):
     subject: str
     content: str
     labbook_pk: UUID | None = None
+
+
+class NotePatch(BaseModel):
+    subject: str | None = None
+    content: str | None = None
+
+    @field_validator("subject", "content")
+    @classmethod
+    def reject_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Must not be null")
+        return value
 
 
 class NoteVersionSummary(BaseModel):

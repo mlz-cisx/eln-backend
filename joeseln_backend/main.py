@@ -846,7 +846,7 @@ def read_notes(
            response_model=note_schemas.Note)
 def patch_note(
         note_pk: UUID,
-        elem: note_schemas.NoteCreate,
+        elem: note_schemas.NotePatch,
         db: Session = Depends(get_db),
         typesense_client = Depends(get_typesense_client),
         user: User = Depends(get_current_user)):
