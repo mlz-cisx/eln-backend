@@ -233,6 +233,7 @@ def get_current_user(
 
     except jwt.exceptions.PyJWTError as e:
         logger.error(f'oidc user is considered as non oidc user: {e}')
+        raise credentials_exception from e
 
 
 def verify_jwt_with_leeway(token, db: Session, leeway=JWT_LEEWAY):

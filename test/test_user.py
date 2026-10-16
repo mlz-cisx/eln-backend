@@ -1,9 +1,18 @@
 import pytest
+from fastapi import HTTPException, Request
 
 from joeseln_backend.auth.security import get_password_hash, verify_password
 from joeseln_backend.main import app, get_current_user
 from joeseln_backend.models.models import User
 from test.conftest import TestSession, mock_get_current_user_admin
+
+
+def test_invalid_bearer_returns_401():
+    request = Request({"type": "http", "client": ("127.0.0.1", 12345)})
+    with pytest.raises(HTTPException) as error:
+        get_current_user(request=request, token="wrong-static-token")
+    assert error.value.status_code == 401
+    assert error.value.headers == {"WWW-Authenticate": "Bearer"}
 
 # ═══════════════════════════════════════════════════════════════════
 # Shared fixtures
