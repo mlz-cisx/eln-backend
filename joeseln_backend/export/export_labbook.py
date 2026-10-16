@@ -125,7 +125,8 @@ async def get_export_data(
     # filter by  user
     if export_filter.users:
         elems = [elem for elem in elems if
-                 elem.created_by in export_filter.users]
+                 elem.created_by_id in export_filter.users]
+
     # filter by startTime endTime
     if export_filter.startTime and export_filter.startTime.tzinfo is not None:
         filter_start = export_filter.startTime.replace(tzinfo=None)
