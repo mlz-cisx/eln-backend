@@ -1,3 +1,4 @@
+from joeseln_backend.conf.base_conf import ELEM_MAXIMUM_SIZE
 from joeseln_backend.conf.content_types import (
     note_content_type,
     note_content_type_model,
@@ -210,6 +211,34 @@ def test_create_labbook_empty_title(client, as_admin):
     response = client.post(
         "/api/labbooks/", json={"title": "   ", "description": "desc"}
     )
+    assert response.status_code == 204
+
+
+
+# scenario: description exceeds maximum size -> 204
+def test_create_labbook_description_too_large(client, as_admin):
+    oversized_description = "a" * ((ELEM_MAXIMUM_SIZE << 10) + 1)
+
+    response = client.post(
+        "/api/labbooks/",
+        json={
+            "title": "Oversized Labbook",
+            "description": oversized_description,
+        },
+    )
+    assert response.status_code == 204
+
+
+
+# scenario: description exceeds maximum size -> 204
+def test_patch_labbook_description_too_large(a_labbook, client, as_admin):
+    oversized_description = "a" * ((ELEM_MAXIMUM_SIZE << 10) + 1)
+
+    response = client.patch(
+        f"/api/labbooks/{a_labbook}",
+        json={"description": oversized_description},
+    )
+
     assert response.status_code == 204
 
 

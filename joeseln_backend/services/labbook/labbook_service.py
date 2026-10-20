@@ -1,7 +1,9 @@
 import datetime
 import pathlib
+import sys
 from typing import Literal, Optional
 
+from fastapi import HTTPException
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, defer
@@ -15,6 +17,7 @@ from joeseln_backend.conf.base_conf import (
     LABBOOK_QUERY_MODE,
     PICTURES_BASE_PATH,
     URL_BASE_PATH,
+    ELEM_MAXIMUM_SIZE
 )
 from joeseln_backend.full_text_search.html_stripper import (
     sanitize_html,
@@ -620,6 +623,9 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
     db_labbook = None
     labbook.title = labbook.title.strip()
     if user.admin and is_clean_title(labbook.title):
+        if sys.getsizeof(labbook.description) > ELEM_MAXIMUM_SIZE << 10:
+            return None
+
         labbook.description = sanitize_html(labbook.description)
 
         # Check if a group for labbook exists, create one if it doesn't
@@ -785,6 +791,10 @@ def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
 
         # it is patched with description modal
         elif not labbook.title:
+            # just do not patch it
+            if sys.getsizeof(labbook.description) > ELEM_MAXIMUM_SIZE << 10:
+                raise HTTPException(status_code=204, detail="Description "
+                                                            "exceeded")
             old_labbook_description = db_labbook.description
             db_labbook.description = f'{sanitize_html(labbook.description)} '
             changerecords = [['description', old_labbook_description,
