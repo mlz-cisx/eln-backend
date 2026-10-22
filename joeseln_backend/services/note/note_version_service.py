@@ -2,7 +2,7 @@ import datetime
 import json
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from joeseln_backend.conf.content_types import note_content_type_version
 from joeseln_backend.full_text_search.typesense_service import get_typesense_client
@@ -16,12 +16,15 @@ from joeseln_backend.services.note import note_service
 
 
 def get_all_note_versions(db: Session, note_pk, user):
-    db_note_versions = db.query(models.Version).filter_by(
-        object_id=note_pk).order_by(models.Version.number.desc()).all()
+    db_note_versions = (
+        db.query(models.Version)
+        .options(defer(models.Version.version_metadata))
+        .filter_by(object_id=note_pk)
+        .order_by(models.Version.number.desc())
+        .all()
+    )
     # renaming and json.dumps for schema
     for db_note_version in db_note_versions:
-        db_note_version.metadata = json.dumps(
-            json.loads(json.dumps(db_note_version.version_metadata)))
         db_user_created = db.get(models.User, 
             db_note_version.created_by_id)
         db_user_modified = db.get(models.User, 

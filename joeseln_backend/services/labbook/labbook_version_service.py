@@ -2,7 +2,7 @@ import datetime
 import json
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from joeseln_backend.conf.content_types import (
     file_content_type_model,
@@ -27,13 +27,15 @@ def get_all_labbook_versions(db: Session, labbook_pk, user):
     db_labbook = db.query(models.Labbook).get(labbook_pk)
     if db_labbook is None:
         return None
-    db_labbook_versions = db.query(models.Version).filter_by(
-        object_id=labbook_pk).order_by(models.Version.number.desc()).all()
+    db_labbook_versions = (
+        db.query(models.Version)
+        .options(defer(models.Version.version_metadata))
+        .filter_by(object_id=labbook_pk)
+        .order_by(models.Version.number.desc())
+        .all()
+    )
     # renaming and json.dumps for schema
     for db_labbook_version in db_labbook_versions:
-        db_labbook_version.metadata = json.dumps(
-            json.loads(json.dumps(db_labbook_version.version_metadata)))
-
         db_user_created = db.get(models.User, 
             db_labbook_version.created_by_id)
         db_user_modified = db.get(models.User, 

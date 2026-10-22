@@ -2,7 +2,7 @@ import datetime
 import json
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from joeseln_backend.auth import security
 from joeseln_backend.conf.content_types import picture_content_type_version
@@ -19,12 +19,15 @@ from joeseln_backend.services.picture import picture_service
 
 
 def get_all_picture_versions(db: Session, picture_pk, user):
-    db_picture_versions = db.query(models.Version).filter_by(
-        object_id=picture_pk).order_by(models.Version.number.desc()).all()
+    db_picture_versions = (
+        db.query(models.Version)
+        .options(defer(models.Version.version_metadata))
+        .filter_by(object_id=picture_pk)
+        .order_by(models.Version.number.desc())
+        .all()
+    )
     # renaming and json.dumps for schema
     for db_picture_version in db_picture_versions:
-        db_picture_version.metadata = json.dumps(
-            json.loads(json.dumps(db_picture_version.version_metadata)))
         db_user_created = db.get(models.User, 
             db_picture_version.created_by_id)
         db_user_modified = db.get(models.User, 

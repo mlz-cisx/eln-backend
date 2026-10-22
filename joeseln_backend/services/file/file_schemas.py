@@ -74,7 +74,6 @@ class FileVersionSummary(BaseModel):
 class FileVersion(BaseModel):
     id: int | str | UUID = Field(..., alias='pk')
     object_id: int | str | UUID
-    metadata: Json[Any]
     number: int
     summary: str
     display: str

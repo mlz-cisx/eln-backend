@@ -2,7 +2,7 @@ import datetime
 import json
 
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from joeseln_backend.conf.content_types import file_content_type_version
 from joeseln_backend.models import models
@@ -15,12 +15,15 @@ from joeseln_backend.services.labbookchildelements.labbookchildelement_service i
 
 
 def get_all_file_versions(db: Session, file_pk, user):
-    db_file_versions = db.query(models.Version).filter_by(
-        object_id=file_pk).order_by(models.Version.number.desc()).all()
+    db_file_versions = (
+        db.query(models.Version)
+        .options(defer(models.Version.version_metadata))
+        .filter_by(object_id=file_pk)
+        .order_by(models.Version.number.desc())
+        .all()
+    )
     # renaming and json.dumps for schema
     for db_file_version in db_file_versions:
-        db_file_version.metadata = json.dumps(
-            json.loads(json.dumps(db_file_version.version_metadata)))
         db_user_created = db.get(models.User, 
             db_file_version.created_by_id)
         db_user_modified = db.get(models.User, 
