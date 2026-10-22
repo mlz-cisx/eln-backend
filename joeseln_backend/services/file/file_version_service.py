@@ -14,12 +14,14 @@ from joeseln_backend.services.labbookchildelements.labbookchildelement_service i
 )
 
 
-def get_all_file_versions(db: Session, file_pk, user):
+def get_all_file_versions(db: Session, file_pk, user, limit=None, offset=None):
     db_file_versions = (
         db.query(models.Version)
         .options(defer(models.Version.version_metadata))
         .filter_by(object_id=file_pk)
         .order_by(models.Version.number.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
     # renaming and json.dumps for schema

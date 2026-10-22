@@ -77,7 +77,8 @@ def create_file_update_history_entry(db: Session, elem_id, user, object_type_id,
                          changerecords=changerecords)
 
 
-def get_history(db: Session, elem_id, user, object_model):
+def get_history(db: Session, elem_id, user, object_model, search=None,
+                limit=None, offset=None):
     # avoid circular import
     from joeseln_backend.services.labbook.labbook_service import check_for_labbook_access
 
@@ -101,9 +102,28 @@ def get_history(db: Session, elem_id, user, object_model):
     ):
         raise HTTPException(status_code=404, detail="History not found")
 
-    history_elems = db.query(models.ChangesetChangeset).filter_by(
-        object_uuid=elem_id, object_type_id=object_type_id).order_by(
-        desc(models.ChangesetChangeset.date)).all()
+    history_elems = (
+        db.query(models.ChangesetChangeset)
+        .join(models.User, models.User.id == models.ChangesetChangeset.user_id)
+        .filter(
+            models.ChangesetChangeset.object_uuid == elem_id,
+            models.ChangesetChangeset.object_type_id == object_type_id,
+        )
+    )
+
+    if search:
+        history_elems = history_elems.filter(
+            models.User.username.ilike(f"%{search}%")
+        )
+
+    history_elems = (
+        history_elems
+        .order_by(desc(models.ChangesetChangeset.date))
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
     for elem in history_elems:
         elem.user = db.get(models.User, elem.user_id)
 

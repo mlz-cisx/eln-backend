@@ -21,7 +21,7 @@ from joeseln_backend.services.note import note_version_service
 from joeseln_backend.services.picture import picture_version_service
 
 
-def get_all_labbook_versions(db: Session, labbook_pk, user):
+def get_all_labbook_versions(db: Session, labbook_pk, user, limit=None, offset=None):
     if not check_for_labbook_access(db=db, labbook_pk=labbook_pk, user=user):
         return None
     db_labbook = db.query(models.Labbook).get(labbook_pk)
@@ -32,6 +32,8 @@ def get_all_labbook_versions(db: Session, labbook_pk, user):
         .options(defer(models.Version.version_metadata))
         .filter_by(object_id=labbook_pk)
         .order_by(models.Version.number.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
     # renaming and json.dumps for schema

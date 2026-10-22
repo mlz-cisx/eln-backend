@@ -15,12 +15,14 @@ from joeseln_backend.services.labbookchildelements.labbookchildelement_service i
 from joeseln_backend.services.note import note_service
 
 
-def get_all_note_versions(db: Session, note_pk, user):
+def get_all_note_versions(db: Session, note_pk, user, limit=None, offset=None):
     db_note_versions = (
         db.query(models.Version)
         .options(defer(models.Version.version_metadata))
         .filter_by(object_id=note_pk)
         .order_by(models.Version.number.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
     # renaming and json.dumps for schema

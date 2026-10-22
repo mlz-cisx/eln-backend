@@ -697,6 +697,9 @@ async def update_labbook_elements(
          response_model=list[history_schema.ElemHistory])
 def get_labbook_history(
         labbook_pk: UUID,
+        search: str | None = Query(None),
+        limit: int = Query(None, ge=0),
+        offset: int = Query(None, ge=0),
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
@@ -704,20 +707,24 @@ def get_labbook_history(
     db_labbook = db.query(models.Labbook).get(labbook_pk)
     if db_labbook is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
-    return get_history(db=db, elem_id=labbook_pk, user=user, object_model=models.Labbook)
+    return get_history(db=db, elem_id=labbook_pk, user=user,
+                       object_model=models.Labbook,
+                       search=search, limit=limit, offset=offset)
 
 
 @app.get("/api/labbooks/{labbook_pk}/versions/",
          response_model=list[labbook_schemas.LabbookVersion])
 def get_labbook_versions(
         labbook_pk: UUID,
+        limit: int = Query(None, ge=0),
+        offset: int = Query(None, ge=0),
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     # for all users
     versions = labbook_version_service.get_all_labbook_versions(db=db,
                                                                 labbook_pk=labbook_pk,
-                                                                user=user)
+                                                                user=user, limit=limit, offset=offset)
     if versions is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return versions
@@ -964,22 +971,29 @@ def export_link__note(
          response_model=list[history_schema.ElemHistory])
 def get_note_history(
         note_pk: UUID,
+        search: str | None = Query(None),
+        limit: int = Query(None, ge=0),
+        offset: int = Query(None, ge=0),
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return get_history(db=db, elem_id=note_pk, user=user, object_model=models.Note)
+    return get_history(db=db, elem_id=note_pk, user=user,
+                       object_model=models.Note,
+                       search=search, limit=limit, offset=offset)
 
 
 @app.get("/api/notes/{note_pk}/versions/",
          response_model=list[note_schemas.NoteVersion])
 async def get_note_versions(
         note_pk: UUID,
+        limit: int = Query(None, ge=0),
+        offset: int = Query(None, ge=0),
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     note_versions = note_version_service.get_all_note_versions(db=db,
                                                                note_pk=note_pk,
-                                                               user=user)
+                                                               user=user, limit=limit, offset=offset)
     if note_versions is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return note_versions
@@ -1335,22 +1349,29 @@ def get_canvas_content_picture(
          response_model=list[history_schema.ElemHistory])
 def get_picture_history(
         picture_pk: UUID,
+        search: str | None = Query(None),
+        limit: int = Query(None, ge=0),
+        offset: int = Query(None, ge=0),
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return get_history(db=db, elem_id=picture_pk, user=user, object_model=models.Picture)
+    return get_history(db=db, elem_id=picture_pk, user=user,
+                       object_model=models.Picture,
+                       search=search, limit=limit, offset=offset)
 
 
 @app.get("/api/pictures/{picture_pk}/versions/",
          response_model=list[picture_schemas.PictureVersion])
 def get_picture_versions(
         picture_pk: UUID,
+        limit: int = Query(None, ge=0),
+        offset: int = Query(None, ge=0),
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     picture_versions = picture_version_service.get_all_picture_versions(db=db,
                                                                         picture_pk=picture_pk,
-                                                                        user=user)
+                                                                        user=user, limit=limit, offset=offset)
     if picture_versions is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return picture_versions
@@ -1672,22 +1693,29 @@ def hidden_delete_file(
          response_model=list[history_schema.ElemHistory])
 def get_file_history(
         file_pk: UUID,
+        search: str | None = Query(None),
+        limit: int = Query(None, ge=0),
+        offset: int = Query(None, ge=0),
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
-    return get_history(db=db, elem_id=file_pk, user=user, object_model=models.File)
+    return get_history(db=db, elem_id=file_pk, user=user,
+                       object_model=models.File,
+                       search=search, limit=limit, offset=offset)
 
 
 @app.get("/api/files/{file_pk}/versions/",
          response_model=list[file_schemas.FileVersion])
 def get_file_versions(
         file_pk: UUID,
+        limit: int = Query(None, ge=0),
+        offset: int = Query(None, ge=0),
         db: Session = Depends(get_db),
         user: User = Depends(get_current_user)):
     # logger.info(user)
     file_versions = file_version_service.get_all_file_versions(db=db,
                                                                file_pk=file_pk,
-                                                               user=user)
+                                                               user=user, limit=limit, offset=offset)
     if file_versions is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return file_versions

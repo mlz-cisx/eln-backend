@@ -18,12 +18,14 @@ from joeseln_backend.services.labbookchildelements.labbookchildelement_service i
 from joeseln_backend.services.picture import picture_service
 
 
-def get_all_picture_versions(db: Session, picture_pk, user):
+def get_all_picture_versions(db: Session, picture_pk, user, limit=None, offset=None):
     db_picture_versions = (
         db.query(models.Version)
         .options(defer(models.Version.version_metadata))
         .filter_by(object_id=picture_pk)
         .order_by(models.Version.number.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
     # renaming and json.dumps for schema
