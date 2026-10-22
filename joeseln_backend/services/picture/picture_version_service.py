@@ -85,9 +85,19 @@ def add_picture_version(db: Session, picture_pk, summary, user,
     pic_to_test = db.get(models.Picture, picture_pk)
     if pic_to_test:
         lb_elem = db.get(models.Labbookchildelement, pic_to_test.elem_id)
+        # Require labbook write access to restore.
         if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                    user=user) and check_for_version_edit_access_on_lb_elem(
+                                    user=user) == "Write" and check_for_version_edit_access_on_lb_elem(
             db=db, lb_elem=lb_elem, user=user):
+
+            # strict-mode restores require ownership unless admin.
+            if restored_canvas_content is not None or restored_title is not None:
+                labbook = db.get(models.Labbook, lb_elem.labbook_id)
+                if labbook is None or (
+                    not user.admin and labbook.strict_mode
+                    and user.id != pic_to_test.created_by_id
+                ):
+                    return [None, None]
 
             number = 1
             last_db_picture_version = db.query(models.Version).filter_by(

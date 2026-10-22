@@ -73,9 +73,19 @@ def add_note_version(db: Session, note_pk, summary, user, restored_content=None,
     db_note = db.get(models.Note, note_pk)
     if db_note:
         lb_elem = db.get(models.Labbookchildelement, db_note.elem_id)
+        # Require labbook write access to restore.
         if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                    user=user) and check_for_version_edit_access_on_lb_elem(
+                                    user=user) == "Write" and check_for_version_edit_access_on_lb_elem(
             db=db, lb_elem=lb_elem, user=user):
+            # strict-mode restores require ownership unless admin.
+            if restored_content is not None or restored_subject is not None:
+                labbook = db.get(models.Labbook, lb_elem.labbook_id)
+                if labbook is None or (
+                    not user.admin and labbook.strict_mode
+                    and user.id != db_note.created_by_id
+                ):
+                    return [None, None]
+
             number = 1
             last_db_note_version = db.query(models.Version).filter_by(
                 object_id=note_pk).order_by(

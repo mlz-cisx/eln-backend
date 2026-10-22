@@ -75,9 +75,19 @@ def add_file_version(db: Session, file_pk, summary, user,
     db_file = db.get(models.File, file_pk)
     if db_file:
         lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
+        # Require labbook write access to restore.
         if check_for_labbook_access(db=db, labbook_pk=lb_elem.labbook_id,
-                                    user=user) and check_for_version_edit_access_on_lb_elem(
+                                    user=user) == "Write" and check_for_version_edit_access_on_lb_elem(
             db=db, lb_elem=lb_elem, user=user):
+
+            # strict-mode restores require ownership unless admin.
+            if restored_description is not None or restored_title is not None:
+                labbook = db.get(models.Labbook, lb_elem.labbook_id)
+                if labbook is None or (
+                    not user.admin and labbook.strict_mode
+                    and user.id != db_file.created_by_id
+                ):
+                    return [None, None]
 
             number = 1
             last_db_file_version = db.query(models.Version).filter_by(
