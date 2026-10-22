@@ -1310,7 +1310,7 @@ def update_canvas_content_picture(
                                                    user=user,
                                                    pic_payload=pic_payload)
     if db_pic is None:
-        raise HTTPException(status_code=404, detail="Labbook not found")
+        raise HTTPException(status_code=404, detail="Picture not found")
 
     return db_pic
 

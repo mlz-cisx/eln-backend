@@ -323,10 +323,20 @@ def update_title(db: Session, tsClient: Client, picture_pk, user,
     return None
 
 
-def update_canvas_content(db: Session, tsClient: Client, picture_pk, user,
-                          pic_payload: PictureUpload):
+def update_canvas_content(
+        db: Session,
+        tsClient: Client,
+        picture_pk,
+        user,
+        pic_payload: PictureUpload):
+    canvas_content = pic_payload.canvas_content or ""
+
+    if len(canvas_content.encode("utf-8")) > (
+            base_conf.ELEM_MAXIMUM_SIZE << 10):
+        raise HTTPException(status_code=204, detail="Content exceeded")
+
     db_picture = db.get(models.Picture, picture_pk)
-    db_picture.canvas_content = pic_payload.canvas_content
+    db_picture.canvas_content = canvas_content
     db_picture.last_modified_at = datetime.datetime.now()
     db_picture.last_modified_by_id = user.id
 
@@ -336,46 +346,65 @@ def update_canvas_content(db: Session, tsClient: Client, picture_pk, user,
     lb_to_update.last_modified_at = datetime.datetime.now()
     lb_to_update.last_modified_by_id = user.id
 
-    # store texts into typesense for searching
-    objects = json.loads(pic_payload.canvas_content)['objects']
-    texts = ' '.join([obj.get('text') for obj in objects if 'text' in obj])
-    update_pic_typesense(db_picture, texts, tsClient)
-
     if not user.admin and lb_to_update.strict_mode \
             and user.id != db_picture.created_by_id:
         return None
 
     # picture can be edited by every user if not in strict mode
-    if check_for_labbook_access(db=db,
-                                labbook_pk=lb_elem.labbook_id,
-                                user=user):
+    if check_for_labbook_access(
+            db=db,
+            labbook_pk=lb_elem.labbook_id,
+            user=user):
 
         try:
             db.commit()
         except SQLAlchemyError as e:
             logger.error(e)
             db.close()
-            return
+            return None
+
+        # store texts into typesense for searching
+        try:
+            objects = json.loads(canvas_content).get('objects', [])
+            texts = ' '.join(
+                obj.get('text', '')
+                for obj in objects
+                if 'text' in obj
+            )
+            update_pic_typesense(db_picture, texts, tsClient)
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.error(e)
 
         db.refresh(db_picture)
         db_user_created = db.get(models.User, db_picture.created_by_id)
         db_picture.created_by = db_user_created
         db_picture.last_modified_by = user
+
         db.close()
-        transmit({'model_name': 'picture_content', 'origin': pic_payload.origin,
-                  'model_pk': str(picture_pk)})
+
+        transmit({
+            'model_name': 'picture_content',
+            'origin': pic_payload.origin,
+            'model_pk': str(picture_pk),
+        })
+
         pic = build_download_url_with_token(
-            picture=deepcopy(db_picture), user=user)
+            picture=deepcopy(db_picture),
+            user=user,
+        )
 
         changerecords = [['canvas_content', '...', '...']]
+
         # changeset_types:
-        # U : edited/updated, R : restored, S: trashed , I initialized/created
-        create_history_entry(db=db,
-                             elem_id=picture_pk,
-                             user=user,
-                             object_type_id=40,
-                             changeset_type='U',
-                             changerecords=changerecords)
+        # U : edited/updated, R : restored, S: trashed, I : initialized/created
+        create_history_entry(
+            db=db,
+            elem_id=picture_pk,
+            user=user,
+            object_type_id=40,
+            changeset_type='U',
+            changerecords=changerecords,
+        )
 
         return pic
 

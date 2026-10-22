@@ -5,6 +5,8 @@ import tempfile
 import uuid
 
 from joeseln_backend.conf.base_conf import ELEM_MAXIMUM_SIZE
+from joeseln_backend.conf.content_types import picture_content_type, \
+    picture_content_type_model
 from joeseln_backend.main import app
 from joeseln_backend.models import models
 from test.conftest import (
@@ -55,6 +57,24 @@ def _upload_picture_background(client, title="testpic",
         "/api/pictures/",
         data=data,
         files={"background_image": (img_name, img_content, "image/png")},
+    )
+
+
+# -------------------------------------------------------------------
+# Picture helper — update canvas content
+# -------------------------------------------------------------------
+def _update_picture_canvas_content(
+        client,
+        picture_pk,
+        canvas_content='{"objects":[]}',
+        origin=None,
+):
+    return client.patch(
+        f"/api/pictures/{picture_pk}/canvas_content/",
+        json={
+            "canvas_content": canvas_content,
+            "origin": str(origin or picture_pk),
+        },
     )
 
 
@@ -262,3 +282,157 @@ def test_upload_picture_rejected_for_size_limit(client, as_admin, monkeypatch):
     resp = _upload_picture_background(client, img_content=content,
                                       labbook_pk=labbook_pk)
     assert resp.status_code != 200
+
+
+def test_update_picture_canvas_content(
+        client,
+        as_admin,
+        monkeypatch,
+):
+    temp_dir = _temp_picture_storage(monkeypatch)
+
+    labbook_pk = _create_labbook(client)
+    _assign_users_to_labbook_group(labbook_pk)
+
+    picture_resp = _upload_picture_background(
+        client,
+        labbook_pk=labbook_pk,
+    )
+    assert picture_resp.status_code == 200
+
+    picture_pk = picture_resp.json()["pk"]
+
+    lb_data = {
+        "position_x": 0,
+        "position_y": 0,
+        "width": 15,
+        "height": 15,
+        "child_object_id": picture_pk,
+        "child_object_content_type": picture_content_type,
+        "child_object_content_type_model": picture_content_type_model,
+    }
+
+    r = client.post(
+        f"/api/labbooks/{labbook_pk}/elements/",
+        json=lb_data,
+    )
+    assert r.status_code == 200
+
+    resp = _update_picture_canvas_content(
+        client,
+        picture_pk,
+        canvas_content='{"objects":[{"text":"hello world"}]}',
+    )
+
+    assert resp.status_code == 200
+
+    shutil.rmtree(temp_dir)
+
+
+def test_update_picture_canvas_content_rejected_for_size_limit(
+        client,
+        as_admin,
+        monkeypatch,
+):
+    temp_dir = _temp_picture_storage(monkeypatch)
+
+    labbook_pk = _create_labbook(client)
+    _assign_users_to_labbook_group(labbook_pk)
+
+    picture_resp = _upload_picture_background(
+        client,
+        labbook_pk=labbook_pk,
+    )
+    assert picture_resp.status_code == 200
+
+    picture_pk = picture_resp.json()["pk"]
+
+    lb_data = {
+        "position_x": 0,
+        "position_y": 0,
+        "width": 15,
+        "height": 15,
+        "child_object_id": picture_pk,
+        "child_object_content_type": picture_content_type,
+        "child_object_content_type_model": picture_content_type_model,
+    }
+
+    r = client.post(
+        f"/api/labbooks/{labbook_pk}/elements/",
+        json=lb_data,
+    )
+    assert r.status_code == 200
+
+    too_big = (ELEM_MAXIMUM_SIZE << 10) + 1
+    canvas_content = "x" * too_big
+
+    resp = _update_picture_canvas_content(
+        client,
+        picture_pk,
+        canvas_content=canvas_content,
+    )
+
+    assert resp.status_code == 204
+    assert resp.content == b""
+
+    shutil.rmtree(temp_dir)
+
+
+def test_update_picture_canvas_content_denied_in_strict_mode(
+        client,
+        as_admin,
+        monkeypatch,
+):
+    temp_dir = _temp_picture_storage(monkeypatch)
+
+    labbook_pk = _create_labbook(client)
+    _assign_users_to_labbook_group(labbook_pk)
+
+    # Enable strict mode
+    resp = client.patch(
+        f"/api/labbooks/{labbook_pk}/",
+        json={
+            "title": "Some other title for test strict mode",
+            "strict_mode": True,
+        },
+    )
+    assert resp.status_code == 200
+
+    picture_resp = _upload_picture_background(
+        client,
+        labbook_pk=labbook_pk,
+    )
+    assert picture_resp.status_code == 200
+
+    picture_pk = picture_resp.json()["pk"]
+
+    lb_data = {
+        "position_x": 0,
+        "position_y": 0,
+        "width": 15,
+        "height": 15,
+        "child_object_id": picture_pk,
+        "child_object_content_type": picture_content_type,
+        "child_object_content_type_model": picture_content_type_model,
+    }
+
+    r = client.post(
+        f"/api/labbooks/{labbook_pk}/elements/",
+        json=lb_data,
+    )
+    assert r.status_code == 200
+
+    app.dependency_overrides[
+        get_current_user
+    ] = mock_get_current_user_groupuser
+
+    resp = _update_picture_canvas_content(
+        client,
+        picture_pk,
+        canvas_content='{"objects":[{"text":"forbidden"}]}',
+    )
+
+    assert resp.status_code == 404
+    assert resp.json() == {"detail": "Picture not found"}
+
+    shutil.rmtree(temp_dir)
