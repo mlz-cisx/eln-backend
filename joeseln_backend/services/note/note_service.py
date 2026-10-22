@@ -394,7 +394,8 @@ def create_note(db: Session, note: NoteCreate, user, typesense: Client):
                                 user=user) != 'Write':
         raise HTTPException(status_code=403)
 
-    if sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10:
+    if (sys.getsizeof(note.subject) > ELEM_MAXIMUM_SIZE << 10
+            or sys.getsizeof(note.content) > ELEM_MAXIMUM_SIZE << 10):
         return
 
     note.content = sanitize_html(note.content)
@@ -473,7 +474,8 @@ def update_note(
         if new_content is not None:
             new_content = sanitize_html(new_content)
 
-    if sys.getsizeof(new_content or "") > (ELEM_MAXIMUM_SIZE << 10):
+    if (sys.getsizeof(new_subject or "") > (ELEM_MAXIMUM_SIZE << 10)
+            or sys.getsizeof(new_content or "") > (ELEM_MAXIMUM_SIZE << 10)):
         return None
 
     db_user_created = db.get(

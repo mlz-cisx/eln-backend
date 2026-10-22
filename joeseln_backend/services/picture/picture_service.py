@@ -238,6 +238,9 @@ def get_canvas_content(db: Session, picture_pk, user):
 
 def update_title(db: Session, tsClient: Client, picture_pk, user,
                  pic_payload: UpdatePictureTitle):
+    if sys.getsizeof(pic_payload.title) > base_conf.ELEM_MAXIMUM_SIZE << 10:
+        return None
+
     db_picture = db.get(models.Picture, picture_pk)
 
     old_title = db_picture.title
@@ -628,6 +631,9 @@ def get_lb_pk_from_picture(db: Session, picture_pk):
 
 def create_picture(db: Session, title: str, display: str,
                    user, size: int = 0, canvas_content: str = None):
+    if sys.getsizeof(title) > base_conf.ELEM_MAXIMUM_SIZE << 10:
+        return None
+
     canvas_content = '{"version":"6.9.0","objects":[],"background":"#F8F8FF"}' \
         if canvas_content is None else canvas_content
     if size > base_conf.ELEM_MAXIMUM_SIZE << 10 or sys.getsizeof(

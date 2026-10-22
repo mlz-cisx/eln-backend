@@ -623,7 +623,8 @@ def create_labbook(db: Session, labbook: LabbookCreate, user):
     db_labbook = None
     labbook.title = labbook.title.strip()
     if user.admin and is_clean_title(labbook.title):
-        if sys.getsizeof(labbook.description) > ELEM_MAXIMUM_SIZE << 10:
+        if (sys.getsizeof(labbook.title) > ELEM_MAXIMUM_SIZE << 10
+                or sys.getsizeof(labbook.description) > ELEM_MAXIMUM_SIZE << 10):
             return None
 
         labbook.description = sanitize_html(labbook.description)
@@ -754,6 +755,9 @@ def get_labbook_with_privileges(db: Session, labbook_pk, user):
 
 
 def patch_labbook(db: Session, labbook_pk, labbook: LabbookPatch, user):
+    if labbook.title and sys.getsizeof(labbook.title) > ELEM_MAXIMUM_SIZE << 10:
+        return None
+
     db_labbook = db.get(models.Labbook,labbook_pk)
     if db_labbook is None:
         return None

@@ -429,6 +429,7 @@ def create_file(
 ):
     if (
         file_size > ELEM_MAXIMUM_SIZE << 10
+        or sys.getsizeof(title) > ELEM_MAXIMUM_SIZE << 10
         or sys.getsizeof(description) > ELEM_MAXIMUM_SIZE << 10
     ):
         return
