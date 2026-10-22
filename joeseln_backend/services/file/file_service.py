@@ -489,17 +489,63 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
 
     updates = elem.model_dump(exclude_unset=True)
 
+    new_title = db_file.title
+    new_description = db_file.description
+
+    if "title" in updates:
+        new_title = updates["title"]
+
+    if "description" in updates:
+        new_description = updates["description"]
+        if new_description is not None:
+            new_description = sanitize_html(new_description)
+
+    title_size = sys.getsizeof(new_title or "")
+    description_size = sys.getsizeof(new_description or "")
+
+    if (title_size + description_size) > (ELEM_MAXIMUM_SIZE << 10):
+        return None
+
+    lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
+
+    lb_to_update = db.get(
+        models.Labbook,
+        lb_elem.labbook_id
+    )
+
+    # Permission checks before any mutations
+    if not user.admin:
+        if check_for_admin_role_with_user_id(
+                db=db,
+                user_id=db_file.created_by_id):
+            return None
+
+        if (lb_to_update.strict_mode and
+                user.id != db_file.created_by_id):
+            return None
+
+        if check_for_guest_role(
+                db=db,
+                labbook_pk=lb_elem.labbook_id,
+                user=user):
+            return None
+
+        labbook_ids = get_all_labbook_ids_from_non_admin_user(
+            db=db,
+            user=user
+        )
+
+        if lb_elem.labbook_id not in labbook_ids:
+            return None
+
     changerecords = []
 
-    # Collect changes
-    for field in ("title", "description"):
+    for field, new_value in (
+            ("title", new_title),
+            ("description", new_description),
+    ):
         if field not in updates:
             continue
-
-        new_value = updates[field]
-
-        if field == "description" and new_value is not None:
-            new_value = sanitize_html(new_value)
 
         old_value = getattr(db_file, field)
 
@@ -507,125 +553,62 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
             changerecords.append([field, old_value, new_value])
             setattr(db_file, field, new_value)
 
-    # Size check only for values that will be stored
-    title_size = sys.getsizeof(db_file.title or "")
-    description_size = sys.getsizeof(db_file.description or "")
-
-    if (title_size + description_size) > (ELEM_MAXIMUM_SIZE << 10):
-        return None
+    if not changerecords:
+        return db_file
 
     now = datetime.datetime.now()
 
     db_file.last_modified_at = now
     db_file.last_modified_by_id = user.id
 
-    lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)
     lb_elem.last_modified_at = now
     lb_elem.last_modified_by_id = user.id
 
-    lb_to_update = db.get(models.Labbook, lb_elem.labbook_id)
     lb_to_update.last_modified_at = now
     lb_to_update.last_modified_by_id = user.id
 
-    # First possibility: admin edits anything
-    if user.admin:
-        if not changerecords:
-            return db_file
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
 
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
+        db_user_created = db.get(
+            models.User,
+            db_file.created_by_id
+        )
 
-            db_user_created = db.get(models.User, db_file.created_by_id)
-            db_file.created_by = db_user_created
-            db_file.last_modified_by = user
-
-            db.close()
-            return db_file
-
-        db.refresh(db_file)
-
-        transmit({
-            'model_name': 'file',
-            'model_pk': str(file_pk)
-        })
-
-        db_user_created = db.get(models.User, db_file.created_by_id)
         db_file.created_by = db_user_created
         db_file.last_modified_by = user
 
-        create_file_update_history_entry(
-            db=db,
-            elem_id=db_file.id,
-            user=user,
-            object_type_id=50,
-            changeset_type='U',
-            changerecords=changerecords
-        )
+        db.close()
 
         return db_file
 
-    # Second possibility: file was created by admin
-    if check_for_admin_role_with_user_id(
-            db=db,
-            user_id=db_file.created_by_id):
-        return None
+    db.refresh(db_file)
 
-    if lb_to_update.strict_mode and user.id != db_file.created_by_id:
-        return None
+    transmit({
+        'model_name': 'file',
+        'model_pk': str(file_pk)
+    })
 
-    if check_for_guest_role(
-            db=db,
-            labbook_pk=lb_elem.labbook_id,
-            user=user):
-        return None
-
-    labbook_ids = get_all_labbook_ids_from_non_admin_user(
-        db=db,
-        user=user
+    db_user_created = db.get(
+        models.User,
+        db_file.created_by_id
     )
 
-    # Third possibility: file created by non-admin
-    if lb_elem.labbook_id in labbook_ids:
-        if not changerecords:
-            return db_file
+    db_file.created_by = db_user_created
+    db_file.last_modified_by = user
 
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
+    create_file_update_history_entry(
+        db=db,
+        elem_id=db_file.id,
+        user=user,
+        object_type_id=50,
+        changeset_type='U',
+        changerecords=changerecords
+    )
 
-            db_user_created = db.get(models.User, db_file.created_by_id)
-            db_file.created_by = db_user_created
-            db_file.last_modified_by = user
-
-            db.close()
-            return db_file
-
-        create_file_update_history_entry(
-            db=db,
-            elem_id=db_file.id,
-            user=user,
-            object_type_id=50,
-            changeset_type='U',
-            changerecords=changerecords
-        )
-
-        db.refresh(db_file)
-
-        transmit({
-            'model_name': 'file',
-            'model_pk': str(file_pk)
-        })
-
-        db_user_created = db.get(models.User, db_file.created_by_id)
-        db_file.created_by = db_user_created
-        db_file.last_modified_by = user
-
-        return db_file
-
-    return None
+    return db_file
 
 
 def process_file_upload_form(form, db, contents, user):

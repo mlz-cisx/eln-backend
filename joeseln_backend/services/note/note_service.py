@@ -454,6 +454,7 @@ def update_note(
         note: NotePatch,
         user,
         typesense: Client):
+
     note_to_update = db.get(models.Note, note_pk)
 
     if note_to_update is None:
@@ -461,31 +462,19 @@ def update_note(
 
     updates = note.model_dump(exclude_unset=True)
 
-    changerecords = []
+    new_subject = note_to_update.subject
+    new_content = note_to_update.content
 
-    for field in ("subject", "content"):
-        if field not in updates:
-            continue
+    if "subject" in updates:
+        new_subject = updates["subject"]
 
-        new_value = updates[field]
+    if "content" in updates:
+        new_content = updates["content"]
+        if new_content is not None:
+            new_content = sanitize_html(new_content)
 
-        if field == "content" and new_value is not None:
-            new_value = sanitize_html(new_value)
-
-        old_value = getattr(note_to_update, field)
-
-        if old_value != new_value:
-            changerecords.append([field, old_value, new_value])
-            setattr(note_to_update, field, new_value)
-
-    if sys.getsizeof(note_to_update.content or "") > (
-            ELEM_MAXIMUM_SIZE << 10):
+    if sys.getsizeof(new_content or "") > (ELEM_MAXIMUM_SIZE << 10):
         return None
-
-    now = datetime.datetime.now()
-
-    note_to_update.last_modified_at = now
-    note_to_update.last_modified_by_id = user.id
 
     db_user_created = db.get(
         models.User,
@@ -496,108 +485,95 @@ def update_note(
         models.Labbookchildelement,
         note_to_update.elem_id
     )
-    lb_elem.last_modified_at = now
-    lb_elem.last_modified_by_id = user.id
 
     lb_to_update = db.get(
         models.Labbook,
         lb_elem.labbook_id
     )
+
+    # Permission checks before any mutations
+    if not user.admin:
+        if check_for_admin_role_with_user_id(
+                db=db,
+                user_id=note_to_update.created_by_id):
+            return None
+
+        if (lb_to_update.strict_mode and
+                user.id != note_to_update.created_by_id):
+            return None
+
+        if check_for_guest_role(
+                db=db,
+                labbook_pk=lb_elem.labbook_id,
+                user=user):
+            return None
+
+        labbook_ids = get_all_labbook_ids_from_non_admin_user(
+            db=db,
+            user=user
+        )
+
+        if lb_elem.labbook_id not in labbook_ids:
+            return None
+
+    changerecords = []
+
+    for field, new_value in (
+            ("subject", new_subject),
+            ("content", new_content),
+    ):
+        if field not in updates:
+            continue
+
+        old_value = getattr(note_to_update, field)
+
+        if old_value != new_value:
+            changerecords.append([field, old_value, new_value])
+            setattr(note_to_update, field, new_value)
+
+    if not changerecords:
+        return note_to_update
+
+    now = datetime.datetime.now()
+
+    note_to_update.last_modified_at = now
+    note_to_update.last_modified_by_id = user.id
+
+    lb_elem.last_modified_at = now
+    lb_elem.last_modified_by_id = user.id
+
     lb_to_update.last_modified_at = now
     lb_to_update.last_modified_by_id = user.id
 
-    # First possibility: admin edits note
-    if user.admin:
-        if not changerecords:
-            return note_to_update
+    try:
+        db.commit()
+    except SQLAlchemyError as e:
+        logger.error(e)
 
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
-
-            db.close()
-
-            note_to_update.created_by = db_user_created
-            note_to_update.last_modified_by = user
-
-            return note_to_update
-
-        db.refresh(note_to_update)
+        db.close()
 
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
 
-        create_note_update_history_entry(
-            db=db,
-            elem_id=note_pk,
-            user=user,
-            object_type_id=30,
-            changeset_type='U',
-            changerecords=changerecords
-        )
-
-        update_note_typesense(note_to_update, typesense)
-
         return note_to_update
 
-    # Second possibility: note was created by admin
-    if check_for_admin_role_with_user_id(
-            db=db,
-            user_id=note_to_update.created_by_id):
-        return None
+    db.refresh(note_to_update)
 
-    if (lb_to_update.strict_mode and
-            user.id != note_to_update.created_by_id):
-        return None
+    note_to_update.created_by = db_user_created
+    note_to_update.last_modified_by = user
 
-    if check_for_guest_role(
-            db=db,
-            labbook_pk=lb_elem.labbook_id,
-            user=user):
-        return None
-
-    labbook_ids = get_all_labbook_ids_from_non_admin_user(
+    create_note_update_history_entry(
         db=db,
-        user=user
+        elem_id=note_pk,
+        user=user,
+        object_type_id=30,
+        changeset_type='U',
+        changerecords=changerecords
     )
 
-    # Third possibility: note created by non-admin
-    if lb_elem.labbook_id in labbook_ids:
-        if not changerecords:
-            return note_to_update
+    update_note_typesense(note_to_update, typesense)
 
-        try:
-            db.commit()
-        except SQLAlchemyError as e:
-            logger.error(e)
-
-            db.close()
-
-            note_to_update.created_by = db_user_created
-            note_to_update.last_modified_by = user
-
-            return note_to_update
-
-        db.refresh(note_to_update)
-
-        note_to_update.created_by = db_user_created
-        note_to_update.last_modified_by = user
-
-        create_note_update_history_entry(
-            db=db,
-            elem_id=note_pk,
-            user=user,
-            object_type_id=30,
-            changeset_type='U',
-            changerecords=changerecords
-        )
-
-        update_note_typesense(note_to_update, typesense)
-
-        return note_to_update
-
-    return None
+    return note_to_update
 
 
 # needs to be heavily factorized
