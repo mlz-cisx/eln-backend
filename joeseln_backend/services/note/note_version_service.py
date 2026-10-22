@@ -49,14 +49,20 @@ def get_note_version_metadata(db: Session, note_pk, version_pk, user):
                                             labbook_pk=lb_elem.labbook_id,
                                             user=user) and check_for_version_edit_access_on_lb_elem(
         db=db, lb_elem=lb_elem, user=user):
-        db_note_version = db.get(models.Version, version_pk)
+        db_note_version = db.query(models.Version).filter_by(
+            id=version_pk, object_id=note_pk).first()
+        if db_note_version is None:
+            return None
         # renaming and json.dumps for schema
         return db_note_version.version_metadata
     return None
 
 
 def restore_note_version(db: Session, note_pk, version_pk, user):
-    db_note_version = db.get(models.Version, version_pk)
+    db_note_version = db.query(models.Version).filter_by(
+        id=version_pk, object_id=note_pk).first()
+    if db_note_version is None:
+        return None
     summary = f'restored from v{db_note_version.number}'
     version_metadata = db_note_version.version_metadata
     content = version_metadata['content']

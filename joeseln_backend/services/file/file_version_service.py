@@ -50,14 +50,20 @@ def get_file_version_metadata(db: Session, file_pk, version_pk, user):
                                             labbook_pk=lb_elem.labbook_id,
                                             user=user) and check_for_version_edit_access_on_lb_elem(
         db=db, lb_elem=lb_elem, user=user):
-        db_file_version = db.get(models.Version, version_pk)
+        db_file_version = db.query(models.Version).filter_by(
+            id=version_pk, object_id=file_pk).first()
+        if db_file_version is None:
+            return None
         # renaming and json.dumps for schema
         return db_file_version.version_metadata
     return None
 
 
 def restore_file_version(db: Session, file_pk, version_pk, user):
-    db_file_version = db.get(models.Version, version_pk)
+    db_file_version = db.query(models.Version).filter_by(
+        id=version_pk, object_id=file_pk).first()
+    if db_file_version is None:
+        return None
     summary = f'restored from v{db_file_version.number}'
     version_metadata = db_file_version.version_metadata
     description = version_metadata['description']

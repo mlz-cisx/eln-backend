@@ -52,7 +52,8 @@ def get_labbook_version_metadata(db: Session, labbook_pk, version_pk, user):
     if not check_for_labbook_admin_access(db=db, labbook_pk=labbook_pk,
                                           user=user):
         return None
-    db_labbook_version = db.get(models.Version, version_pk)
+    db_labbook_version = db.query(models.Version).filter_by(
+        id=version_pk, object_id=labbook_pk).first()
     if db_labbook_version is None:
         return None
     # renaming and json.dumps for schema
@@ -64,7 +65,8 @@ def restore_labbook_version(db: Session, labbook_pk, version_pk, user):
                                           user=user):
         return None
 
-    db_labbook_version = db.get(models.Version, version_pk)
+    db_labbook_version = db.query(models.Version).filter_by(
+        id=version_pk, object_id=labbook_pk).first()
     if db_labbook_version is None:
         return None
     version_metadata = db_labbook_version.version_metadata

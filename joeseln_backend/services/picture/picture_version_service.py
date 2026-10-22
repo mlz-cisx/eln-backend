@@ -54,14 +54,20 @@ def get_picture_version_metadata(db: Session, picture_pk, version_pk, user):
                                             labbook_pk=lb_elem.labbook_id,
                                             user=user) and check_for_version_edit_access_on_lb_elem(
         db=db, lb_elem=lb_elem, user=user):
-        db_picture_version = db.get(models.Version, version_pk)
+        db_picture_version = db.query(models.Version).filter_by(
+            id=version_pk, object_id=picture_pk).first()
+        if db_picture_version is None:
+            return None
         # renaming and json.dumps for schema
         return db_picture_version.version_metadata
     return None
 
 
 def restore_picture_version(db: Session, picture_pk, version_pk, user):
-    db_picture_version = db.get(models.Version, version_pk)
+    db_picture_version = db.query(models.Version).filter_by(
+        id=version_pk, object_id=picture_pk).first()
+    if db_picture_version is None:
+        return None
     summary = f'restored from v{db_picture_version.number}'
     version_metadata = db_picture_version.version_metadata
     title = version_metadata['title']
