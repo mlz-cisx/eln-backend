@@ -524,7 +524,7 @@ def patch_lb_childelement_height(db: Session, labbook_pk,
                                 user=user) != "Write":
         return None
     lb_elem = db.get(models.Labbookchildelement, element_pk)
-    if lb_elem is None:
+    if lb_elem is None or lb_elem.labbook_id != labbook_pk:
         return None
     lb_elem.height = labbook_childelem.height
     try:
