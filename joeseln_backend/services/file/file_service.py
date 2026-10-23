@@ -27,6 +27,7 @@ from joeseln_backend.conf.base_conf import (
     LABBOOK_QUERY_MODE,
     URL_BASE_PATH
 )
+from joeseln_backend.conf.content_types import file_content_type
 from joeseln_backend.full_text_search.html_stripper import sanitize_html
 from joeseln_backend.full_text_search.typesense_service import (
     get_typesense_client,
@@ -372,6 +373,8 @@ def delete_file_relation(db: Session, file_pk, relation_pk, user):
     # comment can only be deteled by its creator or groupadmins
     if (
         db_relation
+        and db_relation.right_object_id == file_pk
+        and db_relation.right_content_type == file_content_type
         and lb_elem
         and (
             db_relation.created_by_id == user.id

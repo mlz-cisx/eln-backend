@@ -25,6 +25,7 @@ from joeseln_backend.conf.base_conf import (
     LABBOOK_QUERY_MODE,
     URL_BASE_PATH,
 )
+from joeseln_backend.conf.content_types import picture_content_type
 from joeseln_backend.full_text_search.typesense_service import (
     update_delete_status_typesense,
 )
@@ -551,6 +552,8 @@ def delete_picture_relation(db: Session, picture_pk, relation_pk, user):
     # comment can only be deteled by its creator or groupadmins
     if (
         db_relation
+        and db_relation.right_object_id == picture_pk
+        and db_relation.right_content_type == picture_content_type
         and lb_elem
         and (
             db_relation.created_by_id == user.id

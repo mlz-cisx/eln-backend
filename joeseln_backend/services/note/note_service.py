@@ -15,6 +15,7 @@ from joeseln_backend.conf.base_conf import (
     LABBOOK_QUERY_MODE,
     URL_BASE_PATH,
 )
+from joeseln_backend.conf.content_types import note_content_type
 from joeseln_backend.full_text_search.html_stripper import (
     sanitize_html,
     strip_html_and_binary,
@@ -340,6 +341,8 @@ def delete_note_relation(db: Session, note_pk, relation_pk, user):
     # comment can only be deteled by its creator or groupadmins
     if (
         db_relation
+        and db_relation.right_object_id == note_pk
+        and db_relation.right_content_type == note_content_type
         and lb_elem
         and (
             db_relation.created_by_id == user.id
