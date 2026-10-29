@@ -1,5 +1,7 @@
 import datetime
+import re
 
+from bs4 import BeautifulSoup
 from fastapi import HTTPException
 from sqlalchemy import desc
 from sqlalchemy.exc import SQLAlchemyError
@@ -16,6 +18,33 @@ from joeseln_backend.conf.content_types import (
 from joeseln_backend.helper.debouncer import debounce
 from joeseln_backend.models import models
 from joeseln_backend.mylogging.root_logger import logger
+
+
+def strip_binary_for_history(content: str) -> str:
+    """Replace embedded images with a marker and remove other binary data."""
+    binary_uri = re.compile(r"data:[a-zA-Z0-9]+/[a-zA-Z0-9.+-]+;base64,", re.I)
+    if not binary_uri.search(content):
+        return content
+
+    soup = BeautifulSoup(content, "html.parser")
+    for tag in reversed(soup.find_all(True)):
+        if any(
+            binary_uri.search(value)
+            for values in tag.attrs.values()
+            for value in (values if isinstance(values, list) else [values])
+            if isinstance(value, str)
+        ):
+            if tag.name == "img":
+                tag.replace_with("[image]")
+            else:
+                tag.decompose()
+
+    return re.sub(
+        r"data:[a-zA-Z0-9]+/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+",
+        "",
+        soup.decode_contents(),
+        flags=re.I,
+    )
 
 
 def create_history_entry(db: Session, elem_id, user, object_type_id,
@@ -44,8 +73,10 @@ def create_history_entry(db: Session, elem_id, user, object_type_id,
     for changerecord in changerecords:
         db_changerecord = models.ChangesetChangerecord(
             field_name=changerecord[0],
-            old_value=changerecord[1],
-            new_value=changerecord[2],
+            old_value=(strip_binary_for_history(changerecord[1])
+                       if isinstance(changerecord[1], str) else changerecord[1]),
+            new_value=(strip_binary_for_history(changerecord[2])
+                       if isinstance(changerecord[2], str) else changerecord[2]),
             is_related=False,
             change_set_id=db_changeset.id
         )
