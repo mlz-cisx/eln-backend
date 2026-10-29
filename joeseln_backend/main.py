@@ -49,6 +49,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 
+from joeseln_backend.export.pdf_options import PdfOptions
+
 from joeseln_backend.auth.security import (
     JWT_ACCESS_TOKEN_EXPIRE_SECONDS,
     JWT_LEEWAY,
@@ -431,6 +433,7 @@ async def export_labbook_content(
         user=user,
         export_identifier=export_identifier,
         export_filter=export_filter,
+        pdf_options=PdfOptions(),
         lb_pk=labbook_pk,
         background_tasks=background_tasks,
     )
@@ -948,7 +951,7 @@ async def export_note_content(
     db: Session = Depends(get_db),
 ):
     # logger.info(user)
-    dwldable_note = await  export_note.get_export_data(db=db, note_pk=note_pk, jwt=jwt)
+    dwldable_note = await  export_note.get_export_data(db=db, note_pk=note_pk, jwt=jwt, pdf_options=PdfOptions())
     if dwldable_note is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_note
@@ -1208,7 +1211,7 @@ async def export_picture_content(
     db: Session = Depends(get_db),
 ):
     # logger.info(user)
-    dwldable_pic = await export_picture.get_export_data(db=db, picture_pk=picture_pk, jwt=jwt)
+    dwldable_pic = await export_picture.get_export_data(db=db, picture_pk=picture_pk, jwt=jwt, pdf_options=PdfOptions())
     if dwldable_pic is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
     return dwldable_pic
@@ -1622,7 +1625,7 @@ def export_file_content(
     # logger.info(user)
     dwldable_file = export_file.get_export_data(db=db, file_pk=file_pk,
                                                 jwt=request.query_params._dict
-                                                ['jwt'])
+                                                ['jwt'], pdf_options=PdfOptions())
     if dwldable_file is None:
         raise HTTPException(status_code=404, detail="Labbook not found")
 

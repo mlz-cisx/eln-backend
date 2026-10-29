@@ -11,6 +11,8 @@ from datetime import timezone
 from functools import wraps
 from io import BytesIO
 
+from joeseln_backend.export.pdf_options import PdfOptions, add_page_numbers
+
 from cachetools import Cache
 from fastapi import BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
@@ -90,7 +92,9 @@ async def get_export_data(
     export_identifier: str,
     export_filter: ExportFilter,
     background_tasks: BackgroundTasks,
+    pdf_options: PdfOptions | None = None,
 ):
+    pdf_options = pdf_options or PdfOptions()
     if not check_for_labbook_access(db=db, labbook_pk=lb_pk, user=user):
         pending_export[export_identifier] = "err"
         return None
@@ -103,6 +107,7 @@ async def get_export_data(
     template = env.get_template("labbook.jinja2")
 
     lb = get_labbook_for_export(db=db, labbook_pk=lb_pk)
+    pdf_options = pdf_options.model_copy(update={"header": f"Labbook: {lb.title or ''}"})
     elems = get_lb_childelements_for_export(
         db=db, labbook_pk=lb_pk, access_token="", user=user, as_export=True
     )
@@ -254,7 +259,7 @@ async def get_export_data(
 
                 await wait_for_mathjax(page)
 
-                pdf_bytes = await page.pdf(format="A4")
+                pdf_bytes = await page.pdf(**pdf_options.render_options())
                 tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
                 tmp.write(pdf_bytes)
                 tmp.close()
@@ -290,6 +295,8 @@ async def get_export_data(
         reader = PdfReader(item["pdf_path"])
         for p in reader.pages:
             writer.add_page(p)
+
+    add_page_numbers(writer, pdf_options)
 
     with open(merged_tmp.name, "wb") as f:
         writer.write(f)

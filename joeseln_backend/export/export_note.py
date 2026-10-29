@@ -1,5 +1,7 @@
 import os
 
+from joeseln_backend.export.pdf_options import PdfOptions, finish_pdf
+
 from fastapi.responses import Response
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import async_playwright
@@ -32,7 +34,8 @@ async def wait_for_mathjax(page):
     )
 
 
-async def get_export_data(db, note_pk, jwt):
+async def get_export_data(db, note_pk, jwt, pdf_options: PdfOptions | None = None):
+    pdf_options = pdf_options or PdfOptions()
     user = get_user_from_jwt(db=db, token=jwt, resource_uuid=note_pk)
     if user is None:
         return
@@ -46,6 +49,7 @@ async def get_export_data(db, note_pk, jwt):
     template = env.get_template('note.jinja2')
 
     db_note = get_note(db=db, note_pk=note_pk)
+    pdf_options = pdf_options.model_copy(update={"header": f"Note: {db_note.subject or ''}"})
     db_note_relations = get_note_relations(db=db, note_pk=note_pk,
                                            params=None,
                                            user=user)
@@ -60,11 +64,11 @@ async def get_export_data(db, note_pk, jwt):
         # render final pdf with mathjax support
         await page.set_content(html)
         await wait_for_mathjax(page)
-        pdf_buffer = await page.pdf(format="A4")
+        pdf_buffer = await page.pdf(**pdf_options.render_options())
         await browser.close()
 
     return Response(
-        content=pdf_buffer,
+        content=finish_pdf(pdf_buffer, pdf_options),
         media_type="application/pdf",
         headers={"Content-Disposition": "inline; filename=mathjax_output.pdf"}
     )

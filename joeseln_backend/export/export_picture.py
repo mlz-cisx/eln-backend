@@ -1,6 +1,8 @@
 import base64
 import os
 
+from joeseln_backend.export.pdf_options import PdfOptions, finish_pdf
+
 from fastapi.responses import Response
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import async_playwright
@@ -23,7 +25,8 @@ def get_base64_image(image_path):
     return encoded
 
 
-async def get_export_data(db, picture_pk, jwt):
+async def get_export_data(db, picture_pk, jwt, pdf_options: PdfOptions | None = None):
+    pdf_options = pdf_options or PdfOptions()
     user = get_user_from_jwt(db=db, token=jwt, resource_uuid=picture_pk)
     if user is None:
         return
@@ -37,6 +40,7 @@ async def get_export_data(db, picture_pk, jwt):
     template = env.get_template('picture.jinja2')
 
     db_picture = get_picture_for_export(db=db, picture_pk=picture_pk)
+    pdf_options = pdf_options.model_copy(update={"header": f"Picture: {db_picture.title or ''}"})
     db_picture_relations = get_picture_relations(db=db, picture_pk=picture_pk,
                                                  params=None, user=user)
 
@@ -85,11 +89,11 @@ async def get_export_data(db, picture_pk, jwt):
             db_picture.canvas_content,
         )
 
-        pdf_buffer = await page.pdf(format="A4")
+        pdf_buffer = await page.pdf(**pdf_options.render_options())
         await browser.close()
 
     return Response(
-        content=pdf_buffer,
+        content=finish_pdf(pdf_buffer, pdf_options),
         media_type="application/pdf",
         headers={"Content-Disposition": "inline; filename=mathjax_output.pdf"}
     )
