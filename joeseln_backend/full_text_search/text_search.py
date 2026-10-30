@@ -50,6 +50,9 @@ def search_with_model(db, model, search_text, user, typesense: Client):
     if user.admin:
         lbs = db.query(models.Labbook).all()
 
+    if search_text:
+        search_text= search_text.strip()
+
     if LABBOOK_QUERY_MODE == "match" and user_groups:
         lbs = (
             db.query(models.Labbook)
@@ -194,6 +197,9 @@ def search_in_labbook(db, labbook_pk, search_text, user, typesense: Client):
 
     result_array = []
     labbook_id = str(labbook_pk)
+
+    if search_text:
+        search_text = search_text.strip()
 
     search_res = typesense_search_all(
         typesense=typesense,

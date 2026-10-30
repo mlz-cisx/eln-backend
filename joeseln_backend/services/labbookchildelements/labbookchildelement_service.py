@@ -222,7 +222,7 @@ def get_lb_childelements_from_user_for_tableview(
     )
 
     if search_text:
-        search_term = f"%{search_text}%"
+        search_term = f"%{search_text.strip()}%"
         file_query = file_query.filter(
             or_(
                 models.File.title.ilike(search_term),
@@ -275,7 +275,7 @@ def get_lb_childelements_from_user_for_tableview(
     )
 
     if search_text:
-        search_term = f"%{search_text}%"
+        search_term = f"%{search_text.strip()}%"
         note_query = note_query.filter(
             or_(
                 models.Note.subject.ilike(search_term),
@@ -328,7 +328,7 @@ def get_lb_childelements_from_user_for_tableview(
     )
 
     if search_text:
-        search_term = f"%{search_text}%"
+        search_term = f"%{search_text.strip()}%"
         picture_query = picture_query.filter(
             or_(
                 models.Picture.title.ilike(search_term),

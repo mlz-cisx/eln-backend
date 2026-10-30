@@ -113,7 +113,7 @@ def get_history(db: Session, elem_id, user, object_model, search=None,
 
     if search:
         history_elems = history_elems.filter(
-            models.User.username.ilike(f"%{search}%")
+            models.User.username.ilike(f"%{search.strip()}%")
         )
 
     history_elems = (
