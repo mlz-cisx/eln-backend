@@ -1,9 +1,10 @@
 import datetime
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from joeseln_backend.conf.base_conf import AUTH_CRED_LIMIT
 from joeseln_backend.services.privileges.privileges_schema import Privileges
 
 
@@ -78,19 +79,19 @@ class UserCreate(BaseModel):
 
 
 class GuiUserCreate(BaseModel):
-    username: str
-    email: str
-    first_name: str
-    last_name: str
-    password: str
-    password_confirmed: str
+    username: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    email: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    first_name: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    last_name: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    password: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    password_confirmed: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
 
 
 class GuiUserPatch(BaseModel):
-    username: str
-    user_email: str
-    first_name: str
-    last_name: str
+    username: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    user_email: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    first_name: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    last_name: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
 
 
 class OIDCUserCreate(BaseModel):
@@ -106,13 +107,15 @@ class OIDCUserCreate(BaseModel):
 
 
 class PasswordChange(BaseModel):
-    password: str
-    old_password: str = Field(..., min_length=1)
+    password: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    old_password: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)] = Field(
+        ..., min_length=1
+    )
 
 
 class PasswordPatch(BaseModel):
-    password_patch: str
-    old_password: str | None = None
+    password_patch: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)]
+    old_password: Annotated[str, Field(max_length=AUTH_CRED_LIMIT)] | None = None
 
 
 class UserWithPrivileges(BaseModel):

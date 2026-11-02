@@ -119,6 +119,8 @@ STATIC_HISTORY_DEBOUNCE = int(get_secure_env_variable("STATIC_HISTORY_DEBOUNCE",
 
 ELEM_MAXIMUM_SIZE = int(get_secure_env_variable("ELEM_MAXIMUM_SIZE", "5000"))
 
+AUTH_CRED_LIMIT = int(get_secure_env_variable("AUTH_CRED_LIMIT", "200"))
+
 TOKEN_VALIDITY = int(get_secure_env_variable("TOKEN_VALIDITY", str(50)))
 
 JWT_SECRET_KEY = get_secure_jwt_secret("JWT_SECRET_KEY")

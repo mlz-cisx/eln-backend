@@ -75,6 +75,7 @@ from joeseln_backend.conf.base_conf import (
     TOKEN_VALIDITY,
     URL_BASE_PATH,
     TRUSTED_HOSTS,
+    AUTH_CRED_LIMIT,
 )
 from joeseln_backend.database.database import SessionLocal, get_db
 
@@ -1921,8 +1922,8 @@ def keycloak_callback(
 
 @app.post("/api/token")
 async def login_for_access_token(
-    username: Annotated[str, Form()],
-    password: Annotated[str, Form()],
+    username: Annotated[str, Form(max_length=AUTH_CRED_LIMIT)],
+    password: Annotated[str, Form(max_length=AUTH_CRED_LIMIT)],
     db: Session = Depends(get_db),
 ) -> Token:
     user = authenticate_user(db=db, username=username.strip(),
