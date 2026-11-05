@@ -89,23 +89,24 @@ def test_add_user_connected_ws_updates_existing_connection(monkeypatch):
     db.close.assert_called_once()
 
 
-@pytest.mark.parametrize("connection", [None, MagicMock()])
+@pytest.mark.parametrize("updated_rows", [0, 1])
 def test_delete_user_connected_ws_updates_only_existing_connection(
-    monkeypatch, connection
+    monkeypatch, updated_rows
 ):
     db = MagicMock()
-    db.query.return_value.filter_by.return_value.first.return_value = connection
+    query = db.query.return_value.filter_by.return_value
+    query.update.return_value = updated_rows
     monkeypatch.setattr(events, "SessionLocal", lambda: db)
     ws_id = uuid.uuid4()
 
     events.delete_user_connected_ws(ws_id)
 
     db.query.return_value.filter_by.assert_called_once_with(ws_id=ws_id)
-    if connection is None:
-        db.commit.assert_not_called()
-    else:
-        assert connection.connected is False
-        db.commit.assert_called_once()
+    query.update.assert_called_once_with(
+        {"connected": False}, synchronize_session=False
+    )
+    query.first.assert_not_called()
+    db.commit.assert_called_once()
     db.close.assert_called_once()
 
 

@@ -9,9 +9,11 @@ import asyncio
 import json
 import uuid
 
+import anyio
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.concurrency import run_in_threadpool
 
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.mylogging.root_logger import logger
@@ -89,10 +91,10 @@ def delete_user_connected_ws(ws_id):
 
     db = SessionLocal()
     try:
-        ws_user = db.query(UserConnectedWs).filter_by(ws_id=ws_id).first()
-        if ws_user:
-            ws_user.connected = False
-            db.commit()
+        db.query(UserConnectedWs).filter_by(ws_id=ws_id).update(
+            {"connected": False}, synchronize_session=False
+        )
+        db.commit()
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(e)
@@ -134,7 +136,7 @@ async def sse_events(token: str = Query(default="")):
 
     ws_id = uuid.uuid4()
     queue = hub.register()
-    add_user_connected_ws(uname=uname, ws_id=ws_id)
+    await run_in_threadpool(add_user_connected_ws, uname=uname, ws_id=ws_id)
 
     async def event_stream():
         try:
@@ -149,7 +151,8 @@ async def sse_events(token: str = Query(default="")):
                     yield ": keepalive\n\n"
         finally:
             hub.unregister(queue)
-            delete_user_connected_ws(ws_id=ws_id)
+            with anyio.CancelScope(shield=True):
+                await run_in_threadpool(delete_user_connected_ws, ws_id=ws_id)
 
     return StreamingResponse(
         event_stream(),
