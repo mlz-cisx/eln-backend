@@ -509,10 +509,9 @@ def update_file(file_pk, db: Session, elem: FilePatch, user):
         if new_description is not None:
             new_description = sanitize_html(new_description)
 
-    title_size = sys.getsizeof(new_title or "")
     description_size = sys.getsizeof(new_description or "")
 
-    if (title_size + description_size) > (ELEM_MAXIMUM_SIZE << 10):
+    if description_size > (ELEM_MAXIMUM_SIZE << 10):
         return None
 
     lb_elem = db.get(models.Labbookchildelement, db_file.elem_id)

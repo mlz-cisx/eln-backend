@@ -119,6 +119,8 @@ STATIC_HISTORY_DEBOUNCE = int(get_secure_env_variable("STATIC_HISTORY_DEBOUNCE",
 
 ELEM_MAXIMUM_SIZE = int(get_secure_env_variable("ELEM_MAXIMUM_SIZE", "5000"))
 
+ELEM_TITLE_LIMIT = int(get_secure_env_variable("ELEM_TITLE_LIMIT", "10000"))
+
 AUTH_CRED_LIMIT = int(get_secure_env_variable("AUTH_CRED_LIMIT", "200"))
 
 TOKEN_VALIDITY = int(get_secure_env_variable("TOKEN_VALIDITY", str(50)))

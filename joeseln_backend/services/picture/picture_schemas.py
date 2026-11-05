@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, Json
 
+from joeseln_backend.conf.base_conf import ELEM_TITLE_LIMIT
 from joeseln_backend.conf.content_types import (
     picture_content_type,
     picture_content_type_model,
@@ -85,7 +86,7 @@ class PictureWithPrivileges(BaseModel):
 
 
 class UpdatePictureTitle(BaseModel):
-    title: str
+    title: str = Field(max_length=ELEM_TITLE_LIMIT)
 
 
 class PictureCanvas(BaseModel):

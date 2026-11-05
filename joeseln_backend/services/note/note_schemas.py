@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, Json, field_validator
 
+from joeseln_backend.conf.base_conf import ELEM_TITLE_LIMIT
 from joeseln_backend.conf.content_types import (
     note_content_type,
     note_content_type_model,
@@ -41,13 +42,13 @@ class Note(BaseModel):
 
 
 class NoteCreate(BaseModel):
-    subject: str
+    subject: str = Field(max_length=ELEM_TITLE_LIMIT)
     content: str
     labbook_pk: UUID | None = None
 
 
 class NotePatch(BaseModel):
-    subject: str | None = None
+    subject: str | None = Field(None, max_length=ELEM_TITLE_LIMIT)
     content: str | None = None
 
     @field_validator("subject", "content")

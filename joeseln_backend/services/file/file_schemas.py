@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, Json, field_validator
 
+from joeseln_backend.conf.base_conf import ELEM_TITLE_LIMIT
 from joeseln_backend.conf.content_types import (
     file_content_type,
     file_content_type_model,
@@ -56,7 +57,7 @@ class File(BaseModel):
 
 
 class FilePatch(BaseModel):
-    title: str | None = None
+    title: str | None = Field(None, max_length=ELEM_TITLE_LIMIT)
     description: str | None = None
 
     @field_validator("title", "description")

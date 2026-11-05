@@ -239,9 +239,6 @@ def get_canvas_content(db: Session, picture_pk, user):
 
 def update_title(db: Session, tsClient: Client, picture_pk, user,
                  pic_payload: UpdatePictureTitle):
-    if sys.getsizeof(pic_payload.title) > base_conf.ELEM_MAXIMUM_SIZE << 10:
-        return None
-
     db_picture = db.get(models.Picture, picture_pk)
 
     old_title = db_picture.title

@@ -76,6 +76,7 @@ from joeseln_backend.conf.base_conf import (
     URL_BASE_PATH,
     TRUSTED_HOSTS,
     AUTH_CRED_LIMIT,
+    ELEM_TITLE_LIMIT,
 )
 from joeseln_backend.database.database import SessionLocal, get_db
 
@@ -1090,7 +1091,7 @@ def delete_note_relation(
 @app.post("/api/pictures/", response_model=picture_schemas.Picture)
 async def upload_image(
         request: Request,
-        title: Annotated[str, Form(...)],
+        title: Annotated[str, Form(..., max_length=ELEM_TITLE_LIMIT)],
         background_image: Annotated[UploadFile | None, File()] = None,
         db: Session = Depends(get_db),
         tsClient=Depends(get_typesense_client),
@@ -1471,7 +1472,7 @@ def delete_picture_relation(
 @app.post("/api/files/", response_model=file_schemas.File)
 async def upload_file(
     request: Request,
-    title: Annotated[str, Form(...)],
+    title: Annotated[str, Form(..., max_length=ELEM_TITLE_LIMIT)],
     name: Annotated[str, Form(...)],
     path: Annotated[UploadFile, File()],
     description: Annotated[str | None, Form(...)] = None,

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, Json
 
+from joeseln_backend.conf.base_conf import ELEM_TITLE_LIMIT
 from joeseln_backend.conf.content_types import (
     labbook_content_type,
     labbook_content_type_model,
@@ -43,12 +44,12 @@ class LabbookWithLen(Labbook):
 
 
 class LabbookCreate(BaseModel):
-    title: str
+    title: str = Field(max_length=ELEM_TITLE_LIMIT)
     description: str
 
 
 class LabbookPatch(BaseModel):
-    title: str | Optional[bool] = Field(None)
+    title: Annotated[str, Field(max_length=ELEM_TITLE_LIMIT)] | Optional[bool] = Field(None)
     strict_mode: bool | Optional[bool] = Field(None)
     projects: List[str] | Optional[bool] = Field(None)
     description: str | Optional[bool] = Field(None)
