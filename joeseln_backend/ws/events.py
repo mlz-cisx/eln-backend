@@ -16,7 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from joeseln_backend.database.database import SessionLocal
 from joeseln_backend.mylogging.root_logger import logger
 
-SSE_PING_INTERVAL_SECONDS = 30
+SSE_PING_INTERVAL_SECONDS = 10
 SSE_QUEUE_MAXSIZE = 100
 
 
