@@ -846,15 +846,12 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             return file_to_update
         db.refresh(file_to_update)
         update_delete_status_typesense(file_to_update, True, get_typesense_client())
-        query = db.query(models.Labbookchildelement).filter_by(
-            labbook_id=labbook_data.labbook_pk, deleted=False).all()
-        if not query:
-            try:
-                transmit(
-                    {'model_name': 'labbook',
-                     'model_pk': labbook_data.labbook_pk})
-            except RuntimeError as e:
-                logger.error(e)
+        try:
+            transmit(
+                {'model_name': 'labbook',
+                 'model_pk': labbook_data.labbook_pk})
+        except RuntimeError as e:
+            logger.error(e)
 
         db_user_created = db.get(models.User, 
             file_to_update.created_by_id)
@@ -891,15 +888,12 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
                 return file_to_update
             db.refresh(file_to_update)
             update_delete_status_typesense(file_to_update, True, get_typesense_client())
-            query = db.query(models.Labbookchildelement).filter_by(
-                labbook_id=labbook_data.labbook_pk, deleted=False).all()
-            if not query:
-                try:
-                    transmit(
-                        {'model_name': 'labbook',
-                         'model_pk': labbook_data.labbook_pk})
-                except RuntimeError as e:
-                    logger.error(e)
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': labbook_data.labbook_pk})
+            except RuntimeError as e:
+                logger.error(e)
 
             db_user_created = db.get(models.User, 
                 file_to_update.created_by_id)
@@ -934,15 +928,12 @@ def soft_delete_file(db: Session, file_pk, labbook_data, user):
             return file_to_update
         db.refresh(file_to_update)
         update_delete_status_typesense(file_to_update, True, get_typesense_client())
-        query = db.query(models.Labbookchildelement).filter_by(
-            labbook_id=labbook_data.labbook_pk, deleted=False).all()
-        if not query:
-            try:
-                transmit(
-                    {'model_name': 'labbook',
-                     'model_pk': labbook_data.labbook_pk})
-            except RuntimeError as e:
-                logger.error(e)
+        try:
+            transmit(
+                {'model_name': 'labbook',
+                 'model_pk': labbook_data.labbook_pk})
+        except RuntimeError as e:
+            logger.error(e)
 
         db_user_created = db.get(models.User, 
             file_to_update.created_by_id)

@@ -609,16 +609,12 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user, typesense: Client
             note_to_update.last_modified_by = user
             return note_to_update
         db.refresh(note_to_update)
-        query = db.query(models.Labbookchildelement).filter_by(
-            labbook_id=labbook_data.labbook_pk, deleted=False).all()
-
-        if not query:
-            try:
-                transmit(
-                    {'model_name': 'labbook',
-                     'model_pk': labbook_data.labbook_pk})
-            except RuntimeError as e:
-                logger.error(e)
+        try:
+            transmit(
+                {'model_name': 'labbook',
+                 'model_pk': labbook_data.labbook_pk})
+        except RuntimeError as e:
+            logger.error(e)
 
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user
@@ -649,16 +645,12 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user, typesense: Client
                 db.close()
                 return note_to_update
             db.refresh(note_to_update)
-            query = db.query(models.Labbookchildelement).filter_by(
-                labbook_id=labbook_data.labbook_pk, deleted=False).all()
-
-            if not query:
-                try:
-                    transmit(
-                        {'model_name': 'labbook',
-                         'model_pk': labbook_data.labbook_pk})
-                except RuntimeError as e:
-                    logger.error(e)
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': labbook_data.labbook_pk})
+            except RuntimeError as e:
+                logger.error(e)
 
             note_to_update.created_by = db_user_created
             note_to_update.last_modified_by = user
@@ -687,16 +679,12 @@ def soft_delete_note(db: Session, note_pk, labbook_data, user, typesense: Client
             db.close()
             return note_to_update
         db.refresh(note_to_update)
-        query = db.query(models.Labbookchildelement).filter_by(
-            labbook_id=labbook_data.labbook_pk, deleted=False).all()
-
-        if not query:
-            try:
-                transmit(
-                    {'model_name': 'labbook',
-                     'model_pk': labbook_data.labbook_pk})
-            except RuntimeError as e:
-                logger.error(e)
+        try:
+            transmit(
+                {'model_name': 'labbook',
+                 'model_pk': labbook_data.labbook_pk})
+        except RuntimeError as e:
+            logger.error(e)
 
         note_to_update.created_by = db_user_created
         note_to_update.last_modified_by = user

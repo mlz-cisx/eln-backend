@@ -883,17 +883,12 @@ def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data,
         db_user_created = db.get(models.User, pic_to_update.created_by_id)
         pic_to_update.created_by = db_user_created
         pic_to_update.last_modified_by = user
-
-        query = db.query(models.Labbookchildelement).filter_by(
-            labbook_id=labbook_data.labbook_pk, deleted=False).all()
-
-        if not query:
-            try:
-                transmit(
-                    {'model_name': 'labbook',
-                     'model_pk': labbook_data.labbook_pk})
-            except RuntimeError as e:
-                logger.error(e)
+        try:
+            transmit(
+                {'model_name': 'labbook',
+                 'model_pk': labbook_data.labbook_pk})
+        except RuntimeError as e:
+            logger.error(e)
 
         create_history_entry(db=db,
                              elem_id=picture_pk,
@@ -927,17 +922,12 @@ def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data,
                 pic_to_update.created_by_id)
             pic_to_update.created_by = db_user_created
             pic_to_update.last_modified_by = user
-
-            query = db.query(models.Labbookchildelement).filter_by(
-                labbook_id=labbook_data.labbook_pk, deleted=False).all()
-
-            if not query:
-                try:
-                    transmit(
-                        {'model_name': 'labbook',
-                         'model_pk': labbook_data.labbook_pk})
-                except RuntimeError as e:
-                    logger.error(e)
+            try:
+                transmit(
+                    {'model_name': 'labbook',
+                     'model_pk': labbook_data.labbook_pk})
+            except RuntimeError as e:
+                logger.error(e)
 
             create_history_entry(db=db,
                                  elem_id=picture_pk,
@@ -969,17 +959,12 @@ def soft_delete_picture(db: Session, tsClient: Client, picture_pk, labbook_data,
             pic_to_update.created_by_id)
         pic_to_update.created_by = db_user_created
         pic_to_update.last_modified_by = user
-
-        query = db.query(models.Labbookchildelement).filter_by(
-            labbook_id=labbook_data.labbook_pk, deleted=False).all()
-
-        if not query:
-            try:
-                transmit(
-                    {'model_name': 'labbook',
-                     'model_pk': labbook_data.labbook_pk})
-            except RuntimeError as e:
-                logger.error(e)
+        try:
+            transmit(
+                {'model_name': 'labbook',
+                 'model_pk': labbook_data.labbook_pk})
+        except RuntimeError as e:
+            logger.error(e)
 
         create_history_entry(db=db,
                              elem_id=picture_pk,
