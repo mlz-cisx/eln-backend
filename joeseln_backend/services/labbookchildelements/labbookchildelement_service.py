@@ -601,7 +601,6 @@ def create_lb_childelement_row(
     base_filters = [
         models.Labbookchildelement.labbook_id == labbook_pk,
         models.Labbookchildelement.deleted.is_(False),
-        models.Labbookchildelement.position_x < labbook_childelem.width,
     ]
 
     # Find the first overlapping element
@@ -649,13 +648,6 @@ def create_lb_childelement_row(
     for elem in query:
         elem.position_y += labbook_childelem.height - delta
 
-    try:
-        db.commit()
-    except SQLAlchemyError as e:
-        logger.error(e)
-        db.close()
-
-        return False
 
     elem = Labbookchildelement_Create(
         position_x=0,
