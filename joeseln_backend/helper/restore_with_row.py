@@ -17,7 +17,6 @@ def shift_elements_after_restore(
     base_filters = [
         models.Labbookchildelement.labbook_id == labbook_id,
         models.Labbookchildelement.deleted.is_(False),
-        models.Labbookchildelement.position_x < restored_width,
     ]
 
     # Find first overlapping element
