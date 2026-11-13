@@ -48,7 +48,9 @@ def search_with_model(db, model, search_text, user, typesense: Client):
 
     lbs = []
     if user.admin:
-        lbs = db.query(models.Labbook).all()
+        lbs = db.query(models.Labbook).filter(
+            models.Labbook.deleted == False,
+        ).all()
 
     if search_text:
         search_text= search_text.strip()
